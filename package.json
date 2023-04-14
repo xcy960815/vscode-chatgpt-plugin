@@ -1,9 +1,9 @@
 {
-  "name": "vscode-chatgpt",
+  "name": "vscode-chatgpt-plugin",
   "publisher": "YOUR_PUBLISHER_NAME",
-  "displayName": "vscode-chatgpt",
+  "displayName": "vscode-chatgpt-plugin",
   "icon": "images/ai-logo.jpg",
-  "description": "vscode-chatgpt",
+  "description": "vscode-chatgpt-plugin",
   "version": "3.9.7-0",
   "aiKey": "",
   "repository": {
@@ -181,7 +181,7 @@
       },
       {
         "command": "vscode-chatgpt.optimize",
-        "title": "ChatGPT: 优化选中代码",
+        "title": "ChatGPT: Optimize",
         "enablement": "editorHasSelection"
       },
       {
@@ -325,7 +325,7 @@
         },
         "chatgpt.promptPrefix.optimize": {
           "type": "string",
-          "default": "优化以下代码",
+          "default": "Optimize the following code",
           "description": "The prompt prefix used for optimizing the selected code",
           "order": 12
         },
@@ -522,7 +522,11 @@
     "glob": "^8.0.3",
     "mocha": "^10.1.0",
     "ts-loader": "^9.4.1",
-    "typescript": "^4.9.3"
+    "typescript": "^4.9.3",
+    "husky": "^1.3.1",
+    "prettier": "^2.8.7",
+    "pretty-quick": "^1.8.0",
+    "vcm-cli": "^1.0.5"
   },
   "dependencies": {
     "delay": "^5.0.0",
@@ -540,11 +544,7 @@
     "quick-lru": "^6.1.1",
     "remark": "^14.0.2",
     "strip-markdown": "^5.0.0",
-    "uuid": "^9.0.0",
-    "husky": "^1.3.1",
-    "prettier": "^2.8.7",
-    "pretty-quick": "^1.8.0",
-    "vcm-cli": "^1.0.5"
+    "uuid": "^9.0.0"
   },
   "husky": {
     "hooks": {
