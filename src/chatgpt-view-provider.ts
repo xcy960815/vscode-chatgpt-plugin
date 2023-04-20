@@ -8,7 +8,6 @@ import * as vscode from 'vscode';
 import { ChatGPTAPI as ChatGPTAPI3 } from '../chatgpt-4.7.2/index';
 import { ChatGPTAPI as ChatGPTAPI35 } from '../chatgpt-5.1.1/index';
 import { AuthType, LoginMethod } from './types';
-
 export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
 
@@ -34,12 +33,11 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
   private currentMessageId: string = '';
   private response: string = '';
 
-  /**
-   * Message to be rendered lazily if they haven't been rendered
-   * in time before resolveWebviewView is called.
-   */
   private leftOverMessage?: any;
-
+  /**
+   * 如果消息没有被渲染，则延迟渲染
+   * 在调用 resolveWebviewView 之前的时间。
+   */
   constructor(private context: vscode.ExtensionContext) {
     this.subscribeToResponse =
       vscode.workspace.getConfiguration('chatgpt').get('response.showNotification') || false;
@@ -66,11 +64,14 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
       localResourceRoots: [this.context.extensionUri],
     };
-
+    // 设置webview的html内容
     webviewView.webview.html = this.getWebviewHtml(webviewView.webview);
+    // webviewView.webview.html = this.getWebviewHtml("./media/web-view.html");
 
+    // 在监听器内部根据消息命令类型执行不同的操作。
     webviewView.webview.onDidReceiveMessage(async (data) => {
       switch (data.type) {
+        // 从webview中获取到用户输入的问题，然后调用sendApiRequest方法发送给后端。
         case 'addFreeTextQuestion':
           this.sendApiRequest(data.value, { command: 'freeText' });
           break;
@@ -81,6 +82,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
           this.logEvent('code-inserted');
           break;
         case 'openNew':
+          // 打开新的文件
           const document = await vscode.workspace.openTextDocument({
             content: data.value,
             language: data.language,
@@ -89,10 +91,11 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
           this.logEvent(data.language === 'markdown' ? 'code-exported' : 'code-opened');
           break;
+
         case 'clearConversation':
+          // 清空会话
           this.messageId = undefined;
           this.conversationId = undefined;
-
           this.logEvent('conversation-cleared');
           break;
         case 'clearBrowser':
@@ -116,6 +119,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
           });
           break;
         case 'openSettings':
+          // 打开设置
           vscode.commands.executeCommand(
             'workbench.action.openSettings',
             '@ext:YOUR_PUBLISHER_NAME.vscode-chatgpt chatgpt.',
@@ -138,6 +142,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
           /// ...
           break;
         case 'stopGenerating':
+          // 停止生成代码
           this.stopGenerating();
           break;
         default:
@@ -250,7 +255,6 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
         let apiKey =
           (configuration.get('gpt3.apiKey') as string) ||
           (state.get('chatgpt-gpt3-apiKey') as string);
-        console.log('apiKey', apiKey);
 
         const organization = configuration.get('gpt3.organization') as string;
         const max_tokens = configuration.get('gpt3.maxTokens') as number;
@@ -354,18 +358,18 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
     prompt: string,
     options: { command: string; code?: string; previousAnswer?: string; language?: string },
   ) {
+    // AI还在思考……不接受更多的问题。
     if (this.inProgress) {
-      // The AI is still thinking... Do not accept more questions.
       return;
     }
 
     this.questionCounter++;
 
-    this.logEvent('api-request-sent', {
-      'chatgpt.command': options.command,
-      'chatgpt.hasCode': String(!!options.code),
-      'chatgpt.hasPreviousAnswer': String(!!options.previousAnswer),
-    });
+    // this.logEvent('api-request-sent', {
+    // 	'chatgpt.command': options.command,
+    // 	'chatgpt.hasCode': String(!!options.code),
+    // 	'chatgpt.hasPreviousAnswer': String(!!options.previousAnswer),
+    // });
 
     if (!(await this.prepareConversation())) {
       return;
@@ -381,14 +385,17 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
     } else {
       this.webView?.show?.(true);
     }
-
+    // 记录正在进行的状态
     this.inProgress = true;
+
     this.abortController = new AbortController();
+
     this.sendMessage({
       type: 'showInProgress',
       inProgress: this.inProgress,
       showStopButton: this.useGpt3,
     });
+
     this.currentMessageId = this.getRandomId();
 
     this.sendMessage({
@@ -566,29 +573,34 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
     // this.reporter?.sendTelemetryErrorEvent(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown" }, { "chatgpt.questionCounter": this.questionCounter });
     // console.error(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown" }, { "chatgpt.questionCounter": this.questionCounter });
   }
-  private getWebviewHtml(webview: vscode.Webview) {
-    const scriptUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'main.js'),
+  /**
+   * @desc 获取webview的html
+   * @param {vscode.Webview} webview
+   * @returns  {string}
+   */
+  private getWebviewHtml(webview: vscode.Webview): string {
+    const webViewScriptUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'web-view.js'),
     );
-    const stylesMainUri = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'main.css'),
+    const webViewCssUri = webview.asWebviewUri(
+      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'web-view.css'),
     );
     // 引入高亮样式
     const vendorHighlightCss = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'vendor', 'highlight.min.css'),
+      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'highlight.min.css'),
     );
     // 引入高亮js
     const vendorHighlightJs = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'vendor', 'highlight.min.js'),
+      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'highlight.min.js'),
     );
     const vendorMarkedJs = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'vendor', 'marked.min.js'),
+      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'marked.min.js'),
     );
     const vendorTailwindJs = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'vendor', 'tailwindcss.3.2.4.min.js'),
+      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'tailwindcss.3.2.4.min.js'),
     );
     const vendorTurndownJs = webview.asWebviewUri(
-      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'vendor', 'turndown.js'),
+      vscode.Uri.joinPath(this.context.extensionUri, 'media', 'turndown.js'),
     );
 
     const nonce = this.getRandomId();
@@ -599,7 +611,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 				<meta charset="UTF-8">
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-				<link href="${stylesMainUri}" rel="stylesheet">
+				<link href="${webViewCssUri}" rel="stylesheet">
 				<link href="${vendorHighlightCss}" rel="stylesheet">
 				<script src="${vendorHighlightJs}"></script>
 				<script src="${vendorMarkedJs}"></script>
@@ -647,7 +659,8 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 						</div>
 
 						<button id="stop-button" class="btn btn-primary flex items-end p-1 pr-2 rounded-md ml-5">
-							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Stop responding</button>
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Stop responding
+						</button>
 					</div>
 
 					<div class="p-4 flex items-center pt-2">
@@ -677,11 +690,38 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 					</div>
 				</div>
 
-				<script nonce="${nonce}" src="${scriptUri}"></script>
+				<script nonce="${nonce}" src="${webViewScriptUri}"></script>
 			</body>
 			</html>`;
   }
 
+  // /**
+  //  * 从某个HTML文件读取能被Webview加载的HTML内容
+  //  * @param {*} context 上下文
+  //  * @param {*} templatePath 相对于插件根目录的html文件相对路径
+  //  */
+  // getWebviewHtml(relativePath: string): string {
+  // 	// 文件的绝对地址
+  // 	const webViewHtmlAbsolutePath = path.join(this.context.extensionPath, relativePath);
+  // 	// 文件夹的绝对地址
+  // 	const documentPath = path.dirname(webViewHtmlAbsolutePath);
+  // 	let html = fs.readFileSync(webViewHtmlAbsolutePath, 'utf-8');
+  // 	// vscode不支持直接加载本地资源，需要替换成其专有路径格式，这里只是简单的将样式和JS的路径替换
+  // 	html = html.replace(
+  // 		/(<link.+?href="|<script.+?src="|<img.+?src=")(.+?)"/g,
+  // 		(m, $1, $2) => {
+  // 			return (
+  // 				$1 +
+  // 				vscode.Uri.file(path.resolve(documentPath, $2))
+  // 					.with({ scheme: 'vscode-resource' })
+  // 					.toString() +
+  // 				'"'
+  // 			);
+  // 		}
+  // 	);
+  // 	return html;
+  // }
+  // 获取随机字符串
   private getRandomId() {
     let text = '';
     const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';

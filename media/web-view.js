@@ -27,7 +27,7 @@
 
   const sendSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>`;
 
-  const pencilSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>`;
+  const editSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>`;
 
   const plusSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`;
 
@@ -39,7 +39,7 @@
 
   const refreshSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>`;
 
-  // Handle messages sent from the extension to the webview
+  // 接收来自 webview 的消息
   window.addEventListener('message', (event) => {
     const message = event.data;
     const list = document.getElementById('qa-list');
@@ -75,11 +75,10 @@
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#039;');
         };
-
         list.innerHTML += `<div class="p-4 self-end mt-4 question-element-ext relative input-background">
-                        <h2 class="mb-5 flex">${userSvg}You</h2>
-                        <no-export class="mb-2 flex items-center">
-                            <button title="Edit and resend this prompt" class="resend-element-ext p-1.5 flex items-center rounded-lg absolute right-6 top-6">${pencilSvg}</button>
+                        <h3 class="mb-5 flex">${userSvg} You</h3>
+                       <no-export class="mb-2 flex items-center">
+                            <button title="Edit and resend this prompt" class="resend-element-ext p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editSvg}</button>
                             <div class="hidden send-cancel-elements-ext flex gap-2">
                                 <button title="Send this prompt" class="send-element-ext p-1 pr-2 flex items-center">${sendSvg}&nbsp;Send</button>
                                 <button title="Cancel" class="cancel-element-ext p-1 pr-2 flex items-center">${cancelSvg}&nbsp;Cancel</button>
@@ -95,7 +94,6 @@
       case 'addResponse':
         let existingMessage = message.id && document.getElementById(message.id);
         let updatedValue = '';
-
         const unEscapeHtml = (unsafe) => {
           return unsafe
             .replaceAll('&amp;', '&')
@@ -127,7 +125,6 @@
 
         if (message.done) {
           const preCodeList = list.lastChild.querySelectorAll('pre > code');
-
           preCodeList.forEach((preCode) => {
             preCode.classList.add(
               'input-background',
@@ -154,7 +151,7 @@
               'input-background',
             );
 
-            // Create copy to clipboard button
+            // 复制按钮
             const copyButton = document.createElement('button');
             copyButton.title = 'Copy to clipboard';
             copyButton.innerHTML = `${clipboardSvg} Copy`;
@@ -167,12 +164,12 @@
               'items-center',
               'rounded-lg',
             );
+            //  插入按钮
+            const insertButton = document.createElement('button');
+            insertButton.title = 'Insert the below code to the current file';
+            insertButton.innerHTML = `${insertSvg} Insert`;
 
-            const insert = document.createElement('button');
-            insert.title = 'Insert the below code to the current file';
-            insert.innerHTML = `${insertSvg} Insert`;
-
-            insert.classList.add(
+            insertButton.classList.add(
               'edit-element-ext',
               'p-1',
               'pr-2',
@@ -181,11 +178,11 @@
               'rounded-lg',
             );
 
-            const newTab = document.createElement('button');
-            newTab.title = 'Create a new file with the below code';
-            newTab.innerHTML = `${plusSvg} New`;
+            const newTabButton = document.createElement('button');
+            newTabButton.title = 'Create a new file with the below code';
+            newTabButton.innerHTML = `${plusSvg} New`;
 
-            newTab.classList.add(
+            newTabButton.classList.add(
               'new-code-element-ext',
               'p-1',
               'pr-2',
@@ -194,7 +191,7 @@
               'rounded-lg',
             );
 
-            buttonWrapper.append(copyButton, insert, newTab);
+            buttonWrapper.append(copyButton, insertButton, newTabButton);
 
             if (preCode.parentNode.previousSibling) {
               preCode.parentNode.parentNode.insertBefore(
@@ -207,7 +204,10 @@
           });
 
           existingMessage = document.getElementById(message.id);
-          existingMessage.classList.remove('result-streaming');
+          if (existingMessage) {
+            // 拿掉光标
+            existingMessage.classList.remove('result-streaming');
+          }
         }
 
         if (message.autoScroll && (message.done || markedResponse.endsWith('\n'))) {
@@ -273,16 +273,15 @@
         break;
     }
   });
-
+  // 向webview发送消息
   const addFreeTextQuestion = () => {
-    const input = document.getElementById('question-input');
-    if (input.value?.length > 0) {
+    const questionInputNode = document.getElementById('question-input');
+    if (questionInputNode.value?.length > 0) {
       vscode.postMessage({
         type: 'addFreeTextQuestion',
-        value: input.value,
+        value: questionInputNode.value,
       });
-
-      input.value = '';
+      questionInputNode.value = '';
     }
   };
 
@@ -307,14 +306,14 @@
       language: 'markdown',
     });
   };
-
+  // 给输入框添加 enter 事件
   document.getElementById('question-input').addEventListener('keydown', function (event) {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
       addFreeTextQuestion();
     }
   });
-
+  // 给整个webview添加点击事件
   document.addEventListener('click', (e) => {
     const targetButton = e.target.closest('button');
 

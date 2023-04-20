@@ -4,7 +4,7 @@
   "displayName": "vscode-chatgpt-plugin",
   "icon": "images/ai-logo.jpg",
   "description": "vscode-chatgpt-plugin",
-  "version": "3.9.7-0",
+  "version": "0.0.1",
   "aiKey": "",
   "repository": {
     "url": "https://github.com/YOUR_PUBLISHER_NAME/vscode-chatgpt"
@@ -20,19 +20,7 @@
     "Linters"
   ],
   "keywords": [
-    "chatgpt",
-    "lamda",
-    "bard",
-    "gpt",
-    "gpt3",
-    "gpt3.5",
-    "gpt4",
-    "codex",
-    "openai",
-    "testing",
-    "find bugs",
-    "copilot",
-    "ai"
+    "chatgpt"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -93,72 +81,11 @@
         }
       ]
     },
-    "keybindings": [
-      {
-        "command": "vscode-chatgpt.generateCode",
-        "key": "ctrl+shift+a",
-        "mac": "cmd+shift+a",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "vscode-chatgpt.addTests",
-        "key": "ctrl+k ctrl+shift+1",
-        "mac": "cmd+k cmd+shift+1",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "vscode-chatgpt.findProblems",
-        "key": "ctrl+k ctrl+shift+2",
-        "mac": "cmd+k cmd+shift+2",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "vscode-chatgpt.optimize",
-        "key": "ctrl+k ctrl+shift+3",
-        "mac": "cmd+k cmd+shift+3",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "vscode-chatgpt.explain",
-        "key": "ctrl+k ctrl+shift+4",
-        "mac": "cmd+k cmd+shift+4",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "vscode-chatgpt.addComments",
-        "key": "ctrl+k ctrl+shift+5",
-        "mac": "cmd+k cmd+shift+5",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "vscode-chatgpt.completeCode",
-        "key": "ctrl+k ctrl+shift+6",
-        "mac": "cmd+k cmd+shift+6",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "vscode-chatgpt.adhoc",
-        "key": "ctrl+k ctrl+shift+7",
-        "mac": "cmd+k cmd+shift+7",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "vscode-chatgpt.customPrompt1",
-        "key": "ctrl+k ctrl+shift+8",
-        "mac": "cmd+k cmd+shift+8",
-        "when": "editorHasSelection"
-      },
-      {
-        "command": "vscode-chatgpt.customPrompt2",
-        "key": "ctrl+k ctrl+shift+9",
-        "mac": "cmd+k cmd+shift+9",
-        "when": "editorHasSelection"
-      }
-    ],
     "commands": [
       {
         "command": "vscode-chatgpt.freeText",
-        "title": "ChatGPT: Ask anything"
+        "title": "ChatGPT: Ask anything",
+        "titleCn": "ChatGPT: 任何问题"
       },
       {
         "command": "vscode-chatgpt.clearSession",

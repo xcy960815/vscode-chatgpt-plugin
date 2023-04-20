@@ -1,3 +1,5 @@
+/* eslint-disable eqeqeq */
+/* eslint-disable @typescript-eslint/naming-convention */
 // Adapted from https://github.com/transitive-bullshit/chatgpt-api
 
 /**

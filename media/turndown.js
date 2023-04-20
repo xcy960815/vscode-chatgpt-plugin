@@ -28,12 +28,55 @@ var TurndownService = (function () {
   }
 
   var blockElements = [
-    'ADDRESS', 'ARTICLE', 'ASIDE', 'AUDIO', 'BLOCKQUOTE', 'BODY', 'CANVAS',
-    'CENTER', 'DD', 'DIR', 'DIV', 'DL', 'DT', 'FIELDSET', 'FIGCAPTION', 'FIGURE',
-    'FOOTER', 'FORM', 'FRAMESET', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'HEADER',
-    'HGROUP', 'HR', 'HTML', 'ISINDEX', 'LI', 'MAIN', 'MENU', 'NAV', 'NOFRAMES',
-    'NOSCRIPT', 'OL', 'OUTPUT', 'P', 'PRE', 'SECTION', 'TABLE', 'TBODY', 'TD',
-    'TFOOT', 'TH', 'THEAD', 'TR', 'UL'
+    'ADDRESS',
+    'ARTICLE',
+    'ASIDE',
+    'AUDIO',
+    'BLOCKQUOTE',
+    'BODY',
+    'CANVAS',
+    'CENTER',
+    'DD',
+    'DIR',
+    'DIV',
+    'DL',
+    'DT',
+    'FIELDSET',
+    'FIGCAPTION',
+    'FIGURE',
+    'FOOTER',
+    'FORM',
+    'FRAMESET',
+    'H1',
+    'H2',
+    'H3',
+    'H4',
+    'H5',
+    'H6',
+    'HEADER',
+    'HGROUP',
+    'HR',
+    'HTML',
+    'ISINDEX',
+    'LI',
+    'MAIN',
+    'MENU',
+    'NAV',
+    'NOFRAMES',
+    'NOSCRIPT',
+    'OL',
+    'OUTPUT',
+    'P',
+    'PRE',
+    'SECTION',
+    'TABLE',
+    'TBODY',
+    'TD',
+    'TFOOT',
+    'TH',
+    'THEAD',
+    'TR',
+    'UL',
   ];
 
   function isBlock(node) {
@@ -41,8 +84,22 @@ var TurndownService = (function () {
   }
 
   var voidElements = [
-    'AREA', 'BASE', 'BR', 'COL', 'COMMAND', 'EMBED', 'HR', 'IMG', 'INPUT',
-    'KEYGEN', 'LINK', 'META', 'PARAM', 'SOURCE', 'TRACK', 'WBR'
+    'AREA',
+    'BASE',
+    'BR',
+    'COL',
+    'COMMAND',
+    'EMBED',
+    'HR',
+    'IMG',
+    'INPUT',
+    'KEYGEN',
+    'LINK',
+    'META',
+    'PARAM',
+    'SOURCE',
+    'TRACK',
+    'WBR',
   ];
 
   function isVoid(node) {
@@ -54,8 +111,17 @@ var TurndownService = (function () {
   }
 
   var meaningfulWhenBlankElements = [
-    'A', 'TABLE', 'THEAD', 'TBODY', 'TFOOT', 'TH', 'TD', 'IFRAME', 'SCRIPT',
-    'AUDIO', 'VIDEO'
+    'A',
+    'TABLE',
+    'THEAD',
+    'TBODY',
+    'TFOOT',
+    'TH',
+    'TD',
+    'IFRAME',
+    'SCRIPT',
+    'AUDIO',
+    'VIDEO',
   ];
 
   function isMeaningfulWhenBlank(node) {
@@ -86,7 +152,7 @@ var TurndownService = (function () {
 
     replacement: function (content) {
       return '\n\n' + content + '\n\n';
-    }
+    },
   };
 
   rules.lineBreak = {
@@ -94,7 +160,7 @@ var TurndownService = (function () {
 
     replacement: function (content, node, options) {
       return options.br + '\n';
-    }
+    },
   };
 
   rules.heading = {
@@ -104,14 +170,12 @@ var TurndownService = (function () {
       var hLevel = Number(node.nodeName.charAt(1));
 
       if (options.headingStyle === 'setext' && hLevel < 3) {
-        var underline = repeat((hLevel === 1 ? '=' : '-'), content.length);
-        return (
-          '\n\n' + content + '\n' + underline + '\n\n'
-        );
+        var underline = repeat(hLevel === 1 ? '=' : '-', content.length);
+        return '\n\n' + content + '\n' + underline + '\n\n';
       } else {
         return '\n\n' + repeat('#', hLevel) + ' ' + content + '\n\n';
       }
-    }
+    },
   };
 
   rules.blockquote = {
@@ -121,7 +185,7 @@ var TurndownService = (function () {
       content = content.replace(/^\n+|\n+$/g, '');
       content = content.replace(/^/gm, '> ');
       return '\n\n' + content + '\n\n';
-    }
+    },
   };
 
   rules.list = {
@@ -134,7 +198,7 @@ var TurndownService = (function () {
       } else {
         return '\n\n' + content + '\n\n';
       }
-    }
+    },
   };
 
   rules.listItem = {
@@ -152,10 +216,8 @@ var TurndownService = (function () {
         var index = Array.prototype.indexOf.call(parent.children, node);
         prefix = (start ? Number(start) + index : index + 1) + '.  ';
       }
-      return (
-        prefix + content + (node.nextSibling && !/\n$/.test(content) ? '\n' : '')
-      );
-    }
+      return prefix + content + (node.nextSibling && !/\n$/.test(content) ? '\n' : '');
+    },
   };
 
   rules.indentedCodeBlock = {
@@ -169,12 +231,8 @@ var TurndownService = (function () {
     },
 
     replacement: function (content, node, options) {
-      return (
-        '\n\n    ' +
-        node.firstChild.textContent.replace(/\n/g, '\n    ') +
-        '\n\n'
-      );
-    }
+      return '\n\n    ' + node.firstChild.textContent.replace(/\n/g, '\n    ') + '\n\n';
+    },
   };
 
   rules.fencedCodeBlock = {
@@ -205,12 +263,8 @@ var TurndownService = (function () {
 
       var fence = repeat(fenceChar, fenceSize);
 
-      return (
-        '\n\n' + fence + language + '\n' +
-        code.replace(/\n$/, '') +
-        '\n' + fence + '\n\n'
-      );
-    }
+      return '\n\n' + fence + language + '\n' + code.replace(/\n$/, '') + '\n' + fence + '\n\n';
+    },
   };
 
   rules.horizontalRule = {
@@ -218,16 +272,12 @@ var TurndownService = (function () {
 
     replacement: function (content, node, options) {
       return '\n\n' + options.hr + '\n\n';
-    }
+    },
   };
 
   rules.inlineLink = {
     filter: function (node, options) {
-      return (
-        options.linkStyle === 'inlined' &&
-        node.nodeName === 'A' &&
-        node.getAttribute('href')
-      );
+      return options.linkStyle === 'inlined' && node.nodeName === 'A' && node.getAttribute('href');
     },
 
     replacement: function (content, node) {
@@ -235,15 +285,13 @@ var TurndownService = (function () {
       var title = cleanAttribute(node.getAttribute('title'));
       if (title) title = ' "' + title + '"';
       return '[' + content + '](' + href + title + ')';
-    }
+    },
   };
 
   rules.referenceLink = {
     filter: function (node, options) {
       return (
-        options.linkStyle === 'referenced' &&
-        node.nodeName === 'A' &&
-        node.getAttribute('href')
+        options.linkStyle === 'referenced' && node.nodeName === 'A' && node.getAttribute('href')
       );
     },
 
@@ -282,7 +330,7 @@ var TurndownService = (function () {
         this.references = []; // Reset references
       }
       return references;
-    }
+    },
   };
 
   rules.emphasis = {
@@ -291,7 +339,7 @@ var TurndownService = (function () {
     replacement: function (content, node, options) {
       if (!content.trim()) return '';
       return options.emDelimiter + content + options.emDelimiter;
-    }
+    },
   };
 
   rules.strong = {
@@ -300,7 +348,7 @@ var TurndownService = (function () {
     replacement: function (content, node, options) {
       if (!content.trim()) return '';
       return options.strongDelimiter + content + options.strongDelimiter;
-    }
+    },
   };
 
   rules.code = {
@@ -321,7 +369,7 @@ var TurndownService = (function () {
       while (matches.indexOf(delimiter) !== -1) delimiter = delimiter + '`';
 
       return delimiter + extraSpace + content + extraSpace + delimiter;
-    }
+    },
   };
 
   rules.image = {
@@ -333,7 +381,7 @@ var TurndownService = (function () {
       var title = cleanAttribute(node.getAttribute('title'));
       var titlePart = title ? ' "' + title + '"' : '';
       return src ? '![' + alt + ']' + '(' + src + titlePart + ')' : '';
-    }
+    },
   };
 
   function cleanAttribute(attribute) {
@@ -350,13 +398,13 @@ var TurndownService = (function () {
     this._remove = [];
 
     this.blankRule = {
-      replacement: options.blankReplacement
+      replacement: options.blankReplacement,
     };
 
     this.keepReplacement = options.keepReplacement;
 
     this.defaultRule = {
-      replacement: options.defaultReplacement
+      replacement: options.defaultReplacement,
     };
 
     this.array = [];
@@ -371,7 +419,7 @@ var TurndownService = (function () {
     keep: function (filter) {
       this._keep.unshift({
         filter: filter,
-        replacement: this.keepReplacement
+        replacement: this.keepReplacement,
       });
     },
 
@@ -380,7 +428,7 @@ var TurndownService = (function () {
         filter: filter,
         replacement: function () {
           return '';
-        }
+        },
       });
     },
 
@@ -397,7 +445,7 @@ var TurndownService = (function () {
 
     forEach: function (fn) {
       for (var i = 0; i < this.array.length; i++) fn(this.array[i], i);
-    }
+    },
   };
 
   function findRule(rules, node, options) {
@@ -457,9 +505,11 @@ var TurndownService = (function () {
     var element = options.element;
     var isBlock = options.isBlock;
     var isVoid = options.isVoid;
-    var isPre = options.isPre || function (node) {
-      return node.nodeName === 'PRE';
-    };
+    var isPre =
+      options.isPre ||
+      function (node) {
+        return node.nodeName === 'PRE';
+      };
 
     if (!element.firstChild || isPre(element)) return;
 
@@ -470,11 +520,11 @@ var TurndownService = (function () {
     var node = next(prev, element, isPre);
 
     while (node !== element) {
-      if (node.nodeType === 3 || node.nodeType === 4) { // Node.TEXT_NODE or Node.CDATA_SECTION_NODE
+      if (node.nodeType === 3 || node.nodeType === 4) {
+        // Node.TEXT_NODE or Node.CDATA_SECTION_NODE
         var text = node.data.replace(/[ \r\n\t]+/g, ' ');
 
-        if ((!prevText || / $/.test(prevText.data)) &&
-          !keepLeadingWs && text[0] === ' ') {
+        if ((!prevText || / $/.test(prevText.data)) && !keepLeadingWs && text[0] === ' ') {
           text = text.substr(1);
         }
 
@@ -487,7 +537,8 @@ var TurndownService = (function () {
         node.data = text;
 
         prevText = node;
-      } else if (node.nodeType === 1) { // Node.ELEMENT_NODE
+      } else if (node.nodeType === 1) {
+        // Node.ELEMENT_NODE
         if (isBlock(node) || node.nodeName === 'BR') {
           if (prevText) {
             prevText.data = prevText.data.replace(/ $/, '');
@@ -557,7 +608,7 @@ var TurndownService = (function () {
    * Set up window for Node.js
    */
 
-  var root = (typeof window !== 'undefined' ? window : {});
+  var root = typeof window !== 'undefined' ? window : {};
 
   /*
    * Parsing HTML strings
@@ -574,13 +625,13 @@ var TurndownService = (function () {
       if (new Parser().parseFromString('', 'text/html')) {
         canParse = true;
       }
-    } catch (e) { }
+    } catch (e) {}
 
     return canParse;
   }
 
   function createHTMLParser() {
-    var Parser = function () { };
+    var Parser = function () {};
 
     {
       if (shouldUseActiveX()) {
@@ -625,7 +676,7 @@ var TurndownService = (function () {
         // Wrapping in a custom element ensures elements are reliably arranged in
         // a single element.
         '<x-turndown id="turndown-root">' + input + '</x-turndown>',
-        'text/html'
+        'text/html',
       );
       root = doc.getElementById('turndown-root');
     } else {
@@ -635,7 +686,7 @@ var TurndownService = (function () {
       element: root,
       isBlock: isBlock,
       isVoid: isVoid,
-      isPre: options.preformattedCode ? isPreOrCode : null
+      isPre: options.preformattedCode ? isPreOrCode : null,
     });
 
     return root;
@@ -697,7 +748,7 @@ var TurndownService = (function () {
       leadingNonAscii: m[3],
       trailing: m[4], // empty for whitespace-only strings
       trailingNonAscii: m[5],
-      trailingAscii: m[6]
+      trailingAscii: m[6],
     };
   }
 
@@ -740,7 +791,7 @@ var TurndownService = (function () {
     [/\]/g, '\\]'],
     [/^>/g, '\\>'],
     [/_/g, '\\_'],
-    [/^(\d+)\. /g, '$1\\. ']
+    [/^(\d+)\. /g, '$1\\. '],
   ];
 
   function TurndownService(options) {
@@ -767,7 +818,7 @@ var TurndownService = (function () {
       },
       defaultReplacement: function (content, node) {
         return node.isBlock ? '\n\n' + content + '\n\n' : content;
-      }
+      },
     };
     this.options = extend({}, defaults, options);
     this.rules = new Rules(this.options);
@@ -784,9 +835,7 @@ var TurndownService = (function () {
 
     turndown: function (input) {
       if (!canConvert(input)) {
-        throw new TypeError(
-          input + ' is not a string, or an element/document/fragment node.'
-        );
+        throw new TypeError(input + ' is not a string, or an element/document/fragment node.');
       }
 
       if (input === '') return '';
@@ -866,7 +915,7 @@ var TurndownService = (function () {
       return escapes.reduce(function (accumulator, escape) {
         return accumulator.replace(escape[0], escape[1]);
       }, string);
-    }
+    },
   };
 
   /**
@@ -879,18 +928,22 @@ var TurndownService = (function () {
 
   function process(parentNode) {
     var self = this;
-    return reduce.call(parentNode.childNodes, function (output, node) {
-      node = new Node(node, self.options);
+    return reduce.call(
+      parentNode.childNodes,
+      function (output, node) {
+        node = new Node(node, self.options);
 
-      var replacement = '';
-      if (node.nodeType === 3) {
-        replacement = node.isCode ? node.nodeValue : self.escape(node.nodeValue);
-      } else if (node.nodeType === 1) {
-        replacement = replacementForNode.call(self, node);
-      }
+        var replacement = '';
+        if (node.nodeType === 3) {
+          replacement = node.isCode ? node.nodeValue : self.escape(node.nodeValue);
+        } else if (node.nodeType === 1) {
+          replacement = replacementForNode.call(self, node);
+        }
 
-      return join(output, replacement);
-    }, '');
+        return join(output, replacement);
+      },
+      '',
+    );
   }
 
   /**
@@ -925,11 +978,7 @@ var TurndownService = (function () {
     var content = process.call(this, node);
     var whitespace = node.flankingWhitespace;
     if (whitespace.leading || whitespace.trailing) content = content.trim();
-    return (
-      whitespace.leading +
-      rule.replacement(content, node, this.options) +
-      whitespace.trailing
-    );
+    return whitespace.leading + rule.replacement(content, node, this.options) + whitespace.trailing;
   }
 
   /**
@@ -960,15 +1009,11 @@ var TurndownService = (function () {
 
   function canConvert(input) {
     return (
-      input != null && (
-        typeof input === 'string' ||
-        (input.nodeType && (
-          input.nodeType === 1 || input.nodeType === 9 || input.nodeType === 11
-        ))
-      )
+      input != null &&
+      (typeof input === 'string' ||
+        (input.nodeType && (input.nodeType === 1 || input.nodeType === 9 || input.nodeType === 11)))
     );
   }
 
   return TurndownService;
-
-}());
+})();
