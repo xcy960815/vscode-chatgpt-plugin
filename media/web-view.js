@@ -42,7 +42,7 @@
   // 接收来自 webview 的消息
   window.addEventListener('message', (event) => {
     const message = event.data;
-    const list = document.getElementById('qa-list');
+    const answerList = document.getElementById('answer-list');
 
     switch (message.type) {
       case 'showInProgress':
@@ -63,7 +63,7 @@
         }
         break;
       case 'addQuestion':
-        list.classList.remove('hidden');
+        answerList.classList.remove('hidden');
         document.getElementById('introduction')?.classList?.add('hidden');
         document.getElementById('conversation-list').classList.add('hidden');
 
@@ -75,7 +75,7 @@
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#039;');
         };
-        list.innerHTML += `<div class="p-4 self-end mt-4 question-element-ext relative input-background">
+        answerList.innerHTML += `<div class="p-4 self-end mt-4 question-element-ext relative input-background">
                         <h3 class="mb-5 flex">${userSvg} You</h3>
                        <no-export class="mb-2 flex items-center">
                             <button title="Edit and resend this prompt" class="resend-element-ext p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editSvg}</button>
@@ -88,7 +88,11 @@
                     </div>`;
 
         if (message.autoScroll) {
-          list.lastChild?.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+          answerList.lastChild?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'end',
+            inline: 'nearest',
+          });
         }
         break;
       case 'addResponse':
@@ -117,14 +121,14 @@
         if (existingMessage) {
           existingMessage.innerHTML = markedResponse;
         } else {
-          list.innerHTML += `<div class="p-4 self-end mt-4 pb-8 answer-element-ext">
+          answerList.innerHTML += `<div class="p-4 self-end mt-4 pb-8 answer-element-ext">
                         <h2 class="mb-5 flex">${aiSvg}ChatGPT</h2>
                         <div class="result-streaming" id="${message.id}">${markedResponse}</div>
                     </div>`;
         }
 
         if (message.done) {
-          const preCodeList = list.lastChild.querySelectorAll('pre > code');
+          const preCodeList = answerList.lastChild.querySelectorAll('pre > code');
           preCodeList.forEach((preCode) => {
             preCode.classList.add(
               'input-background',
@@ -211,12 +215,16 @@
         }
 
         if (message.autoScroll && (message.done || markedResponse.endsWith('\n'))) {
-          list.lastChild?.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+          answerList.lastChild?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'end',
+            inline: 'nearest',
+          });
         }
 
         break;
       case 'addError':
-        if (!list.innerHTML) {
+        if (!answerList.innerHTML) {
           return;
         }
 
@@ -224,13 +232,17 @@
           message.value ||
           'An error occurred. If this issue persists please clear your session token with `ChatGPT: Reset session` command and/or restart your Visual Studio Code. If you still experience issues, it may be due to outage on https://openai.com services.';
 
-        list.innerHTML += `<div class="p-4 self-end mt-4 pb-8 error-element-ext">
+        answerList.innerHTML += `<div class="p-4 self-end mt-4 pb-8 error-element-ext">
                         <h2 class="mb-5 flex">${aiSvg}ChatGPT</h2>
                         <div class="text-red-400">${marked.parse(messageValue)}</div>
                     </div>`;
 
         if (message.autoScroll) {
-          list.lastChild?.scrollIntoView({ behavior: 'smooth', block: 'end', inline: 'nearest' });
+          answerList.lastChild?.scrollIntoView({
+            behavior: 'smooth',
+            block: 'end',
+            inline: 'nearest',
+          });
         }
         break;
       case 'clearConversation':
@@ -246,7 +258,7 @@
         }
         break;
       case 'listConversations':
-        list.classList.add('hidden');
+        answerList.classList.add('hidden');
         document.getElementById('introduction')?.classList?.add('hidden');
         const conversationListNode = document.getElementById('conversation-list');
         conversationListNode.classList.remove('hidden');
@@ -286,7 +298,7 @@
   };
 
   const clearConversation = () => {
-    document.getElementById('qa-list').innerHTML = '';
+    document.getElementById('answer-list').innerHTML = '';
 
     document.getElementById('introduction')?.classList?.remove('hidden');
 
@@ -298,7 +310,7 @@
   const exportConversation = () => {
     const turndownService = new TurndownService({ codeBlockStyle: 'fenced' });
     turndownService.remove('no-export');
-    let markdown = turndownService.turndown(document.getElementById('qa-list'));
+    let markdown = turndownService.turndown(document.getElementById('answer-list'));
 
     vscode.postMessage({
       type: 'openNew',
@@ -383,12 +395,12 @@
 
       vscode.postMessage({ type: 'showConversation', value: targetButton.getAttribute('data-id') });
 
-      document.getElementById('qa-list').innerHTML = `<div class="flex flex-col p-6 pt-2">
+      document.getElementById('answer-list').innerHTML = `<div class="flex flex-col p-6 pt-2">
                 <h2 class="text-lg">${targetButton.getAttribute('data-title')}</h2>
                 <span class="text-xs">Started on: ${targetButton.getAttribute('data-time')}</span>
             </div>`;
 
-      document.getElementById('qa-list').classList.remove('hidden');
+      document.getElementById('answer-list').classList.remove('hidden');
       document.getElementById('introduction').classList.add('hidden');
       document.getElementById('conversation-list').classList.add('hidden');
       return;
@@ -403,12 +415,12 @@
 
     if (targetButton?.id === 'close-conversations-button') {
       e.preventDefault();
-      const qaList = document.getElementById('qa-list');
-      qaList.classList.add('hidden');
+      const answerList = document.getElementById('answer-list');
+      answerList.classList.add('hidden');
       document.getElementById('conversation-list').classList.add('hidden');
       document.getElementById('introduction').classList.add('hidden');
-      if (qaList.innerHTML?.length > 0) {
-        qaList.classList.remove('hidden');
+      if (answerList.innerHTML?.length > 0) {
+        answerList.classList.remove('hidden');
       } else {
         document.getElementById('introduction').classList.remove('hidden');
       }

@@ -26,7 +26,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
   private proxyServer?: string;
   private loginMethod?: LoginMethod;
   private authType?: AuthType;
-
+  // 问题数量
   private questionCounter: number = 0;
   private inProgress: boolean = false;
   private abortController?: AbortController;
@@ -42,7 +42,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.subscribeToResponse =
       vscode.workspace.getConfiguration('chatgpt').get('response.showNotification') || false;
     this.autoScroll = !!vscode.workspace.getConfiguration('chatgpt').get('response.autoScroll');
-    this.model = vscode.workspace.getConfiguration('chatgpt').get('gpt3.model') as string;
+    this.model = vscode.workspace.getConfiguration('chatgpt').get('gpt3.model');
 
     this.setMethod();
     this.setChromeExecutablePath();
@@ -180,7 +180,9 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.conversationId = undefined;
     this.logEvent('cleared-session');
   }
-
+  /**
+   * @desc 设置代理服务器
+   */
   public setProxyServer(): void {
     this.proxyServer = vscode.workspace.getConfiguration('chatgpt').get('proxyServer');
   }
@@ -210,10 +212,6 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
         break;
 
       default:
-        /**
-         * Since two (2) separate chrome releases exists on linux
-         * we first do a check to ensure we're executing the right one.
-         */
         const chromeExists = fs.existsSync('/usr/bin/google-chrome');
 
         path = chromeExists ? '/usr/bin/google-chrome' : '/usr/bin/google-chrome-stable';
@@ -343,8 +341,14 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 			(When responding to the following prompt, please make sure to properly style your response using Github Flavored Markdown. 
 			Use markdown syntax for things like headings, lists, colored text, code blocks, highlights etc. Make sure not to mention markdown or styling in your actual response.)`;
   }
-
-  private processQuestion(question: string, code?: string, language?: string) {
+  /**
+   * @desc 处理问题并将其发送到 API
+   * @param {String} question
+   * @param {String} code
+   * @param {String} language
+   * @returns  {String}
+   */
+  private processQuestion(question: string, code?: string, language?: string): string {
     if (!!code) {
       // Add prompt prefix to the code if there was a code block selected
       question = `${question}${
@@ -376,10 +380,10 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
     }
 
     this.response = '';
-    let question = this.processQuestion(prompt, options.code, options.language);
+    const question = this.processQuestion(prompt, options.code, options.language);
+
     const responseInMarkdown = !this.isCodexModel;
 
-    // If the ChatGPT view is not in focus/visible; focus on it to render Q&A
     if (this.webView == null) {
       vscode.commands.executeCommand('vscode-chatgpt.view.focus');
     } else {
@@ -554,7 +558,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @param message Message to be sent to WebView
    * @param ignoreMessageIfNullWebView We will ignore the command if webView is null/not-focused
    */
-  public sendMessage(message: any, ignoreMessageIfNullWebView?: boolean) {
+  public sendMessage(message: any, ignoreMessageIfNullWebView?: boolean): void {
     if (this.webView) {
       this.webView?.webview.postMessage(message);
     } else if (!ignoreMessageIfNullWebView) {
@@ -579,26 +583,56 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @returns  {string}
    */
   private getWebviewHtml(webview: vscode.Webview): string {
-    const webViewScriptUri = webview.asWebviewUri(
+    const webViewScript = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'web-view.js'),
     );
-    const webViewCssUri = webview.asWebviewUri(
+    const webViewCss = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'web-view.css'),
     );
-    // 引入高亮样式
+    /**
+     * highlight.css 包是一个基于 highlight.js 的语法高亮度显示样式库。
+     * 它提供了一系列漂亮的预定义样式，可以应用于任何使用 highlight.js 库进行代码高亮的项目中。
+     * 当你在你的网站或博客中需要为代码段设置语法高亮时，你可以使用 highlight.css 来实现界面美观度更高，风格更加多样化的效果。
+     * 通过引入该库提供的 CSS 样式，你可以快速而轻松地将已经使用 highlight.js 高亮处理过的代码块呈现成更具有吸引力的方式。
+     */
     const vendorHighlightCss = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'highlight.min.css'),
     );
-    // 引入高亮js
+    /**
+     * highlight.js 是一个 JavaScript 语法高亮显示库，支持多种编程语言和文档格式。
+     * 它可以在代码片段上自动进行色彩编码，而不需要额外的配置。
+     * 它适用于各种网站、博客（例如 WordPress 等）、平台（例如 GitHub、Reddit）以及其他应用程序中。
+     * 另外，highlight.js 还提供了对可读性更强的 CSS 样式的支持，可以轻松定制代码块的样式。
+     * 它可以在浏览器端直接使用，也可以在 Node.js 中使用。
+     */
     const vendorHighlightJs = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'highlight.min.js'),
     );
+    /**
+     * markedjs是一个流行的用于将Markdown语法转换成HTML代码的JavaScript库。
+     * 它可以将包含Markdown的字符串解析成HTML，同时保留Markdown原始文本中的样式。
+     * 这个库简单易用，支持GFM（GitHub风格的Markdown）以及其他一些扩展语法，例如：表格、代码块、任务列表、删除线等等。该库还支持自定义选项和各种插件，提供广泛的选择来生成所需的格式化输出。
+     * 由于其方便快捷、性能好，因此很受欢迎，常常用于编写Markdown编辑器或博客系统。
+     */
     const vendorMarkedJs = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'marked.min.js'),
     );
+    /**
+     * tailwindcss 是一个全新的、未来感极强的 CSS 框架，它能够帮助开发人员快速构建现代、美观且高效的网站。
+     * 与传统的 CSS 框架不同，Tailwind 不是提供单独的CSS类，而是通过一组小型的原子级别类来构建 UI 界面。例如, Tailwind 提供了用于颜色、字体、定位、边框等元素的简单 CSS 类，并在组合这些类时提供了大量自定义选项。
+     * 使用 tailwindcss 可以让开发者尽可能的最小化 CSS 代码，同时也避免了样式冗余和未使用样式的 wastage。
+     * 另外，Tailwind 具有复用性高的特点，可以让开发者在任何情况下轻松定制并扩展框架。
+     * 总之，tailwindcss可以帮助开发者更加高效地编写 CSS 样式和快速构建出更具有现代感及美观的 Web 应用程序。
+     */
     const vendorTailwindJs = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'tailwindcss.3.2.4.min.js'),
     );
+    /**
+     * Turndown.js 是一个用于将HTML转换为markdown格式的JavaScript库。它可以将大部分 HTML 标记转换为与之等价的 markdown 语法。
+     * Turndown.js可在浏览器端和Node.js环境中运行。
+     * 由于 Turndown.js 能够将HTML文本转换为 Markdown 格式的文本，所以Turndown.js是许多应用程序中非常有用的一个工具包。
+     * 它可以帮助将从富文本编辑器、博客等地方获取到的HTML数据转化为Markdown格式，并进行展示或者存储。
+     */
     const vendorTurndownJs = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'turndown.js'),
     );
@@ -611,7 +645,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 				<meta charset="UTF-8">
 				<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-				<link href="${webViewCssUri}" rel="stylesheet">
+				<link href="${webViewCss}" rel="stylesheet">
 				<link href="${vendorHighlightCss}" rel="stylesheet">
 				<script src="${vendorHighlightJs}"></script>
 				<script src="${vendorMarkedJs}"></script>
@@ -646,7 +680,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 						</div>
 					</div>
 
-					<div class="flex-1 overflow-y-auto" id="qa-list"></div>
+					<div class="flex-1 overflow-y-auto" id="answer-list"></div>
 
 					<div class="flex-1 overflow-y-auto hidden" id="conversation-list"></div>
 
@@ -690,7 +724,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 					</div>
 				</div>
 
-				<script nonce="${nonce}" src="${webViewScriptUri}"></script>
+				<script nonce="${nonce}" src="${webViewScript}"></script>
 			</body>
 			</html>`;
   }

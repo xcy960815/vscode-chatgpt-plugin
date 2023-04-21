@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import ChatGptViewProvider from './chatgpt-view-provider';
 const defaultLocale = 'zh';
+// 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
 const menuCommands = [
   'addTests',
   'findProblems',
@@ -24,7 +25,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // 获取本地化信息
   const locale = vscode.env.language;
   console.log('locale', locale);
-
+  // 注册webview
   const chatGptViewProvider = new ChatGptViewProvider(context);
 
   const webviewViewProvider = vscode.window.registerWebviewViewProvider(
@@ -37,7 +38,7 @@ export async function activate(context: vscode.ExtensionContext) {
       },
     },
   );
-
+  // 注册 freeText 命令
   const freeText = vscode.commands.registerCommand('vscode-chatgpt.freeText', async () => {
     const value = await vscode.window.showInputBox({
       prompt: 'Ask anything...',
@@ -47,21 +48,21 @@ export async function activate(context: vscode.ExtensionContext) {
       chatGptViewProvider?.sendApiRequest(value, { command: 'freeText' });
     }
   });
-
+  // 注册 clearConversation 命令
   const resetThread = vscode.commands.registerCommand(
     'vscode-chatgpt.clearConversation',
     async () => {
       chatGptViewProvider?.sendMessage({ type: 'clearConversation' }, true);
     },
   );
-
+  // 注册 exportConversation 命令
   const exportConversation = vscode.commands.registerCommand(
     'vscode-chatgpt.exportConversation',
     async () => {
       chatGptViewProvider?.sendMessage({ type: 'exportConversation' }, true);
     },
   );
-
+  // 注册 clearSession 命令
   const clearSession = vscode.commands.registerCommand('vscode-chatgpt.clearSession', () => {
     context.globalState.update('chatgpt-session-token', null);
     context.globalState.update('chatgpt-clearance-token', null);
@@ -135,7 +136,9 @@ export async function activate(context: vscode.ExtensionContext) {
       setContext();
     }
   });
+
   let adhocCommandPrefix: string = context.globalState.get('chatgpt-adhoc-prompt') || '';
+  // 注册 adhoc 命令
   const adhocCommand = vscode.commands.registerCommand('vscode-chatgpt.adhoc', async () => {
     const editor = vscode.window.activeTextEditor;
 
@@ -172,10 +175,9 @@ export async function activate(context: vscode.ExtensionContext) {
       }
     }
   });
-
+  // 注册 generateCode 命令
   const generateCodeCommand = vscode.commands.registerCommand(`vscode-chatgpt.generateCode`, () => {
     const editor = vscode.window.activeTextEditor;
-
     if (!editor) {
       return;
     }
@@ -189,25 +191,27 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   });
 
-  // Skip AdHoc - as it was registered earlier
+  // 注册菜单命令
   const registeredCommands = menuCommands
     .filter((command) => command !== 'adhoc' && command !== 'generateCode')
     .map((command) =>
       vscode.commands.registerCommand(`vscode-chatgpt.${command}`, () => {
+        // 获取配置的 prompt
         const prompt = vscode.workspace
           .getConfiguration('chatgpt')
           .get<string>(`promptPrefix.${command}`);
+        // 获取当前编辑器
         const editor = vscode.window.activeTextEditor;
 
         if (!editor) {
           return;
         }
-
-        const selection = editor.document.getText(editor.selection);
-        if (selection && prompt) {
+        // 获取选中的文本
+        const selectionCode = editor.document.getText(editor.selection);
+        if (selectionCode && prompt) {
           chatGptViewProvider?.sendApiRequest(prompt, {
             command,
-            code: selection,
+            code: selectionCode,
             language: editor.document.languageId,
           });
         }

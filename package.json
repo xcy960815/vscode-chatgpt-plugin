@@ -7,7 +7,7 @@
   "version": "0.0.1",
   "aiKey": "",
   "repository": {
-    "url": "https://github.com/YOUR_PUBLISHER_NAME/vscode-chatgpt"
+    "url": "https://github.com/YOUR_PUBLISHER_NAME/vscode-chatgpt-plugin"
   },
   "engines": {
     "vscode": "^1.73.0"
