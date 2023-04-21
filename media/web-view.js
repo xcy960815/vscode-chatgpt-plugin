@@ -47,18 +47,26 @@
     switch (message.type) {
       case 'showInProgress':
         if (message.showStopButton) {
+          // 让停止按钮显示
           document.getElementById('stop-button').classList.remove('hidden');
         } else {
+          // 让停止按钮隐藏
           document.getElementById('stop-button').classList.add('hidden');
         }
 
         if (message.inProgress) {
+          // 让正在进行中的提示显示
           document.getElementById('in-progress').classList.remove('hidden');
+          // 让输入框不可用
           document.getElementById('question-input').setAttribute('disabled', true);
+          // 让输入框的按钮隐藏
           document.getElementById('question-input-buttons').classList.add('hidden');
         } else {
+          // 让正在进行中的提示隐藏
           document.getElementById('in-progress').classList.add('hidden');
+          // 让输入框可用
           document.getElementById('question-input').removeAttribute('disabled');
+          // 让输入框的按钮显示
           document.getElementById('question-input-buttons').classList.remove('hidden');
         }
         break;
@@ -95,8 +103,9 @@
           });
         }
         break;
-      case 'addResponse':
-        let existingMessage = message.id && document.getElementById(message.id);
+      case 'addAnswer':
+        // 如果存在现有消息
+        let existingMessageElement = message.id && document.getElementById(message.id);
         let updatedValue = '';
         const unEscapeHtml = (unsafe) => {
           return unsafe
@@ -118,8 +127,8 @@
 
         const markedResponse = marked.parse(updatedValue);
 
-        if (existingMessage) {
-          existingMessage.innerHTML = markedResponse;
+        if (existingMessageElement) {
+          existingMessageElement.innerHTML = markedResponse;
         } else {
           answerList.innerHTML += `<div class="p-4 self-end mt-4 pb-8 answer-element-ext">
                         <h2 class="mb-5 flex">${aiSvg}ChatGPT</h2>
@@ -207,10 +216,10 @@
             }
           });
 
-          existingMessage = document.getElementById(message.id);
-          if (existingMessage) {
+          existingMessageElement = document.getElementById(message.id);
+          if (existingMessageElement) {
             // 拿掉光标
-            existingMessage.classList.remove('result-streaming');
+            existingMessageElement.classList.remove('result-streaming');
           }
         }
 

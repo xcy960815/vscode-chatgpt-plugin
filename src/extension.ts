@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
-import ChatGptViewProvider from './chatgpt-view-provider';
+import ChatgptViewProvider from './chatgpt-view-provider';
 const defaultLocale = 'zh';
-// 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
 const menuCommands = [
   'addTests',
   'findProblems',
@@ -26,7 +25,7 @@ export async function activate(context: vscode.ExtensionContext) {
   const locale = vscode.env.language;
   console.log('locale', locale);
   // 注册webview
-  const chatGptViewProvider = new ChatGptViewProvider(context);
+  const chatGptViewProvider = new ChatgptViewProvider(context);
 
   const webviewViewProvider = vscode.window.registerWebviewViewProvider(
     'vscode-chatgpt.view',
@@ -181,10 +180,9 @@ export async function activate(context: vscode.ExtensionContext) {
     if (!editor) {
       return;
     }
-
-    const selection = editor.document.getText(editor.selection);
-    if (selection) {
-      chatGptViewProvider?.sendApiRequest(selection, {
+    const selectionCode = editor.document.getText(editor.selection);
+    if (selectionCode) {
+      chatGptViewProvider?.sendApiRequest(selectionCode, {
         command: 'generateCode',
         language: editor.document.languageId,
       });

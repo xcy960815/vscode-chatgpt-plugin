@@ -7,8 +7,8 @@ import * as os from 'node:os';
 import * as vscode from 'vscode';
 import { ChatGPTAPI as ChatGPTAPI3 } from '../chatgpt-4.7.2/index';
 import { ChatGPTAPI as ChatGPTAPI35 } from '../chatgpt-5.1.1/index';
-import { AuthType, LoginMethod } from './types';
-export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
+import { AuthType, LeftOverMessage, LoginMethod, MessageOption } from './types';
+export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
 
   public subscribeToResponse: boolean;
@@ -33,7 +33,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
   private currentMessageId: string = '';
   private response: string = '';
 
-  private leftOverMessage?: any;
+  private leftOverMessage?: LeftOverMessage;
   /**
    * 如果消息没有被渲染，则延迟渲染
    * 在调用 resolveWebviewView 之前的时间。
@@ -150,9 +150,9 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
       }
     });
 
-    if (this.leftOverMessage != null) {
+    if (this.leftOverMessage !== null) {
       // If there were any messages that wasn't delivered, render after resolveWebView is called.
-      this.sendMessage(this.leftOverMessage);
+      this.sendMessage(this.leftOverMessage as MessageOption);
       this.leftOverMessage = null;
     }
   }
@@ -163,7 +163,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
     this.sendMessage({ type: 'showInProgress', inProgress: this.inProgress });
     const responseInMarkdown = !this.isCodexModel;
     this.sendMessage({
-      type: 'addResponse',
+      type: 'addAnswer',
       value: this.response,
       done: true,
       id: this.currentMessageId,
@@ -299,7 +299,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 
           return false;
         }
-
+        // 初始化 chatgpt 模型
         if (this.isGpt35Model) {
           this.apiGpt35 = new ChatGPTAPI35({
             apiKey,
@@ -364,6 +364,8 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
   ) {
     // AI还在思考……不接受更多的问题。
     if (this.inProgress) {
+      // 给用户一个提示
+      vscode.window.showInformationMessage('AI is still thinking... Please wait for it to finish.');
       return;
     }
 
@@ -380,6 +382,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
     }
 
     this.response = '';
+
     const question = this.processQuestion(prompt, options.code, options.language);
 
     const responseInMarkdown = !this.isCodexModel;
@@ -420,7 +423,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
             onProgress: (partialResponse) => {
               this.response = partialResponse.text;
               this.sendMessage({
-                type: 'addResponse',
+                type: 'addAnswer',
                 value: this.response,
                 id: this.currentMessageId,
                 autoScroll: this.autoScroll,
@@ -444,7 +447,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
             onProgress: (partialResponse) => {
               this.response = partialResponse.text;
               this.sendMessage({
-                type: 'addResponse',
+                type: 'addAnswer',
                 value: this.response,
                 id: this.currentMessageId,
                 autoScroll: this.autoScroll,
@@ -480,7 +483,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
       }
 
       this.sendMessage({
-        type: 'addResponse',
+        type: 'addAnswer',
         value: this.response,
         done: true,
         id: this.currentMessageId,
@@ -543,9 +546,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 	${apiMessage}
 `;
       }
-
       this.sendMessage({ type: 'addError', value: message, autoScroll: this.autoScroll });
-
       return;
     } finally {
       this.inProgress = false;
@@ -558,11 +559,11 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
    * @param message Message to be sent to WebView
    * @param ignoreMessageIfNullWebView We will ignore the command if webView is null/not-focused
    */
-  public sendMessage(message: any, ignoreMessageIfNullWebView?: boolean): void {
+  public sendMessage(messageOption: MessageOption, ignoreMessageIfNullWebView?: boolean): void {
     if (this.webView) {
-      this.webView?.webview.postMessage(message);
+      this.webView?.webview.postMessage(messageOption);
     } else if (!ignoreMessageIfNullWebView) {
-      this.leftOverMessage = message;
+      this.leftOverMessage = messageOption;
     }
   }
 
@@ -661,7 +662,7 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 									<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"></path>
 								</svg>
 								<h2>Features</h2>
-								<ul class="flex flex-col gap-3.5 text-xs">
+								<ul class="flex flex-col gap-3.5">
 									<li class="features-li w-full border border-zinc-700 p-3 rounded-md">Access to your ChatGPT conversation history</li>
 									<li class="features-li w-full border border-zinc-700 p-3 rounded-md">Improve your code, add tests & find bugs</li>
 									<li class="features-li w-full border border-zinc-700 p-3 rounded-md">Copy or create new files automatically</li>
@@ -671,16 +672,18 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 						</div>
 						<div class="flex flex-col gap-4 h-full items-center justify-end text-center">
 							<button id="login-button" class="mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md">Log in</button>
-							<button id="list-conversations-link" class="hidden mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md" title="You can access this feature via the kebab menu below. NOTE: Only available with Browser Auto-login method">
+							
+              <button id="list-conversations-link" class="hidden mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md" title="You can access this feature via the kebab menu below. NOTE: Only available with Browser Auto-login method">
 								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" /></svg>&nbsp;Show conversations
 							</button>
-							<p class="max-w-sm text-center text-xs text-slate-500">
+							
+              <p class="max-w-sm text-center text-xs text-slate-500">
 								<a title="" id="settings-button" href="#">Update settings</a>&nbsp; | &nbsp;<a title="" id="settings-prompt-button" href="#">Update prompts</a>
 							</p>
 						</div>
 					</div>
 
-					<div class="flex-1 overflow-y-auto" id="answer-list"></div>
+					<div class="flex-1 overflow-y-auto text-sm" id="answer-list"></div>
 
 					<div class="flex-1 overflow-y-auto hidden" id="conversation-list"></div>
 
@@ -713,7 +716,8 @@ export default class ChatGptViewProvider implements vscode.WebviewViewProvider {
 							<button class="flex gap-2 items-center justify-start p-2 w-full" id="export-button"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>&nbsp;Export to markdown</button>
 						</div>
 						<div id="question-input-buttons" class="right-6 absolute p-0.5 ml-5 flex items-center gap-2">
-							<button id="more-button" title="More actions" class="rounded-lg p-0.5">
+							
+              <button id="more-button" title="More actions" class="rounded-lg p-0.5">
 								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg>
 							</button>
 
