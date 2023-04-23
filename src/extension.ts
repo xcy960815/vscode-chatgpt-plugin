@@ -23,7 +23,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // console.log(`${locales.zh['vscode-chatgpt.freeText.title']} `);
   // 获取本地化信息
   const locale = vscode.env.language;
-  console.log('locale', locale);
+  console.log('当前系统语言', locale);
   // 注册webview
   const chatGptViewProvider = new ChatgptViewProvider(context);
 

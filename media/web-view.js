@@ -39,41 +39,52 @@
 
   const refreshSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>`;
 
+  // 拿到所有的 需要操作的 dom
+  const questionInputElement = document.getElementById('question-input');
+  const answerListElement = document.getElementById('answer-list');
+  const stopAskingButtonElement = document.getElementById('stop-asking-button');
+  const inProgress = document.getElementById('in-progress');
+  const questionInputButtons = document.getElementById('question-input-buttons');
+  const introductionElement = document.getElementById('introduction');
+  const conversationElement = document.getElementById('conversation-list');
+  const loginButtonElement = document.getElementById('login-button');
+  const listConversationsLinkElement = document.getElementById('list-conversations-link');
+  const chatButtonWrapperElement = document.getElementById('chat-button-wrapper');
+
   // 接收来自 webview 的消息
   window.addEventListener('message', (event) => {
     const message = event.data;
-    const answerList = document.getElementById('answer-list');
 
     switch (message.type) {
       case 'showInProgress':
         if (message.showStopButton) {
           // 让停止按钮显示
-          document.getElementById('stop-button').classList.remove('hidden');
+          stopAskingButtonElement.classList.remove('hidden');
         } else {
           // 让停止按钮隐藏
-          document.getElementById('stop-button').classList.add('hidden');
+          stopAskingButtonElement.classList.add('hidden');
         }
 
         if (message.inProgress) {
           // 让正在进行中的提示显示
-          document.getElementById('in-progress').classList.remove('hidden');
+          inProgress.classList.remove('hidden');
           // 让输入框不可用
-          document.getElementById('question-input').setAttribute('disabled', true);
+          questionInputElement.setAttribute('disabled', true);
           // 让输入框的按钮隐藏
-          document.getElementById('question-input-buttons').classList.add('hidden');
+          questionInputButtons.classList.add('hidden');
         } else {
           // 让正在进行中的提示隐藏
-          document.getElementById('in-progress').classList.add('hidden');
+          inProgress.classList.add('hidden');
           // 让输入框可用
-          document.getElementById('question-input').removeAttribute('disabled');
+          questionInputElement.removeAttribute('disabled');
           // 让输入框的按钮显示
-          document.getElementById('question-input-buttons').classList.remove('hidden');
+          questionInputButtons.classList.remove('hidden');
         }
         break;
       case 'addQuestion':
-        answerList.classList.remove('hidden');
-        document.getElementById('introduction')?.classList?.add('hidden');
-        document.getElementById('conversation-list').classList.add('hidden');
+        answerListElement.classList.remove('hidden');
+        introductionElement?.classList?.add('hidden');
+        conversationElement.classList.add('hidden');
 
         const escapeHtml = (unsafe) => {
           return unsafe
@@ -83,7 +94,7 @@
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#039;');
         };
-        answerList.innerHTML += `<div class="p-4 self-end mt-4 question-element-ext relative input-background">
+        answerListElement.innerHTML += `<div class="p-4 self-end mt-4 question-element-ext relative input-background">
                         <h3 class="mb-5 flex">${userSvg} You</h3>
                        <no-export class="mb-2 flex items-center">
                             <button title="Edit and resend this prompt" class="resend-element-ext p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editSvg}</button>
@@ -96,7 +107,7 @@
                     </div>`;
 
         if (message.autoScroll) {
-          answerList.lastChild?.scrollIntoView({
+          answerListElement.lastChild?.scrollIntoView({
             behavior: 'smooth',
             block: 'end',
             inline: 'nearest',
@@ -130,14 +141,14 @@
         if (existingMessageElement) {
           existingMessageElement.innerHTML = markedResponse;
         } else {
-          answerList.innerHTML += `<div class="p-4 self-end mt-4 pb-8 answer-element-ext">
+          answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 answer-element-ext">
                         <h2 class="mb-5 flex">${aiSvg}ChatGPT</h2>
                         <div class="result-streaming" id="${message.id}">${markedResponse}</div>
                     </div>`;
         }
 
         if (message.done) {
-          const preCodeList = answerList.lastChild.querySelectorAll('pre > code');
+          const preCodeList = answerListElement.lastChild.querySelectorAll('pre > code');
           preCodeList.forEach((preCode) => {
             preCode.classList.add(
               'input-background',
@@ -190,7 +201,7 @@
               'items-center',
               'rounded-lg',
             );
-
+            // 右侧content 新开tab按钮
             const newTabButton = document.createElement('button');
             newTabButton.title = 'Create a new file with the below code';
             newTabButton.innerHTML = `${plusSvg} New`;
@@ -205,7 +216,7 @@
             );
 
             buttonWrapper.append(copyButton, insertButton, newTabButton);
-
+            // previousSibling 方法是用于获取一个节点的前一个同级节点，返回它的前一个同级元素节点（距离当前节点最近的上一个元素节点），如果不存在则返回 null。
             if (preCode.parentNode.previousSibling) {
               preCode.parentNode.parentNode.insertBefore(
                 buttonWrapper,
@@ -224,7 +235,7 @@
         }
 
         if (message.autoScroll && (message.done || markedResponse.endsWith('\n'))) {
-          answerList.lastChild?.scrollIntoView({
+          answerListElement.lastChild?.scrollIntoView({
             behavior: 'smooth',
             block: 'end',
             inline: 'nearest',
@@ -233,7 +244,7 @@
 
         break;
       case 'addError':
-        if (!answerList.innerHTML) {
+        if (!answerListElement.innerHTML) {
           return;
         }
 
@@ -241,13 +252,13 @@
           message.value ||
           'An error occurred. If this issue persists please clear your session token with `ChatGPT: Reset session` command and/or restart your Visual Studio Code. If you still experience issues, it may be due to outage on https://openai.com services.';
 
-        answerList.innerHTML += `<div class="p-4 self-end mt-4 pb-8 error-element-ext">
+        answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 error-element-ext">
                         <h2 class="mb-5 flex">${aiSvg}ChatGPT</h2>
                         <div class="text-red-400">${marked.parse(messageValue)}</div>
                     </div>`;
 
         if (message.autoScroll) {
-          answerList.lastChild?.scrollIntoView({
+          answerListElement.lastChild?.scrollIntoView({
             behavior: 'smooth',
             block: 'end',
             inline: 'nearest',
@@ -261,16 +272,15 @@
         exportConversation();
         break;
       case 'loginSuccessful':
-        document.getElementById('login-button')?.classList?.add('hidden');
+        loginButtonElement?.classList?.add('hidden');
         if (message.showConversations) {
-          document.getElementById('list-conversations-link')?.classList?.remove('hidden');
+          listConversationsLinkElement?.classList?.remove('hidden');
         }
         break;
       case 'listConversations':
-        answerList.classList.add('hidden');
-        document.getElementById('introduction')?.classList?.add('hidden');
-        const conversationListNode = document.getElementById('conversation-list');
-        conversationListNode.classList.remove('hidden');
+        answerListElement.classList.add('hidden');
+        introductionElement?.classList?.add('hidden');
+        conversationElement.classList.remove('hidden');
         const conversationList = message.conversations.items.map((conversation) => {
           const chatDate = new Date(conversation.create_time).toLocaleString();
           return `<button id="show-conversation-button" data-id="${
@@ -282,7 +292,7 @@
             conversation.title
           }</span><div class="text-xs text-left">${chatDate}</div></div></button>`;
         });
-        conversationListNode.innerHTML = `<div class="flex flex-col gap-4 text-sm relative overflow-y-auto p-8">
+        conversationElement.innerHTML = `<div class="flex flex-col gap-4 text-sm relative overflow-y-auto p-8">
                     <div class="flex justify-center gap-4">
                         <button id="refresh-conversations-button" title="Reload conversations" class="p-1 pr-2 flex items-center rounded-lg">${refreshSvg}&nbsp;Reload</button>
                         <button id="close-conversations-button" title="Close conversations panel" class="p-1 pr-2 flex items-center rounded-lg">${closeSvg}&nbsp;Close</button>
@@ -296,30 +306,37 @@
   });
   // 向webview发送消息
   const addFreeTextQuestion = () => {
-    const questionInputNode = document.getElementById('question-input');
-    if (questionInputNode.value?.length > 0) {
+    if (questionInputElement.value?.length > 0) {
       vscode.postMessage({
         type: 'addFreeTextQuestion',
-        value: questionInputNode.value,
+        value: questionInputElement.value,
       });
-      questionInputNode.value = '';
+      questionInputElement.value = '';
+      // 使输入框失去焦点
+      // questionInputElement.blur();
+      // 使输入框的高度变为默认值 rows="1"
+      questionInputElement.rows = 1;
     }
   };
-
+  /**
+   * @desc 清空聊天记录
+   */
   const clearConversation = () => {
-    document.getElementById('answer-list').innerHTML = '';
+    answerListElement.innerHTML = '';
 
-    document.getElementById('introduction')?.classList?.remove('hidden');
+    introductionElement?.classList?.remove('hidden');
 
     vscode.postMessage({
       type: 'clearConversation',
     });
   };
-
+  /**
+   * @desc 导出聊天记录
+   */
   const exportConversation = () => {
     const turndownService = new TurndownService({ codeBlockStyle: 'fenced' });
     turndownService.remove('no-export');
-    let markdown = turndownService.turndown(document.getElementById('answer-list'));
+    const markdown = turndownService.turndown(answerListElement);
 
     vscode.postMessage({
       type: 'openNew',
@@ -327,26 +344,32 @@
       language: 'markdown',
     });
   };
-  // 给输入框添加 enter 事件
-  document.getElementById('question-input').addEventListener('keydown', function (event) {
+  /**
+   * @desc 监听输入框的回车事件
+   * @param {KeyboardEvent} event
+   */
+  questionInputElement.addEventListener('keydown', function (event) {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
+      // 如果此时输入法 为 中文输入法  则不发送消息
       addFreeTextQuestion();
     }
   });
-  // 给整个webview添加点击事件
+
+  /**
+   * @desc 给整个webview添加点击事件
+   */
   document.addEventListener('click', (e) => {
     const targetButton = e.target.closest('button');
-
+    // 点击更多按钮
     if (targetButton?.id === 'more-button') {
       e.preventDefault();
-      document.getElementById('chat-button-wrapper')?.classList.toggle('hidden');
-
+      chatButtonWrapperElement?.classList.toggle('hidden');
       return;
     } else {
-      document.getElementById('chat-button-wrapper')?.classList.add('hidden');
+      chatButtonWrapperElement?.classList.add('hidden');
     }
-
+    // 点击设置按钮
     if (e.target?.id === 'settings-button') {
       e.preventDefault();
       vscode.postMessage({
@@ -354,7 +377,7 @@
       });
       return;
     }
-
+    // 点击设置提示按钮
     if (e.target?.id === 'settings-prompt-button') {
       e.preventDefault();
       vscode.postMessage({
@@ -362,7 +385,7 @@
       });
       return;
     }
-
+    // 点击登录按钮
     if (targetButton?.id === 'login-button') {
       e.preventDefault();
       vscode.postMessage({
@@ -370,8 +393,8 @@
       });
       return;
     }
-
-    if (targetButton?.id === 'ask-button') {
+    // 点击提交问题按钮
+    if (targetButton?.id === 'submit-question-button') {
       e.preventDefault();
       addFreeTextQuestion();
       return;
@@ -404,14 +427,14 @@
 
       vscode.postMessage({ type: 'showConversation', value: targetButton.getAttribute('data-id') });
 
-      document.getElementById('answer-list').innerHTML = `<div class="flex flex-col p-6 pt-2">
+      answerListElement.innerHTML = `<div class="flex flex-col p-6 pt-2">
                 <h2 class="text-lg">${targetButton.getAttribute('data-title')}</h2>
                 <span class="text-xs">Started on: ${targetButton.getAttribute('data-time')}</span>
             </div>`;
 
-      document.getElementById('answer-list').classList.remove('hidden');
-      document.getElementById('introduction').classList.add('hidden');
-      document.getElementById('conversation-list').classList.add('hidden');
+      answerListElement.classList.remove('hidden');
+      introductionElement.classList.add('hidden');
+      conversationElement.classList.add('hidden');
       return;
     }
 
@@ -424,19 +447,19 @@
 
     if (targetButton?.id === 'close-conversations-button') {
       e.preventDefault();
-      const answerList = document.getElementById('answer-list');
-      answerList.classList.add('hidden');
-      document.getElementById('conversation-list').classList.add('hidden');
-      document.getElementById('introduction').classList.add('hidden');
-      if (answerList.innerHTML?.length > 0) {
-        answerList.classList.remove('hidden');
+
+      answerListElement.classList.add('hidden');
+      conversationElement.classList.add('hidden');
+      introductionElement.classList.add('hidden');
+      if (answerListElement.innerHTML?.length > 0) {
+        answerListElement.classList.remove('hidden');
       } else {
-        document.getElementById('introduction').classList.remove('hidden');
+        introductionElement.classList.remove('hidden');
       }
       return;
     }
 
-    if (targetButton?.id === 'stop-button') {
+    if (targetButton?.id === 'stop-asking-button') {
       e.preventDefault();
       vscode.postMessage({
         type: 'stopGenerating',
