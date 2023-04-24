@@ -121,9 +121,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           this.conversationId = undefined;
           this.logEvent('conversation-cleared');
           break;
-        case 'clearBrowser':
-          this.logEvent('browser-cleared');
-          break;
         case 'cleargpt3':
           this.apiGpt3 = undefined;
 
@@ -141,7 +138,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             }
           });
           break;
-        case 'openSettings':
+        case 'open-settings':
           // 打开设置
           vscode.commands.executeCommand(
             'workbench.action.openSettings',
@@ -150,7 +147,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
           this.logEvent('settings-opened');
           break;
-        case 'openSettingsPrompt':
+        case 'open-settings-prompt':
           vscode.commands.executeCommand(
             'workbench.action.openSettings',
             '@ext:YOUR_PUBLISHER_NAME.vscode-chatgpt promptPrefix',
@@ -164,7 +161,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         case 'show-conversation':
           /// ...
           break;
-        case 'stopGenerating':
+        case 'stop-generating':
           // 停止生成代码
           this.stopGenerating();
           break;
@@ -723,16 +720,18 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 								</ul>
 							</div>
 						</div>
+            
 						<div class="flex flex-col gap-4 h-full items-center justify-end text-center">
             
-            <!-- 登录按钮 -->
-							<button id="login-button" class="mb-4 btn btn-primary flex gap-2 justify-center pl-3 pr-3 pt-1 pb-1 rounded-md">${loginButtonName}</button>
+              <!-- 登录按钮 -->
+							<button id="login-button" class="mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md text-xs">${loginButtonName}</button>
 							
               <button id="list-conversations-link" class="hidden mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md" title="You can access this feature via the kebab menu below. NOTE: Only available with Browser Auto-login method">
 								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" /></svg> &nbsp; Show conversations
 							</button>
 							
               <p class="max-w-sm text-center text-xs text-slate-500">
+                <!-- 更新设置和更新提示按钮 -->
 								<a title="" id="settings-button" href="#">${updateSettingsButtonName}</a> &nbsp; | &nbsp; <a title="" id="settings-prompt-button" href="#">${updatePromptsButtonName}</a>
 							</p>
 						</div>

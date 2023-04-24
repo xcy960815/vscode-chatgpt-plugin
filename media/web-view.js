@@ -33,23 +33,23 @@
 
   const copyButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>`;
 
-  const checkSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
+  const copiedSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
 
-  const cancelSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
+  const cancelButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
 
-  const sendSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>`;
+  const sendButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-1"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>`;
 
-  const editSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>`;
+  const editButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>`;
 
   const newTabButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`;
 
-  const insertSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" /></svg>`;
+  const insertButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" /></svg>`;
 
   const textSvg = `<svg xmlns="http://www.w3.org/2000/svg" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" height="1em" width="1em" ><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`;
 
-  const closeSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
+  const closeButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
 
-  const refreshSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>`;
+  const refreshButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>`;
 
   // 拿到所有的 需要操作的 dom
   const questionInputElement = document.getElementById('question-input');
@@ -109,10 +109,10 @@
         answerListElement.innerHTML += `<div class="p-4 self-end mt-2 question-element-ext relative input-background">
                         <h3 class="mb-5 flex">${userSvg} You</h3>
                        <no-export class="mb-2 flex items-center">
-                            <button title="Edit and resend this prompt" class="resend-element-ext p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editSvg}</button>
+                            <button title="Edit and resend this prompt" class="resend-element-ext p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editButtonSvg}</button>
                             <div class="hidden send-cancel-elements-ext flex gap-2">
-                                <button title="Send this prompt" class="send-element-ext p-1 pr-2 flex items-center">${sendSvg}&nbsp;Send</button>
-                                <button title="Cancel" class="cancel-element-ext p-1 pr-2 flex items-center">${cancelSvg}&nbsp;Cancel</button>
+                                <button title="Send this prompt" class="send-element-ext p-1 pr-2 flex items-center">${sendButtonSvg}&nbsp;Send</button>
+                                <button title="Cancel" class="cancel-element-ext p-1 pr-2 flex items-center">${cancelButtonSvg}&nbsp;Cancel</button>
                             </div>
                         </no-export>
                         <div class="overflow-y-auto">${escapeHtml(messageOption.value)}</div>
@@ -207,7 +207,7 @@
             const insertButtonTitle =
               locales[currentLanguage]['chatgpt.webview.insertButton.title'];
             insertButton.title = insertButtonTitle;
-            insertButton.innerHTML = `${insertSvg} ${insertButtonName}`;
+            insertButton.innerHTML = `${insertButtonSvg} ${insertButtonName}`;
             insertButton.classList.add(
               'insert-button',
               'p-1',
@@ -286,11 +286,13 @@
       case 'clear-conversation':
         clearConversation();
         break;
-      case 'export-conversation':
+      case 'export-conversation-to-markdown':
         exportConversation2Markdown();
         break;
       case 'login-successful':
+        // 隐藏登录按钮
         loginButtonElement?.classList?.add('hidden');
+        console.log('messageOption', messageOption);
         if (messageOption.showConversations) {
           listConversationsLinkElement?.classList?.remove('hidden');
         }
@@ -312,8 +314,8 @@
         });
         conversationElement.innerHTML = `<div class="flex flex-col gap-4 text-sm relative overflow-y-auto p-8">
                     <div class="flex justify-center gap-4">
-                        <button id="refresh-conversations-button" title="Reload conversations" class="p-1 pr-2 flex items-center rounded-lg">${refreshSvg}&nbsp;Reload</button>
-                        <button id="close-conversations-button" title="Close conversations panel" class="p-1 pr-2 flex items-center rounded-lg">${closeSvg}&nbsp;Close</button>
+                        <button id="refresh-conversations-button" title="Reload conversations" class="p-1 pr-2 flex items-center rounded-lg">${refreshButtonSvg}&nbsp;Reload</button>
+                        <button id="close-conversations-button" title="Close conversations panel" class="p-1 pr-2 flex items-center rounded-lg">${closeButtonSvg}&nbsp;Close</button>
                     </div>
                     <div class="flex flex-col gap-4">${conversationList.join('')}</div>
                 </div>`;
@@ -328,6 +330,7 @@
         break;
     }
   });
+
   // 向webview发送消息
   const addFreeTextQuestion = () => {
     if (questionInputElement.value?.length > 0) {
@@ -336,7 +339,6 @@
         value: questionInputElement.value,
       });
       questionInputElement.value = '';
-      // 使输入框的高度变为默认值 rows="1"
       setTimeout(() => {
         questionInputElement.rows = 1;
       }, 0);
@@ -352,6 +354,7 @@
       type: 'clear-conversation',
     });
   };
+
   /**
    * @desc 导出聊天记录
    */
@@ -387,7 +390,6 @@
    * @desc 给整个webview添加点击事件
    */
   document.addEventListener('click', (e) => {
-    const copyButtonName = locales[currentLanguage]['chatgpt.webview.copyButton.name'];
     const targetButton = e.target.closest('button');
     // 点击更多按钮
     if (targetButton?.id === 'more-button') {
@@ -401,7 +403,7 @@
     if (e.target?.id === 'settings-button') {
       e.preventDefault();
       vscode.postMessage({
-        type: 'openSettings',
+        type: 'open-settings',
       });
       return;
     }
@@ -409,7 +411,7 @@
     if (e.target?.id === 'settings-prompt-button') {
       e.preventDefault();
       vscode.postMessage({
-        type: 'openSettingsPrompt',
+        type: 'open-settings-prompt',
       });
       return;
     }
@@ -493,7 +495,7 @@
     if (targetButton?.id === 'stop-asking-button') {
       e.preventDefault();
       vscode.postMessage({
-        type: 'stopGenerating',
+        type: 'stop-generating',
       });
 
       return;
@@ -547,8 +549,8 @@
         .writeText(targetButton.parentElement?.nextElementSibling?.lastChild?.textContent)
         .then(() => {
           const copiedButtonName = locales[currentLanguage]['chatgpt.webview.copiedButton.name'];
-          targetButton.innerHTML = `${checkSvg} ${copiedButtonName}`;
-
+          targetButton.innerHTML = `${copiedSvg} ${copiedButtonName}`;
+          const copyButtonName = locales[currentLanguage]['chatgpt.webview.copyButton.name'];
           setTimeout(() => {
             targetButton.innerHTML = `${copyButtonSvg} ${copyButtonName}`;
           }, 1500);

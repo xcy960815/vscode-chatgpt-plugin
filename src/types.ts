@@ -334,7 +334,7 @@ export interface MessageOption {
     | 'add-question'
     | 'add-error'
     | 'clear-conversation'
-    | 'export-conversation'
+    | 'export-conversation-to-markdown'
     | 'set-current-language'
     | 'set-locales';
   code?: string;

@@ -28,7 +28,7 @@ export async function activate(context: vscode.ExtensionContext) {
     },
   );
   // 注册 freeText 命令
-  const freeText = vscode.commands.registerCommand('vscode-chatgpt.freeText', async () => {
+  const freeTextCommand = vscode.commands.registerCommand('vscode-chatgpt.freeText', async () => {
     const value = await vscode.window.showInputBox({
       prompt: 'Ask anything...',
     });
@@ -38,21 +38,21 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   });
   // 注册 clearConversation 命令
-  const resetThread = vscode.commands.registerCommand(
+  const clearConversationCommand = vscode.commands.registerCommand(
     'vscode-chatgpt.clearConversation',
     async () => {
       chatGptViewProvider?.sendMessage({ type: 'clear-conversation' }, true);
     },
   );
   // 注册 exportConversation 命令
-  const exportConversation = vscode.commands.registerCommand(
+  const exportConversationCommand = vscode.commands.registerCommand(
     'vscode-chatgpt.exportConversation',
     async () => {
-      chatGptViewProvider?.sendMessage({ type: 'export-conversation' }, true);
+      chatGptViewProvider?.sendMessage({ type: 'export-conversation-to-markdown' }, true);
     },
   );
   // 注册 clearSession 命令
-  const clearSession = vscode.commands.registerCommand('vscode-chatgpt.clearSession', () => {
+  const clearSessionCommand = vscode.commands.registerCommand('vscode-chatgpt.clearSession', () => {
     context.globalState.update('chatgpt-session-token', null);
     context.globalState.update('chatgpt-clearance-token', null);
     context.globalState.update('chatgpt-user-agent', null);
@@ -207,10 +207,10 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     webviewViewProvider,
-    freeText,
-    resetThread,
-    exportConversation,
-    clearSession,
+    freeTextCommand,
+    clearConversationCommand,
+    exportConversationCommand,
+    clearSessionCommand,
     configChanged,
     adhocCommand,
     generateCodeCommand,
