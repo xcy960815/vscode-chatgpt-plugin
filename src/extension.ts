@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import ChatgptViewProvider from './chatgpt-view-provider';
-const defaultLocale = 'zh';
 const menuCommands = [
   'addTests',
   'findProblems',
@@ -13,20 +12,11 @@ const menuCommands = [
   'customPrompt2',
   'adhoc',
 ];
-const locales = {
-  [defaultLocale]: require('../i18n/zh-cn.json'),
-  en: require('../i18n/en.json'),
-};
 
-let currentLocale = defaultLocale;
 export async function activate(context: vscode.ExtensionContext) {
-  // console.log(`${locales.zh['vscode-chatgpt.freeText.title']} `);
-  // 获取本地化信息
-  const locale = vscode.env.language;
-  console.log('当前系统语言', locale);
   // 注册webview
   const chatGptViewProvider = new ChatgptViewProvider(context);
-
+  // console.log(`${chatGptViewProvider.locales[chatGptViewProvider.currentLanguage]['vscode-chatgpt.freeText.title']} `);
   const webviewViewProvider = vscode.window.registerWebviewViewProvider(
     'vscode-chatgpt.view',
     chatGptViewProvider,
@@ -51,14 +41,14 @@ export async function activate(context: vscode.ExtensionContext) {
   const resetThread = vscode.commands.registerCommand(
     'vscode-chatgpt.clearConversation',
     async () => {
-      chatGptViewProvider?.sendMessage({ type: 'clearConversation' }, true);
+      chatGptViewProvider?.sendMessage({ type: 'clear-conversation' }, true);
     },
   );
   // 注册 exportConversation 命令
   const exportConversation = vscode.commands.registerCommand(
     'vscode-chatgpt.exportConversation',
     async () => {
-      chatGptViewProvider?.sendMessage({ type: 'exportConversation' }, true);
+      chatGptViewProvider?.sendMessage({ type: 'export-conversation' }, true);
     },
   );
   // 注册 clearSession 命令
@@ -70,6 +60,7 @@ export async function activate(context: vscode.ExtensionContext) {
     chatGptViewProvider?.clearSession();
   });
 
+  // 用于监听用户更改配置文件时的事件。当用户在 VS Code 的 "setting.json" 文件中更改了某个设置时，就会触发此事件。
   const configChanged = vscode.workspace.onDidChangeConfiguration((e) => {
     if (e.affectsConfiguration('chatgpt.response.showNotification')) {
       chatGptViewProvider.subscribeToResponse =
@@ -85,7 +76,6 @@ export async function activate(context: vscode.ExtensionContext) {
     if (e.affectsConfiguration('chatgpt.useAutoLogin')) {
       chatGptViewProvider.useAutoLogin =
         vscode.workspace.getConfiguration('chatgpt').get('useAutoLogin') || false;
-
       context.globalState.update('chatgpt-session-token', null);
       context.globalState.update('chatgpt-clearance-token', null);
       context.globalState.update('chatgpt-user-agent', null);
@@ -145,9 +135,9 @@ export async function activate(context: vscode.ExtensionContext) {
       return;
     }
 
-    const selection = editor.document.getText(editor.selection);
+    const selectedCode = editor.document.getText(editor.selection);
     let dismissed = false;
-    if (selection) {
+    if (selectedCode) {
       await vscode.window
         .showInputBox({
           title: 'Add prefix to your ad-hoc command',
@@ -161,7 +151,6 @@ export async function activate(context: vscode.ExtensionContext) {
             dismissed = true;
             return;
           }
-
           adhocCommandPrefix = value.trim() || '';
           context.globalState.update('chatgpt-adhoc-prompt', adhocCommandPrefix);
         });
@@ -169,7 +158,7 @@ export async function activate(context: vscode.ExtensionContext) {
       if (!dismissed && adhocCommandPrefix?.length > 0) {
         chatGptViewProvider?.sendApiRequest(adhocCommandPrefix, {
           command: 'adhoc',
-          code: selection,
+          code: selectedCode,
         });
       }
     }
@@ -180,9 +169,9 @@ export async function activate(context: vscode.ExtensionContext) {
     if (!editor) {
       return;
     }
-    const selectionCode = editor.document.getText(editor.selection);
-    if (selectionCode) {
-      chatGptViewProvider?.sendApiRequest(selectionCode, {
+    const selectedCode = editor.document.getText(editor.selection);
+    if (selectedCode) {
+      chatGptViewProvider?.sendApiRequest(selectedCode, {
         command: 'generateCode',
         language: editor.document.languageId,
       });
@@ -205,11 +194,11 @@ export async function activate(context: vscode.ExtensionContext) {
           return;
         }
         // 获取选中的文本
-        const selectionCode = editor.document.getText(editor.selection);
-        if (selectionCode && prompt) {
+        const selectedCode = editor.document.getText(editor.selection);
+        if (selectedCode && prompt) {
           chatGptViewProvider?.sendApiRequest(prompt, {
             command,
-            code: selectionCode,
+            code: selectedCode,
             language: editor.document.languageId,
           });
         }

@@ -67,16 +67,6 @@ export type User = {
   features: string[];
 };
 
-/**
- * https://chat.openapi.com/backend-api/models
- */
-export type ModelsResult = {
-  /**
-   * Array of models
-   */
-  models: Model[];
-};
-
 export type Model = {
   /**
    * Name of the model
@@ -110,26 +100,6 @@ export type ModerationsJSONBody = {
 };
 
 export type AvailableModerationModels = 'text-moderation-playground';
-
-/**
- * https://chat.openapi.com/backend-api/moderations
- */
-export type ModerationsJSONResult = {
-  /**
-   * Whether or not the input is flagged
-   */
-  flagged: boolean;
-
-  /**
-   * Whether or not the input is blocked
-   */
-  blocked: boolean;
-
-  /**
-   * The ID of the decision
-   */
-  moderation_id: string;
-};
 
 /**
  * https://chat.openapi.com/backend-api/conversation
@@ -358,15 +328,17 @@ export type AuthType =
 
 export interface MessageOption {
   type:
-    | 'showInProgress'
-    | 'loginSuccessful'
-    | 'addAnswer'
-    | 'addQuestion'
-    | 'addError'
-    | 'clearConversation'
-    | 'exportConversation';
+    | 'show-in-progress'
+    | 'login-successful'
+    | 'add-answer'
+    | 'add-question'
+    | 'add-error'
+    | 'clear-conversation'
+    | 'export-conversation'
+    | 'set-current-language'
+    | 'set-locales';
   code?: string;
-  value?: string;
+  value?: any;
   showConversations?: boolean;
   inProgress?: boolean;
   done?: boolean;
@@ -377,3 +349,9 @@ export interface MessageOption {
 }
 
 export type LeftOverMessage = MessageOption | null;
+
+export interface Locales {
+  [key: string]: {
+    [key: string]: string;
+  };
+}

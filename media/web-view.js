@@ -1,5 +1,17 @@
 (function () {
   const vscode = acquireVsCodeApi();
+  let currentLanguage;
+  let locales;
+
+  // 获取 vscode 当前语言
+  vscode.postMessage({
+    type: 'get-current-language',
+  });
+
+  // 获取 locales
+  vscode.postMessage({
+    type: 'get-locales',
+  });
 
   marked.setOptions({
     renderer: new marked.Renderer(),
@@ -19,7 +31,7 @@
 
   const userSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" /></svg>`;
 
-  const clipboardSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>`;
+  const copyButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" /></svg>`;
 
   const checkSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" /></svg>`;
 
@@ -29,7 +41,7 @@
 
   const editSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3"><path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>`;
 
-  const plusSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`;
+  const newTabButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>`;
 
   const insertSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" /></svg>`;
 
@@ -53,11 +65,11 @@
 
   // 接收来自 webview 的消息
   window.addEventListener('message', (event) => {
-    const message = event.data;
+    const messageOption = event.data;
 
-    switch (message.type) {
-      case 'showInProgress':
-        if (message.showStopButton) {
+    switch (messageOption.type) {
+      case 'show-in-progress':
+        if (messageOption.showStopButton) {
           // 让停止按钮显示
           stopAskingButtonElement.classList.remove('hidden');
         } else {
@@ -65,7 +77,7 @@
           stopAskingButtonElement.classList.add('hidden');
         }
 
-        if (message.inProgress) {
+        if (messageOption.inProgress) {
           // 让正在进行中的提示显示
           inProgress.classList.remove('hidden');
           // 让输入框不可用
@@ -81,7 +93,7 @@
           questionInputButtons.classList.remove('hidden');
         }
         break;
-      case 'addQuestion':
+      case 'add-question':
         answerListElement.classList.remove('hidden');
         introductionElement?.classList?.add('hidden');
         conversationElement.classList.add('hidden');
@@ -94,7 +106,7 @@
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#039;');
         };
-        answerListElement.innerHTML += `<div class="p-4 self-end mt-4 question-element-ext relative input-background">
+        answerListElement.innerHTML += `<div class="p-4 self-end mt-2 question-element-ext relative input-background">
                         <h3 class="mb-5 flex">${userSvg} You</h3>
                        <no-export class="mb-2 flex items-center">
                             <button title="Edit and resend this prompt" class="resend-element-ext p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editSvg}</button>
@@ -103,10 +115,10 @@
                                 <button title="Cancel" class="cancel-element-ext p-1 pr-2 flex items-center">${cancelSvg}&nbsp;Cancel</button>
                             </div>
                         </no-export>
-                        <div class="overflow-y-auto">${escapeHtml(message.value)}</div>
+                        <div class="overflow-y-auto">${escapeHtml(messageOption.value)}</div>
                     </div>`;
 
-        if (message.autoScroll) {
+        if (messageOption.autoScroll) {
           answerListElement.lastChild?.scrollIntoView({
             behavior: 'smooth',
             block: 'end',
@@ -114,10 +126,11 @@
           });
         }
         break;
-      case 'addAnswer':
+      case 'add-answer':
         // 如果存在现有消息
-        let existingMessageElement = message.id && document.getElementById(message.id);
+        let existingMessageElement = messageOption.id && document.getElementById(messageOption.id);
         let updatedValue = '';
+
         const unEscapeHtml = (unsafe) => {
           return unsafe
             .replaceAll('&amp;', '&')
@@ -127,13 +140,13 @@
             .replaceAll('&#039;', "'");
         };
 
-        if (!message.responseInMarkdown) {
-          updatedValue = '```\r\n' + unEscapeHtml(message.value) + ' \r\n ```';
+        if (!messageOption.responseInMarkdown) {
+          updatedValue = '```\r\n' + unEscapeHtml(messageOption.value) + ' \r\n ```';
         } else {
           updatedValue =
-            message.value.split('```').length % 2 === 1
-              ? message.value
-              : message.value + '\n\n```\n\n';
+            messageOption.value.split('```').length % 2 === 1
+              ? messageOption.value
+              : messageOption.value + '\n\n```\n\n';
         }
 
         const markedResponse = marked.parse(updatedValue);
@@ -143,11 +156,11 @@
         } else {
           answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 answer-element-ext">
                         <h2 class="mb-5 flex">${aiSvg}ChatGPT</h2>
-                        <div class="result-streaming" id="${message.id}">${markedResponse}</div>
+                        <div class="result-streaming" id="${messageOption.id}">${markedResponse}</div>
                     </div>`;
         }
 
-        if (message.done) {
+        if (messageOption.done) {
           const preCodeList = answerListElement.lastChild.querySelectorAll('pre > code');
           preCodeList.forEach((preCode) => {
             preCode.classList.add(
@@ -174,12 +187,12 @@
               'rounded-t-lg',
               'input-background',
             );
-
             // 复制按钮
             const copyButton = document.createElement('button');
-            copyButton.title = 'Copy to clipboard';
-            copyButton.innerHTML = `${clipboardSvg} Copy`;
-
+            const copyButtonName = locales[currentLanguage]['chatgpt.webview.copyButton.name'];
+            const copyButtonTitle = locales[currentLanguage]['chatgpt.webview.copyButton.title'];
+            copyButton.title = copyButtonTitle;
+            copyButton.innerHTML = `${copyButtonSvg} ${copyButtonName}`;
             copyButton.classList.add(
               'code-element-ext',
               'p-1',
@@ -190,11 +203,13 @@
             );
             //  插入按钮
             const insertButton = document.createElement('button');
-            insertButton.title = 'Insert the below code to the current file';
-            insertButton.innerHTML = `${insertSvg} Insert`;
-
+            const insertButtonName = locales[currentLanguage]['chatgpt.webview.insertButton.name'];
+            const insertButtonTitle =
+              locales[currentLanguage]['chatgpt.webview.insertButton.title'];
+            insertButton.title = insertButtonTitle;
+            insertButton.innerHTML = `${insertSvg} ${insertButtonName}`;
             insertButton.classList.add(
-              'edit-element-ext',
+              'insert-button',
               'p-1',
               'pr-2',
               'flex',
@@ -203,11 +218,14 @@
             );
             // 右侧content 新开tab按钮
             const newTabButton = document.createElement('button');
-            newTabButton.title = 'Create a new file with the below code';
-            newTabButton.innerHTML = `${plusSvg} New`;
+            const newTabButtonName = locales[currentLanguage]['chatgpt.webview.newTabButton.name'];
+            const newTabButtonTitle =
+              locales[currentLanguage]['chatgpt.webview.newTabButton.title'];
+            newTabButton.title = newTabButtonTitle;
+            newTabButton.innerHTML = `${newTabButtonSvg} ${newTabButtonName}`;
 
             newTabButton.classList.add(
-              'new-code-element-ext',
+              'new-tab-button',
               'p-1',
               'pr-2',
               'flex',
@@ -227,14 +245,14 @@
             }
           });
 
-          existingMessageElement = document.getElementById(message.id);
+          existingMessageElement = document.getElementById(messageOption.id);
           if (existingMessageElement) {
             // 拿掉光标
             existingMessageElement.classList.remove('result-streaming');
           }
         }
 
-        if (message.autoScroll && (message.done || markedResponse.endsWith('\n'))) {
+        if (messageOption.autoScroll && (messageOption.done || markedResponse.endsWith('\n'))) {
           answerListElement.lastChild?.scrollIntoView({
             behavior: 'smooth',
             block: 'end',
@@ -243,13 +261,13 @@
         }
 
         break;
-      case 'addError':
+      case 'add-error':
         if (!answerListElement.innerHTML) {
           return;
         }
 
         const messageValue =
-          message.value ||
+          messageOption.value ||
           'An error occurred. If this issue persists please clear your session token with `ChatGPT: Reset session` command and/or restart your Visual Studio Code. If you still experience issues, it may be due to outage on https://openai.com services.';
 
         answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 error-element-ext">
@@ -257,7 +275,7 @@
                         <div class="text-red-400">${marked.parse(messageValue)}</div>
                     </div>`;
 
-        if (message.autoScroll) {
+        if (messageOption.autoScroll) {
           answerListElement.lastChild?.scrollIntoView({
             behavior: 'smooth',
             block: 'end',
@@ -265,23 +283,23 @@
           });
         }
         break;
-      case 'clearConversation':
+      case 'clear-conversation':
         clearConversation();
         break;
-      case 'exportConversation':
-        exportConversation();
+      case 'export-conversation':
+        exportConversation2Markdown();
         break;
-      case 'loginSuccessful':
+      case 'login-successful':
         loginButtonElement?.classList?.add('hidden');
-        if (message.showConversations) {
+        if (messageOption.showConversations) {
           listConversationsLinkElement?.classList?.remove('hidden');
         }
         break;
-      case 'listConversations':
+      case 'show-conversations':
         answerListElement.classList.add('hidden');
         introductionElement?.classList?.add('hidden');
         conversationElement.classList.remove('hidden');
-        const conversationList = message.conversations.items.map((conversation) => {
+        const conversationList = messageOption.conversations.items.map((conversation) => {
           const chatDate = new Date(conversation.create_time).toLocaleString();
           return `<button id="show-conversation-button" data-id="${
             conversation.id
@@ -300,6 +318,12 @@
                     <div class="flex flex-col gap-4">${conversationList.join('')}</div>
                 </div>`;
         break;
+      case 'set-current-language':
+        currentLanguage = messageOption.value;
+        break;
+      case 'set-locales':
+        locales = messageOption.value;
+        break;
       default:
         break;
     }
@@ -312,10 +336,10 @@
         value: questionInputElement.value,
       });
       questionInputElement.value = '';
-      // 使输入框失去焦点
-      // questionInputElement.blur();
       // 使输入框的高度变为默认值 rows="1"
-      questionInputElement.rows = 1;
+      setTimeout(() => {
+        questionInputElement.rows = 1;
+      }, 0);
     }
   };
   /**
@@ -323,24 +347,22 @@
    */
   const clearConversation = () => {
     answerListElement.innerHTML = '';
-
     introductionElement?.classList?.remove('hidden');
-
     vscode.postMessage({
-      type: 'clearConversation',
+      type: 'clear-conversation',
     });
   };
   /**
    * @desc 导出聊天记录
    */
-  const exportConversation = () => {
+  const exportConversation2Markdown = () => {
     const turndownService = new TurndownService({ codeBlockStyle: 'fenced' });
     turndownService.remove('no-export');
-    const markdown = turndownService.turndown(answerListElement);
+    const markdownContent = turndownService.turndown(answerListElement);
 
     vscode.postMessage({
-      type: 'openNew',
-      value: markdown,
+      type: 'open-new-tab',
+      value: markdownContent,
       language: 'markdown',
     });
   };
@@ -351,6 +373,11 @@
   questionInputElement.addEventListener('keydown', function (event) {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
+      const composing = questionInputElement.composing;
+      if (questionInputElement.composing) {
+        // 在这里你可以处理输入法被激活时的行为，比如不执行发送、添加提示等等。
+        return;
+      }
       // 如果此时输入法 为 中文输入法  则不发送消息
       addFreeTextQuestion();
     }
@@ -360,6 +387,7 @@
    * @desc 给整个webview添加点击事件
    */
   document.addEventListener('click', (e) => {
+    const copyButtonName = locales[currentLanguage]['chatgpt.webview.copyButton.name'];
     const targetButton = e.target.closest('button');
     // 点击更多按钮
     if (targetButton?.id === 'more-button') {
@@ -399,33 +427,36 @@
       addFreeTextQuestion();
       return;
     }
-
-    if (targetButton?.id === 'clear-button') {
+    // 点击清除对话按钮
+    if (targetButton?.id === 'clear-conversation-button') {
       e.preventDefault();
       clearConversation();
       return;
     }
 
-    if (targetButton?.id === 'export-button') {
+    if (targetButton?.id === 'export-conversation-2-markdown-button') {
       e.preventDefault();
-      exportConversation();
+      exportConversation2Markdown();
       return;
     }
 
     if (
-      targetButton?.id === 'list-conversations-button' ||
+      targetButton?.id === 'show-conversations-button' ||
       targetButton?.id === 'list-conversations-link'
     ) {
       e.preventDefault();
 
-      vscode.postMessage({ type: 'listConversations' });
+      vscode.postMessage({ type: 'show-conversations' });
       return;
     }
 
     if (targetButton?.id === 'show-conversation-button') {
       e.preventDefault();
 
-      vscode.postMessage({ type: 'showConversation', value: targetButton.getAttribute('data-id') });
+      vscode.postMessage({
+        type: 'show-conversation',
+        value: targetButton.getAttribute('data-id'),
+      });
 
       answerListElement.innerHTML = `<div class="flex flex-col p-6 pt-2">
                 <h2 class="text-lg">${targetButton.getAttribute('data-title')}</h2>
@@ -441,7 +472,7 @@
     if (targetButton?.id === 'refresh-conversations-button') {
       e.preventDefault();
 
-      vscode.postMessage({ type: 'listConversations' });
+      vscode.postMessage({ type: 'show-conversations' });
       return;
     }
 
@@ -515,17 +546,18 @@
       navigator.clipboard
         .writeText(targetButton.parentElement?.nextElementSibling?.lastChild?.textContent)
         .then(() => {
-          targetButton.innerHTML = `${checkSvg} Copied`;
+          const copiedButtonName = locales[currentLanguage]['chatgpt.webview.copiedButton.name'];
+          targetButton.innerHTML = `${checkSvg} ${copiedButtonName}`;
 
           setTimeout(() => {
-            targetButton.innerHTML = `${clipboardSvg} Copy`;
+            targetButton.innerHTML = `${copyButtonSvg} ${copyButtonName}`;
           }, 1500);
         });
 
       return;
     }
 
-    if (targetButton?.classList?.contains('edit-element-ext')) {
+    if (targetButton?.classList?.contains('insert-button')) {
       e.preventDefault();
       vscode.postMessage({
         type: 'editCode',
@@ -535,10 +567,10 @@
       return;
     }
 
-    if (targetButton?.classList?.contains('new-code-element-ext')) {
+    if (targetButton?.classList?.contains('new-tab-button')) {
       e.preventDefault();
       vscode.postMessage({
-        type: 'openNew',
+        type: 'open-new-tab',
         value: targetButton.parentElement?.nextElementSibling?.lastChild?.textContent,
       });
 
