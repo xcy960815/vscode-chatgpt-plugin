@@ -105,7 +105,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           this.logEvent('code-inserted');
           break;
         case 'open-new-tab':
-          // 打开新的文件
+          // 打开新的tab页
           const document = await vscode.workspace.openTextDocument({
             content: data.value,
             language: data.language,
@@ -156,10 +156,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           this.logEvent('settings-prompt-opened');
           break;
         case 'show-conversations':
+          // 显示对话
           this.logEvent('conversations-list-attempted');
           break;
         case 'show-conversation':
-          /// ...
           break;
         case 'stop-generating':
           // 停止生成代码
@@ -725,36 +725,37 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             
               <!-- 登录按钮 -->
 							<button id="login-button" class="mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md text-xs">${loginButtonName}</button>
-							
+							<!-- 显示对话按钮 -->
               <button id="list-conversations-link" class="hidden mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md" title="You can access this feature via the kebab menu below. NOTE: Only available with Browser Auto-login method">
 								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" /></svg> &nbsp; Show conversations
 							</button>
 							
               <p class="max-w-sm text-center text-xs text-slate-500">
                 <!-- 更新设置和更新提示按钮 -->
-								<a title="" id="settings-button" href="#">${updateSettingsButtonName}</a> &nbsp; | &nbsp; <a title="" id="settings-prompt-button" href="#">${updatePromptsButtonName}</a>
+								<a id="update-settings-button" href="#">${updateSettingsButtonName}</a> &nbsp; | &nbsp; <a id="settings-prompt-button" href="#">${updatePromptsButtonName}</a>
 							</p>
 						</div>
 					</div>
 
           <!-- gpt 回答的答案 -->
 					<div class="flex-1 overflow-y-auto text-sm" id="answer-list"></div>
-
+          <!-- gpt 对话列表 -->
 					<div class="flex-1 overflow-y-auto hidden" id="conversation-list"></div>
 
-        <!-- gpt 回答的答案的动画 -->
-					<div id="in-progress" class="pl-4 pt-2 flex items-center hidden">
-						<div class="typing">Thinking</div>
-						<div class="spinner">
-							<div class="bounce1"></div>
-							<div class="bounce2"></div>
-							<div class="bounce3"></div>
-						</div>
+        <!-- gpt 回答的答案的动画 hidden-->
+					<div id="in-progress" class="pl-4 pr-4 pt-2 flex items-center justify-between text-xs ">
+						<div class="typing flex items-center">
+              <span>Thinking</span>
+              <div class="spinner">
+                <div class="bounce1"></div>
+                <div class="bounce2"></div>
+                <div class="bounce3"></div>
+              </div>
+            </div>
+						
             
             <!-- gpt 停止回答的答案的按钮 -->
-						<button id="stop-asking-button" class="btn btn-primary flex items-end p-1 pr-2 rounded-md ml-5">
-							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>stop asking
-						</button>
+						<button class="n-button n-button--warning-type n-button--medium-type" tabindex="0" type="button" style="--n-bezier:cubic-bezier(0.4, 0, 0.2, 1); --n-bezier-ease-out:cubic-bezier(0, 0, 0.2, 1); --n-ripple-duration:0.6s; --n-opacity-disabled:0.5; --n-wave-opacity:0.6; font-weight: 400; --n-color:#f0a020; --n-color-hover:#fcb040; --n-color-pressed:#c97c10; --n-color-focus:#fcb040; --n-color-disabled:#f0a020; --n-ripple-color:#f0a020; --n-text-color:#FFF; --n-text-color-hover:#FFF; --n-text-color-pressed:#FFF; --n-text-color-focus:#FFF; --n-text-color-disabled:#FFF; --n-border:1px solid #f0a020; --n-border-hover:1px solid #fcb040; --n-border-pressed:1px solid #c97c10; --n-border-focus:1px solid #fcb040; --n-border-disabled:1px solid #f0a020; --n-width: initial; --n-height:34px; --n-font-size:14px; --n-padding:0 14px; --n-icon-size:18px; --n-icon-margin:6px; --n-border-radius:3px;"><!----><span class="n-button__icon"><div class="n-icon-slot" role="none"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class=" iconify iconify--ri" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10s-4.477 10-10 10Zm0-2a8 8 0 1 0 0-16a8 8 0 0 0 0 16ZM9 9h6v6H9V9Z"></path></svg></div></span><span class="n-button__content"> Stop Responding </span><div aria-hidden="true" class="n-base-wave"></div><div aria-hidden="true" class="n-button__border"></div><div aria-hidden="true" class="n-button__state-border"></div></button>
 					</div>
 
 					<div class="p-4 flex items-center pt-2">
@@ -774,7 +775,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 							<!-- 显示对话 -->
               <button class="flex gap-2 items-center justify-start p-2 w-full" id="show-conversations-button"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" /></svg>&nbsp;${showConversationsButtonName}</button>
 							<!-- 更新设置 -->
-              <button class="flex gap-2 items-center justify-start p-2 w-full" id="settings-button"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>&nbsp;${updateSettingsButtonName}</button>
+              <button class="flex gap-2 items-center justify-start p-2 w-full" id="update-settings-button"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>&nbsp;${updateSettingsButtonName}</button>
 							<!-- 导出对话为markdown -->
               <button class="flex gap-2 items-center justify-start p-2 w-full" id="export-conversation-2-markdown-button"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>&nbsp;${exportConversationButtonName}</button>
 						</div>

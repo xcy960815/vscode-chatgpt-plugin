@@ -16,7 +16,6 @@ const menuCommands = [
 export async function activate(context: vscode.ExtensionContext) {
   // 注册webview
   const chatGptViewProvider = new ChatgptViewProvider(context);
-  // console.log(`${chatGptViewProvider.locales[chatGptViewProvider.currentLanguage]['vscode-chatgpt.freeText.title']} `);
   const webviewViewProvider = vscode.window.registerWebviewViewProvider(
     'vscode-chatgpt.view',
     chatGptViewProvider,
