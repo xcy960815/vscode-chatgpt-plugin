@@ -193,29 +193,10 @@ export type MessageFeedbackJSONBody = {
 export type MessageFeedbackTags = 'harmful' | 'false' | 'not-helpful';
 
 export type MessageFeedbackResult = {
-  /**
-   * The message ID
-   */
   message_id: string;
-
-  /**
-   * The ID of the conversation
-   */
   conversation_id: string;
-
-  /**
-   * The ID of the user
-   */
   user_id: string;
-
-  /**
-   * The rating
-   */
   rating: MessageFeedbackRating;
-
-  /**
-   * The text the server received, including tags
-   */
   text?: string;
 };
 
@@ -346,6 +327,13 @@ export interface MessageOption {
   id?: string;
   autoScroll?: boolean;
   responseInMarkdown?: boolean;
+}
+
+export interface SendApiRequestOption {
+  command: string;
+  code?: string;
+  previousAnswer?: string;
+  language?: string;
 }
 
 export type LeftOverMessage = MessageOption | null;

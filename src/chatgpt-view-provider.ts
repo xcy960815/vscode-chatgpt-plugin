@@ -7,7 +7,14 @@ import * as os from 'node:os';
 import * as vscode from 'vscode';
 import { ChatGPTAPI as ChatGPTAPI3 } from '../chatgpt-4.7.2/index';
 import { ChatGPTAPI as ChatGPTAPI35 } from '../chatgpt-5.1.1/index';
-import { AuthType, LeftOverMessage, Locales, LoginMethod, MessageOption } from './types';
+import {
+  AuthType,
+  LeftOverMessage,
+  Locales,
+  LoginMethod,
+  MessageOption,
+  SendApiRequestOption,
+} from './types';
 export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
   public currentLanguage: typeof vscode.env.language = vscode.env.language;
@@ -47,8 +54,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.autoScroll = !!vscode.workspace.getConfiguration('chatgpt').get('response.autoScroll');
     this.model = vscode.workspace.getConfiguration('chatgpt').get('gpt3.model');
     this.locales = {
-      ['zh-cn']: require('../i18n/zh-cn.json'),
-      en: require('../i18n/en.json'),
+      ['zh-cn']: require('../package.nls.zh-cn.json'),
+      en: require('../package.nls.json'),
     };
     this.setMethod();
     this.setChromeExecutablePath();
@@ -70,7 +77,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.webView = webviewView;
 
     webviewView.webview.options = {
-      // Allow scripts in the webview
       enableScripts: true,
 
       localResourceRoots: [this.context.extensionUri],
@@ -182,6 +188,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.inProgress = false;
     this.sendMessage({ type: 'show-in-progress', inProgress: this.inProgress });
     const responseInMarkdown = !this.isCodexModel;
+
     this.sendMessage({
       type: 'add-answer',
       value: this.response,
@@ -190,6 +197,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       autoScroll: this.autoScroll,
       responseInMarkdown,
     });
+
     this.logEvent('stopped-generating');
   }
 
@@ -202,6 +210,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   }
   /**
    * @desc 设置代理服务器
+   * @returns {void}
    */
   public setProxyServer(): void {
     this.proxyServer = vscode.workspace.getConfiguration('chatgpt').get('proxyServer');
@@ -259,70 +268,71 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       // no need to reinitialize in autologin when model changes
       return false;
     }
-
-    const state = this.context.globalState;
-    const configuration = vscode.workspace.getConfiguration('chatgpt');
-
     if (this.useGpt3) {
       if (
         (this.isGpt35Model && !this.apiGpt35) ||
         (!this.isGpt35Model && !this.apiGpt3) ||
         modelChanged
       ) {
-        let apiKey =
-          (configuration.get('gpt3.apiKey') as string) ||
-          (state.get('chatgpt-gpt3-apiKey') as string);
-
-        const organization = configuration.get('gpt3.organization') as string;
-        // 获取 openai maxTokens 配置
-        const max_tokens = configuration.get('gpt3.maxTokens') as number;
-        const temperature = configuration.get('gpt3.temperature') as number;
-        const top_p = configuration.get('gpt3.top_p') as number;
-        const apiBaseUrl = configuration.get('gpt3.apiBaseUrl') as string;
-
-        if (!apiKey) {
-          vscode.window
-            .showErrorMessage(
-              'Please add your API Key to use OpenAI official APIs. Storing the API Key in Settings is discouraged due to security reasons, though you can still opt-in to use it to persist it in settings. Instead you can also temporarily set the API Key one-time: You will need to re-enter after restarting the vs-code.',
-              'Store in session (Recommended)',
-              'Open settings',
-            )
-            .then(async (choice) => {
-              if (choice === 'Open settings') {
-                vscode.commands.executeCommand(
-                  'workbench.action.openSettings',
-                  'chatgpt.gpt3.apiKey',
-                );
-                return false;
-              } else if (choice === 'Store in session (Recommended)') {
-                await vscode.window
-                  .showInputBox({
-                    title: 'Store OpenAI API Key in session',
-                    prompt:
-                      "Please enter your OpenAI API Key to store in your session only. This option won't persist the token on your settings.json file. You may need to re-enter after restarting your VS-Code",
-                    ignoreFocusOut: true,
-                    placeHolder: 'API Key',
-                    value: apiKey || '',
-                  })
-                  .then((value) => {
-                    if (value) {
-                      apiKey = value;
-                      state.update('chatgpt-gpt3-apiKey', apiKey);
-                      this.sendMessage(
-                        { type: 'login-successful', showConversations: this.useAutoLogin },
-                        true,
-                      );
-                    }
-                  });
-              }
-            });
+        // 全局状态
+        const globalState = this.context.globalState;
+        const chatgptConfig = vscode.workspace.getConfiguration('chatgpt');
+        let chatgptApiKey =
+          chatgptConfig.get<string>('gpt3.apiKey') ||
+          globalState.get<string>('chatgpt-gpt3-apiKey');
+        const organization = chatgptConfig.get<string>('gpt3.organization');
+        const max_tokens = chatgptConfig.get<number>('gpt3.maxTokens');
+        const temperature = chatgptConfig.get<number>('gpt3.temperature');
+        const top_p = chatgptConfig.get<number>('gpt3.top_p');
+        const apiBaseUrl = chatgptConfig.get<string>('gpt3.apiBaseUrl');
+        const noApiKeyMessage = chatgptConfig.get<string>('pageMessage.noApiKey.message')!;
+        const choose1 = chatgptConfig.get<string>('pageMessage.noApiKey.choose1')!;
+        const choose2 = chatgptConfig.get<string>('pageMessage.noApiKey.choose2')!;
+        if (!chatgptApiKey) {
+          vscode.window.showErrorMessage(noApiKeyMessage, choose1, choose2).then(async (choice) => {
+            // 如果用户选择了打开设置
+            if (choice === choose2) {
+              // 打开 关于openai apiKey的设置项
+              vscode.commands.executeCommand(
+                'workbench.action.openSettings',
+                'chatgpt.gpt3.apiKey',
+              );
+              return false;
+            } else if (choice === choose1) {
+              const title = chatgptConfig.get<string>('pageMessage.noApiKey.inputBox.title')!;
+              const prompt = chatgptConfig.get<string>('pageMessage.noApiKey.inputBox.prompt')!;
+              const placeHolder = chatgptConfig.get<string>(
+                'pageMessage.noApiKey.inputBox.placeHolder',
+              )!;
+              // 如果用户选择了存储在会话中
+              await vscode.window
+                .showInputBox({
+                  title,
+                  prompt,
+                  ignoreFocusOut: true,
+                  placeHolder,
+                  value: chatgptApiKey || '',
+                })
+                .then((value) => {
+                  if (value) {
+                    chatgptApiKey = value.trim();
+                    // 存储在全局状态中
+                    globalState.update('chatgpt-gpt3-apiKey', chatgptApiKey);
+                    this.sendMessage(
+                      { type: 'login-successful', showConversations: this.useAutoLogin },
+                      true,
+                    );
+                  }
+                });
+            }
+          });
 
           return false;
         }
         // 初始化 chatgpt 模型
         if (this.isGpt35Model) {
           this.apiGpt35 = new ChatGPTAPI35({
-            apiKey,
+            apiKey: chatgptApiKey,
             fetch: fetch,
             apiBaseUrl: apiBaseUrl?.trim() || undefined,
             organization,
@@ -335,7 +345,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           });
         } else {
           this.apiGpt3 = new ChatGPTAPI3({
-            apiKey,
+            apiKey: chatgptApiKey,
             fetch: fetch,
             apiBaseUrl: apiBaseUrl?.trim() || undefined,
             organization,
@@ -379,19 +389,17 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   /**
    * @desc 处理问题并将其发送到 API
    * @param {string} prompt
-   * @param { command: string; code?: string; previousAnswer?: string; language?: string; } options
+   * @param {SendApiRequestOption} options
    * @returns
    */
-  public async sendApiRequest(
-    prompt: string,
-    options: { command: string; code?: string; previousAnswer?: string; language?: string },
-  ): Promise<void> {
+  public async sendApiRequest(prompt: string, options: SendApiRequestOption): Promise<void> {
     // AI还在思考……不接受更多的问题。
     if (this.inProgress) {
       // 给用户一个提示
-      // AI is still thinking... Please wait for it to finish.
-      // AI 还在思考... 请等待它完成。
-      vscode.window.showInformationMessage('AI 还在思考... 请等待它完成。');
+      const inprogressMessage = vscode.workspace
+        .getConfiguration('chatgpt')
+        .get<string>('pageMessage.inProgress.message')!;
+      vscode.window.showInformationMessage(inprogressMessage);
       return;
     }
 
@@ -544,6 +552,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           )
           .then(async (choice) => {
             if (choice === 'Clear conversation and retry') {
+              // 执行 清空会话 指令
               await vscode.commands.executeCommand('vscode-chatgpt.clearConversation');
               await delay(250);
               this.sendApiRequest(prompt, { command: options.command, code: options.code });
@@ -725,7 +734,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             
               <!-- 登录按钮 -->
 							<button id="login-button" class="mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md text-xs">${loginButtonName}</button>
-							<!-- 显示对话按钮 -->
+							
+              <!-- 显示对话按钮 -->
               <button id="list-conversations-link" class="hidden mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md" title="You can access this feature via the kebab menu below. NOTE: Only available with Browser Auto-login method">
 								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" /></svg> &nbsp; Show conversations
 							</button>
@@ -742,8 +752,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           <!-- gpt 对话列表 -->
 					<div class="flex-1 overflow-y-auto hidden" id="conversation-list"></div>
 
-        <!-- gpt 回答的答案的动画 hidden-->
-					<div id="in-progress" class="pl-4 pr-4 pt-2 flex items-center justify-between text-xs ">
+        <!-- gpt 回答的答案的动画 -->
+					<div id="in-progress" class="hidden pl-4 pr-4 pt-2 flex items-center justify-between text-xs ">
 						<div class="typing flex items-center">
               <span>Thinking</span>
               <div class="spinner">
@@ -753,10 +763,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
               </div>
             </div>
 						
-            
             <!-- gpt 停止回答的答案的按钮 -->
-						<button class="n-button n-button--warning-type n-button--medium-type" tabindex="0" type="button" style="--n-bezier:cubic-bezier(0.4, 0, 0.2, 1); --n-bezier-ease-out:cubic-bezier(0, 0, 0.2, 1); --n-ripple-duration:0.6s; --n-opacity-disabled:0.5; --n-wave-opacity:0.6; font-weight: 400; --n-color:#f0a020; --n-color-hover:#fcb040; --n-color-pressed:#c97c10; --n-color-focus:#fcb040; --n-color-disabled:#f0a020; --n-ripple-color:#f0a020; --n-text-color:#FFF; --n-text-color-hover:#FFF; --n-text-color-pressed:#FFF; --n-text-color-focus:#FFF; --n-text-color-disabled:#FFF; --n-border:1px solid #f0a020; --n-border-hover:1px solid #fcb040; --n-border-pressed:1px solid #c97c10; --n-border-focus:1px solid #fcb040; --n-border-disabled:1px solid #f0a020; --n-width: initial; --n-height:34px; --n-font-size:14px; --n-padding:0 14px; --n-icon-size:18px; --n-icon-margin:6px; --n-border-radius:3px;"><!----><span class="n-button__icon"><div class="n-icon-slot" role="none"><svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class=" iconify iconify--ri" width="1em" height="1em" viewBox="0 0 24 24"><path fill="currentColor" d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10s-4.477 10-10 10Zm0-2a8 8 0 1 0 0-16a8 8 0 0 0 0 16ZM9 9h6v6H9V9Z"></path></svg></div></span><span class="n-button__content"> Stop Responding </span><div aria-hidden="true" class="n-base-wave"></div><div aria-hidden="true" class="n-button__border"></div><div aria-hidden="true" class="n-button__state-border"></div></button>
-					</div>
+						<button id="stop-asking-button" class="btn btn-primary flex items-end p-1 pr-2 rounded-md ml-5">
+							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Stop responding
+						</button>
+            </div>
 
 					<div class="p-4 flex items-center pt-2">
 						<div class="flex-1 textarea-wrapper">

@@ -1,8 +1,9 @@
 import * as vscode from 'vscode';
 import ChatgptViewProvider from './chatgpt-view-provider';
+
 const menuCommands = [
   'addTests',
-  'findProblems',
+  'findBugs',
   'optimize',
   'explain',
   'addComments',
@@ -14,6 +15,10 @@ const menuCommands = [
 ];
 
 export async function activate(context: vscode.ExtensionContext) {
+  // vscode.commands.executeCommand(
+  //   'workbench.action.openSettings'
+  // );
+
   // 注册webview
   const chatGptViewProvider = new ChatgptViewProvider(context);
   const webviewViewProvider = vscode.window.registerWebviewViewProvider(
@@ -21,8 +26,7 @@ export async function activate(context: vscode.ExtensionContext) {
     chatGptViewProvider,
     {
       webviewOptions: {
-        // webview被隐藏时保持状态，避免被重置
-        retainContextWhenHidden: true,
+        retainContextWhenHidden: true, // webview被隐藏时保持状态，避免被重置
       },
     },
   );
@@ -124,51 +128,59 @@ export async function activate(context: vscode.ExtensionContext) {
       setContext();
     }
   });
-
-  let adhocCommandPrefix: string = context.globalState.get('chatgpt-adhoc-prompt') || '';
-  // 注册 adhoc 命令
+  // 临时指令的内容
+  const originalChatgptAdhocPrompt: string = context.globalState.get('chatgpt-adhoc-prompt') || '';
+  // 注册 添加临时指令
   const adhocCommand = vscode.commands.registerCommand('vscode-chatgpt.adhoc', async () => {
     const editor = vscode.window.activeTextEditor;
-
     if (!editor) {
       return;
     }
+    // 添加trim 为了防止用户选择 空代码
+    const selectedCode = editor.document.getText(editor.selection).trim();
+    if (!selectedCode) {
+      return;
+    }
+    // 从配置文件中获取用户输入的临时指令的标题、提示、占位符
+    const title = vscode.workspace
+      .getConfiguration('chatgpt')
+      .get<string>('pageMessage.adhocInputBox.title');
+    const prompt = vscode.workspace
+      .getConfiguration('chatgpt')
+      .get<string>('pageMessage.adhocInputBox.prompt');
+    const placeHolder = vscode.workspace
+      .getConfiguration('chatgpt')
+      .get<string>('pageMessage.adhocInputBox.placeHolder');
+    // 创建一个输入框，让用户输入临时指令
+    let chatgptAdhocPrompt = await vscode.window.showInputBox({
+      title,
+      prompt,
+      ignoreFocusOut: true,
+      placeHolder,
+      value: originalChatgptAdhocPrompt,
+    });
+    chatgptAdhocPrompt = chatgptAdhocPrompt?.trim();
 
-    const selectedCode = editor.document.getText(editor.selection);
-    let dismissed = false;
-    if (selectedCode) {
-      await vscode.window
-        .showInputBox({
-          title: 'Add prefix to your ad-hoc command',
-          prompt: 'Prefix your code with your custom prompt. i.e. Explain this',
-          ignoreFocusOut: true,
-          placeHolder: 'Ask anything...',
-          value: adhocCommandPrefix,
-        })
-        .then((value) => {
-          if (!value) {
-            dismissed = true;
-            return;
-          }
-          adhocCommandPrefix = value.trim() || '';
-          context.globalState.update('chatgpt-adhoc-prompt', adhocCommandPrefix);
-        });
-
-      if (!dismissed && adhocCommandPrefix?.length > 0) {
-        chatGptViewProvider?.sendApiRequest(adhocCommandPrefix, {
-          command: 'adhoc',
-          code: selectedCode,
-        });
-      }
+    if (!chatgptAdhocPrompt) {
+      return;
+    }
+    // 保存用户输入的临时指令
+    context.globalState.update('chatgpt-adhoc-prompt', chatgptAdhocPrompt);
+    if (chatgptAdhocPrompt) {
+      chatGptViewProvider?.sendApiRequest(chatgptAdhocPrompt, {
+        command: 'adhoc',
+        code: selectedCode,
+      });
     }
   });
+
   // 注册 generateCode 命令
   const generateCodeCommand = vscode.commands.registerCommand(`vscode-chatgpt.generateCode`, () => {
     const editor = vscode.window.activeTextEditor;
     if (!editor) {
       return;
     }
-    const selectedCode = editor.document.getText(editor.selection);
+    const selectedCode = editor.document.getText(editor.selection).trim();
     if (selectedCode) {
       chatGptViewProvider?.sendApiRequest(selectedCode, {
         command: 'generateCode',
@@ -219,11 +231,12 @@ export async function activate(context: vscode.ExtensionContext) {
   const setContext = () => {
     menuCommands.forEach((command) => {
       if (command === 'generateCode') {
-        let generateCodeEnabled = !!vscode.workspace
+        let generateCodeEnabled = vscode.workspace
           .getConfiguration('chatgpt')
           .get<boolean>('gpt3.generateCode-enabled');
-        const modelName = vscode.workspace.getConfiguration('chatgpt').get('gpt3.model') as string;
-        const method = vscode.workspace.getConfiguration('chatgpt').get('method') as string;
+        const modelName =
+          vscode.workspace.getConfiguration('chatgpt').get<string>('gpt3.model') || '';
+        const method = vscode.workspace.getConfiguration('chatgpt').get<string>('method') || '';
         generateCodeEnabled =
           generateCodeEnabled && method === 'GPT3 OpenAI API Key' && modelName.startsWith('code-');
         vscode.commands.executeCommand('setContext', 'generateCode-enabled', generateCodeEnabled);
