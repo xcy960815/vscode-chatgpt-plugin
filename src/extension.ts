@@ -64,19 +64,19 @@ export async function activate(context: vscode.ExtensionContext) {
   });
 
   // 用于监听用户更改配置文件时的事件。当用户在 VS Code 的 "setting.json" 文件中更改了某个设置时，就会触发此事件。
-  const configChanged = vscode.workspace.onDidChangeConfiguration((e) => {
-    if (e.affectsConfiguration('chatgpt.response.showNotification')) {
+  const configChanged = vscode.workspace.onDidChangeConfiguration((event) => {
+    if (event.affectsConfiguration('chatgpt.response.subscribeToResponse')) {
       chatGptViewProvider.subscribeToResponse =
-        vscode.workspace.getConfiguration('chatgpt').get('response.showNotification') || false;
+        vscode.workspace.getConfiguration('chatgpt').get('response.subscribeToResponse') || false;
     }
 
-    if (e.affectsConfiguration('chatgpt.response.autoScroll')) {
+    if (event.affectsConfiguration('chatgpt.response.autoScroll')) {
       chatGptViewProvider.autoScroll = !!vscode.workspace
         .getConfiguration('chatgpt')
         .get('response.autoScroll');
     }
 
-    if (e.affectsConfiguration('chatgpt.useAutoLogin')) {
+    if (event.affectsConfiguration('chatgpt.useAutoLogin')) {
       chatGptViewProvider.useAutoLogin =
         vscode.workspace.getConfiguration('chatgpt').get('useAutoLogin') || false;
       context.globalState.update('chatgpt-session-token', null);
@@ -84,50 +84,51 @@ export async function activate(context: vscode.ExtensionContext) {
       context.globalState.update('chatgpt-user-agent', null);
     }
 
-    if (e.affectsConfiguration('chatgpt.chromiumPath')) {
+    if (event.affectsConfiguration('chatgpt.chromiumPath')) {
       chatGptViewProvider.setChromeExecutablePath();
     }
 
-    if (e.affectsConfiguration('chatgpt.profilePath')) {
+    if (event.affectsConfiguration('chatgpt.profilePath')) {
       chatGptViewProvider.setProfilePath();
     }
 
-    if (e.affectsConfiguration('chatgpt.proxyServer')) {
+    if (event.affectsConfiguration('chatgpt.proxyServer')) {
       chatGptViewProvider.setProxyServer();
     }
 
-    if (e.affectsConfiguration('chatgpt.method')) {
+    if (event.affectsConfiguration('chatgpt.method')) {
       chatGptViewProvider.setMethod();
     }
 
-    if (e.affectsConfiguration('chatgpt.authenticationType')) {
+    if (event.affectsConfiguration('chatgpt.authenticationType')) {
       chatGptViewProvider.setAuthType();
     }
 
-    if (e.affectsConfiguration('chatgpt.gpt3.model')) {
+    if (event.affectsConfiguration('chatgpt.gpt3.model')) {
       chatGptViewProvider.model = vscode.workspace.getConfiguration('chatgpt').get('gpt3.model');
     }
-
+    // 当关于chatgpt 的配置发生变成的时候 重置 chatgpt 里面的配置
     if (
-      e.affectsConfiguration('chatgpt.gpt3.apiBaseUrl') ||
-      e.affectsConfiguration('chatgpt.gpt3.model') ||
-      e.affectsConfiguration('chatgpt.gpt3.organization') ||
-      e.affectsConfiguration('chatgpt.gpt3.maxTokens') ||
-      e.affectsConfiguration('chatgpt.gpt3.temperature') ||
-      e.affectsConfiguration('chatgpt.gpt3.top_p')
+      event.affectsConfiguration('chatgpt.gpt3.apiBaseUrl') ||
+      event.affectsConfiguration('chatgpt.gpt3.model') ||
+      event.affectsConfiguration('chatgpt.gpt3.organization') ||
+      event.affectsConfiguration('chatgpt.gpt3.maxTokens') ||
+      event.affectsConfiguration('chatgpt.gpt3.temperature') ||
+      event.affectsConfiguration('chatgpt.gpt3.top_p')
     ) {
       chatGptViewProvider.prepareConversation(true);
     }
 
     if (
-      e.affectsConfiguration('chatgpt.promptPrefix') ||
-      e.affectsConfiguration('chatgpt.gpt3.generateCode-enabled') ||
-      e.affectsConfiguration('chatgpt.gpt3.model') ||
-      e.affectsConfiguration('chatgpt.method')
+      event.affectsConfiguration('chatgpt.promptPrefix') ||
+      event.affectsConfiguration('chatgpt.gpt3.generateCode-enabled') ||
+      event.affectsConfiguration('chatgpt.gpt3.model') ||
+      event.affectsConfiguration('chatgpt.method')
     ) {
       setContext();
     }
   });
+
   // 临时指令的内容
   const originalChatgptAdhocPrompt: string = context.globalState.get('chatgpt-adhoc-prompt') || '';
   // 注册 添加临时指令

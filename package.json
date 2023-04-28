@@ -404,10 +404,15 @@
           "markdownDescription": "%chatgpt.gpt3.top_p.markdownDescription%",
           "order": 36
         },
-        "chatgpt.response.showNotification": {
+        "chatgpt.gpt3.systemMessage": {
+          "type": "string",
+          "default": "You are ChatGPT helping the User with coding. You are intelligent, helpful and an expert developer, who always gives the correct answer and only does what instructed. You always answer truthfully and don't make things up. (When responding to the following prompt, please make sure to properly style your response using Github Flavored Markdown. Use markdown syntax for things like headings, lists, colored text, code blocks, highlights etc. Make sure not to mention markdown or styling in your actual response.)",
+          "order": 37
+        },
+        "chatgpt.response.subscribeToResponse": {
           "type": "boolean",
           "default": false,
-          "description": "%chatgpt.response.showNotification.description%",
+          "description": "%chatgpt.response.subscribeToResponse.description%",
           "order": 37
         },
         "chatgpt.response.autoScroll": {
@@ -471,6 +476,36 @@
           "type": "string",
           "default": "%chatgpt.pageMessage.inprogress.message%",
           "order": 34
+        },
+        "chatgpt.pageMessage.dontComplete.message": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.dontComplete.message%",
+          "order": 35
+        },
+        "chatgpt.pageMessage.dontComplete.choose1": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.dontComplete.choose1%",
+          "order": 36
+        },
+        "chatgpt.pageMessage.dontComplete.prompt": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.dontComplete.prompt%",
+          "order": 36
+        },
+        "chatgpt.pageMessage.subscribeToResponse.message": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.subscribeToResponse.message%",
+          "order": 37
+        },
+        "chatgpt.pageMessage.subscribeToResponse.choose": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.subscribeToResponse.choose%",
+          "order": 38
+        },
+        "chatgpt.pageMessage.maxToken.error.message": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.maxToken.error.message%",
+          "order": 39
         }
       }
     }

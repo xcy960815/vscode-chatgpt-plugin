@@ -19,12 +19,14 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
   public currentLanguage: typeof vscode.env.language = vscode.env.language;
   public locales: Locales;
+  // 是否允许 ChatGPT 机器人回答您的问题时接收通知。
   public subscribeToResponse: boolean;
   public autoScroll: boolean;
   public useAutoLogin?: boolean;
   public useGpt3?: boolean;
   public chromiumPath?: string;
   public profilePath?: string;
+
   public model?: string;
 
   private apiGpt3?: ChatGPTAPI3;
@@ -36,7 +38,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private authType?: AuthType;
 
   // 问题数量
-  private questionCounter: number = 0;
+  private questionCount: number = 0;
   private inProgress: boolean = false;
   private abortController?: AbortController;
   private currentMessageId: string = '';
@@ -50,7 +52,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   constructor(private context: vscode.ExtensionContext) {
     this.subscribeToResponse =
-      vscode.workspace.getConfiguration('chatgpt').get('response.showNotification') || false;
+      vscode.workspace.getConfiguration('chatgpt').get('response.subscribeToResponse') || false;
     this.autoScroll = !!vscode.workspace.getConfiguration('chatgpt').get('response.autoScroll');
     this.model = vscode.workspace.getConfiguration('chatgpt').get('gpt3.model');
     this.locales = {
@@ -254,16 +256,26 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.profilePath = vscode.workspace.getConfiguration('chatgpt').get('profilePath');
     this.clearSession();
   }
-
+  /**
+   * @desc chatgpt是否是 "code-davinci-002","code-cushman-001"
+   * @returns {boolean}
+   */
   private get isCodexModel(): boolean {
     return !!this.model?.startsWith('code-');
   }
-
+  /**
+   * @desc chatgpt是否是 "gpt-3.5-turbo","gpt-3.5-turbo-0301","gpt-4"
+   * @returns {boolean}
+   */
   private get isGpt35Model(): boolean {
     return !!this.model?.startsWith('gpt-');
   }
-
-  public async prepareConversation(modelChanged = false): Promise<boolean> {
+  /**
+   * @desc 回话前准备
+   * @param {boolean} modelChanged
+   * @returns {Promise<boolean>}
+   */
+  public async prepareConversation(modelChanged?: boolean): Promise<boolean> {
     if (modelChanged && this.useAutoLogin) {
       // no need to reinitialize in autologin when model changes
       return false;
@@ -288,6 +300,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         const noApiKeyMessage = chatgptConfig.get<string>('pageMessage.noApiKey.message')!;
         const choose1 = chatgptConfig.get<string>('pageMessage.noApiKey.choose1')!;
         const choose2 = chatgptConfig.get<string>('pageMessage.noApiKey.choose2')!;
+        // 检查apiKey是否存在
         if (!chatgptApiKey) {
           vscode.window.showErrorMessage(noApiKeyMessage, choose1, choose2).then(async (choice) => {
             // 如果用户选择了打开设置
@@ -364,12 +377,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     return true;
   }
-
-  private get systemContext(): string {
-    return `You are ChatGPT helping the User with coding. 
-			You are intelligent, helpful and an expert developer, who always gives the correct answer and only does what instructed. You always answer truthfully and don't make things up. 
-			(When responding to the following prompt, please make sure to properly style your response using Github Flavored Markdown. 
-			Use markdown syntax for things like headings, lists, colored text, code blocks, highlights etc. Make sure not to mention markdown or styling in your actual response.)`;
+  /**
+   * @desc 给chatgpt的系统信息
+   */
+  private get systemMessage(): string {
+    return vscode.workspace.getConfiguration('chatgpt').get<string>('gpt3.systemMessage') || '';
   }
   /**
    * @desc 处理问题并将其发送到 API
@@ -389,11 +401,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   /**
    * @desc 处理问题并将其发送到 API
    * @param {string} prompt
-   * @param {SendApiRequestOption} options
+   * @param {SendApiRequestOption} option
    * @returns
    */
-  public async sendApiRequest(prompt: string, options: SendApiRequestOption): Promise<void> {
-    // AI还在思考……不接受更多的问题。
+  public async sendApiRequest(prompt: string, option: SendApiRequestOption): Promise<void> {
     if (this.inProgress) {
       // 给用户一个提示
       const inprogressMessage = vscode.workspace
@@ -403,12 +414,12 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       return;
     }
 
-    this.questionCounter++;
+    this.questionCount++;
 
     // this.logEvent('api-request-sent', {
-    // 	'chatgpt.command': options.command,
-    // 	'chatgpt.hasCode': String(!!options.code),
-    // 	'chatgpt.hasPreviousAnswer': String(!!options.previousAnswer),
+    // 	'chatgpt.command': option.command,
+    // 	'chatgpt.hasCode': String(!!option.code),
+    // 	'chatgpt.hasPreviousAnswer': String(!!option.previousAnswer),
     // });
 
     if (!(await this.prepareConversation())) {
@@ -417,7 +428,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     this.response = '';
 
-    const question = this.processQuestion(prompt, options.code, options.language);
+    const question = this.processQuestion(prompt, option.code, option.language);
 
     const responseInMarkdown = !this.isCodexModel;
 
@@ -442,7 +453,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.sendMessage({
       type: 'add-question',
       value: prompt,
-      code: options.code,
+      code: option.code,
       autoScroll: this.autoScroll,
     });
 
@@ -450,7 +461,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       if (this.useGpt3) {
         if (this.isGpt35Model && this.apiGpt35) {
           const gpt3Response = await this.apiGpt35.sendMessage(question, {
-            systemMessage: this.systemContext,
+            systemMessage: this.systemMessage,
             messageId: this.conversationId,
             parentMessageId: this.messageId,
             abortSignal: this.abortController.signal,
@@ -476,7 +487,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             conversationId: this.conversationId,
             parentMessageId: this.messageId,
           } = await this.apiGpt3.sendMessage(question, {
-            promptPrefix: this.systemContext,
+            promptPrefix: this.systemMessage,
             abortSignal: this.abortController.signal,
             onProgress: (partialResponse) => {
               this.response = partialResponse.text;
@@ -492,23 +503,31 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         }
       }
 
-      if (options.previousAnswer != null) {
-        this.response = options.previousAnswer + this.response;
+      if (option.previousAnswer != null) {
+        this.response = option.previousAnswer + this.response;
       }
 
+      // 判断 chatgpt 是否回答完毕
       const hasContinuation = this.response.split('```').length % 2 === 0;
 
       if (hasContinuation) {
         this.response = this.response + ' \r\n ```\r\n';
+        const dontCompleteMessage = vscode.workspace
+          .getConfiguration('chatgpt')
+          .get<string>('pageMessage.dontComplete.message')!;
+        const dontCompleteChoose = vscode.workspace
+          .getConfiguration('chatgpt')
+          .get<string>('pageMessage.dontComplete.choose')!;
         vscode.window
-          .showInformationMessage(
-            "It looks like ChatGPT didn't complete their answer for your coding question. You can ask it to continue and combine the answers.",
-            'Continue and combine answers',
-          )
+          .showInformationMessage(dontCompleteMessage, dontCompleteChoose)
           .then(async (choice) => {
-            if (choice === 'Continue and combine answers') {
-              this.sendApiRequest('Continue', {
-                command: options.command,
+            if (choice === dontCompleteChoose) {
+              const prompt =
+                vscode.workspace
+                  .getConfiguration('chatgpt')
+                  .get<string>('pageMessage.dontComplete.prompt') || '';
+              this.sendApiRequest(prompt, {
+                command: option.command,
                 code: undefined,
                 previousAnswer: this.response,
               });
@@ -525,10 +544,20 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         responseInMarkdown,
       });
 
+      // 如果打开了订阅对话的配置
       if (this.subscribeToResponse) {
+        const subscribeToResponseMessage =
+          vscode.workspace
+            .getConfiguration('chatgpt')
+            .get<string>('pageMessage.subscribeToResponse.message') || '';
+        const subscribeToResponseChoose =
+          vscode.workspace
+            .getConfiguration('chatgpt')
+            .get<string>('pageMessage.subscribeToResponse.choose') || '';
         vscode.window
-          .showInformationMessage('ChatGPT responded to your question.', 'Open conversation')
+          .showInformationMessage(subscribeToResponseMessage, subscribeToResponseChoose)
           .then(async () => {
+            // 打开窗口
             await vscode.commands.executeCommand('vscode-chatgpt.view.focus');
           });
       }
@@ -544,20 +573,23 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
       if (error?.response?.status || error?.response?.statusText) {
         message = `${error?.response?.status || ''} ${error?.response?.statusText || ''}`;
-
-        vscode.window
-          .showErrorMessage(
-            'An error occured. If this is due to max_token you could try `ChatGPT: Clear Conversation` command and retry sending your prompt.',
-            'Clear conversation and retry',
-          )
-          .then(async (choice) => {
-            if (choice === 'Clear conversation and retry') {
-              // 执行 清空会话 指令
-              await vscode.commands.executeCommand('vscode-chatgpt.clearConversation');
-              await delay(250);
-              this.sendApiRequest(prompt, { command: options.command, code: options.code });
-            }
-          });
+        const errorMessage =
+          vscode.workspace
+            .getConfiguration('chatgpt')
+            .get<string>('pageMessage.maxToken.error.message') || '';
+        const errorChoose =
+          vscode.workspace
+            .getConfiguration('chatgpt')
+            .get<string>('pageMessage.maxToken.error.choose') || '';
+        vscode.window.showErrorMessage(errorMessage, errorChoose).then(async (choice) => {
+          if (choice === errorChoose) {
+            // 执行 清空会话 指令
+            await vscode.commands.executeCommand('vscode-chatgpt.clearConversation');
+            // 等待 250毫米
+            await delay(250);
+            this.sendApiRequest(prompt, { command: option.command, code: option.code });
+          }
+        });
       } else if (error.statusCode === 400) {
         message = `Your method: '${this.loginMethod}' and your model: '${this.model}' may be incompatible or one of your parameters is unknown. Reset your settings to default. (HTTP 400 Bad Request)`;
       } else if (error.statusCode === 401) {
@@ -605,14 +637,14 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
   private logEvent(eventName: string, properties?: {}): void {
     // You can initialize your telemetry reporter and consume it here - *replaced with console.debug to prevent unwanted telemetry logs
-    // this.reporter?.sendTelemetryEvent(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown", ...properties }, { "chatgpt.questionCounter": this.questionCounter });
-    // console.debug(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown", ...properties }, { "chatgpt.questionCounter": this.questionCounter });
+    // this.reporter?.sendTelemetryEvent(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown", ...properties }, { "chatgpt.questionCount": this.questionCount });
+    // console.debug(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown", ...properties }, { "chatgpt.questionCount": this.questionCount });
   }
 
   private logError(eventName: string): void {
     // You can initialize your telemetry reporter and consume it here - *replaced with console.error to prevent unwanted telemetry logs
-    // this.reporter?.sendTelemetryErrorEvent(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown" }, { "chatgpt.questionCounter": this.questionCounter });
-    // console.error(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown" }, { "chatgpt.questionCounter": this.questionCounter });
+    // this.reporter?.sendTelemetryErrorEvent(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown" }, { "chatgpt.questionCount": this.questionCount });
+    // console.error(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown" }, { "chatgpt.questionCount": this.questionCount });
   }
   /**
    * @desc 获取webview的html
