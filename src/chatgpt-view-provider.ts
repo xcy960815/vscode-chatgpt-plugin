@@ -156,8 +156,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           this.stopGenerating();
           break;
         case 'get-chatgpt-config':
-          console.log('get-chatgpt-config', this.chatGptConfig);
-
           this.sendMessage({
             type: 'set-chatgpt-config',
             value: this.chatGptConfig,
@@ -344,6 +342,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
           return false;
         }
+        console.log('this.isGpt35Model', this.isGpt35Model);
+
         // 初始化 chatgpt 模型
         if (this.isGpt35Model) {
           this.apiGpt35 = new ChatGPTAPI35({
