@@ -1,17 +1,8 @@
 (function () {
   const vscode = acquireVsCodeApi();
-
-  let currentLanguage;
-  let locales;
-
-  // 获取 vscode 当前语言
+  let chatgptConfig = null;
   vscode.postMessage({
-    type: 'get-current-language',
-  });
-
-  // 获取 locales
-  vscode.postMessage({
-    type: 'get-locales',
+    type: 'get-chatgpt-config',
   });
 
   marked.setOptions({
@@ -56,7 +47,7 @@
   const questionInputElement = document.getElementById('question-input');
   const answerListElement = document.getElementById('answer-list');
   const stopAskingButtonElement = document.getElementById('stop-asking-button');
-  const inProgress = document.getElementById('in-progress');
+  const inProgressElement = document.getElementById('in-progress');
   const questionInputButtons = document.getElementById('question-input-buttons');
   const introductionElement = document.getElementById('introduction');
   const conversationElement = document.getElementById('conversation-list');
@@ -80,14 +71,14 @@
 
         if (messageOption.inProgress) {
           // 让正在进行中的提示显示
-          inProgress.classList.remove('hidden');
+          inProgressElement.classList.remove('hidden');
           // 让输入框不可用
           questionInputElement.setAttribute('disabled', true);
           // 让输入框的按钮隐藏
           questionInputButtons.classList.add('hidden');
         } else {
           // 让正在进行中的提示隐藏
-          inProgress.classList.add('hidden');
+          inProgressElement.classList.add('hidden');
           // 让输入框可用
           questionInputElement.removeAttribute('disabled');
           // 让输入框的按钮显示
@@ -190,8 +181,8 @@
             );
             // 复制按钮
             const copyButton = document.createElement('button');
-            const copyButtonName = locales[currentLanguage]['chatgpt.webview.copyButton.name'];
-            const copyButtonTitle = locales[currentLanguage]['chatgpt.webview.copyButton.title'];
+            const copyButtonName = chatgptConfig.get('webview.copyButton.name');
+            const copyButtonTitle = chatgptConfig.get('webview.copyButton.title');
             copyButton.title = copyButtonTitle;
             copyButton.innerHTML = `${copyButtonSvg} ${copyButtonName}`;
             copyButton.classList.add(
@@ -204,9 +195,8 @@
             );
             //  插入按钮
             const insertButton = document.createElement('button');
-            const insertButtonName = locales[currentLanguage]['chatgpt.webview.insertButton.name'];
-            const insertButtonTitle =
-              locales[currentLanguage]['chatgpt.webview.insertButton.title'];
+            const insertButtonName = chatgptConfig.get('webview.insertButton.name');
+            const insertButtonTitle = chatgptConfig.get('webview.insertButton.title');
             insertButton.title = insertButtonTitle;
             insertButton.innerHTML = `${insertButtonSvg} ${insertButtonName}`;
             insertButton.classList.add(
@@ -219,9 +209,8 @@
             );
             // 右侧content 新开tab按钮
             const newTabButton = document.createElement('button');
-            const newTabButtonName = locales[currentLanguage]['chatgpt.webview.newTabButton.name'];
-            const newTabButtonTitle =
-              locales[currentLanguage]['chatgpt.webview.newTabButton.title'];
+            const newTabButtonName = chatgptConfig.get('webview.newTabButton.name');
+            const newTabButtonTitle = chatgptConfig.get('webview.newTabButton.title');
             newTabButton.title = newTabButtonTitle;
             newTabButton.innerHTML = `${newTabButtonSvg} ${newTabButtonName}`;
 
@@ -321,22 +310,20 @@
                     <div class="flex flex-col gap-4">${conversationList.join('')}</div>
                 </div>`;
         break;
-      case 'set-current-language':
-        currentLanguage = messageOption.value;
-        break;
-      case 'set-locales':
-        locales = messageOption.value;
+
+      case 'set-chatgpt-config':
+        chatgptConfig = messageOption.value;
         break;
       default:
         break;
     }
   });
 
-  // 向webview发送消息
+  // 向 webview 发送消息
   const addFreeTextQuestion = () => {
     if (questionInputElement.value?.length > 0) {
       vscode.postMessage({
-        type: 'addFreeTextQuestion',
+        type: 'add-question',
         value: questionInputElement.value,
       });
       questionInputElement.value = '';
@@ -345,9 +332,7 @@
       }, 0);
     }
   };
-  /**
-   * @desc 清空聊天记录
-   */
+  // 清空聊天记录
   const clearConversation = () => {
     answerListElement.innerHTML = '';
     introductionElement?.classList?.remove('hidden');
@@ -356,9 +341,7 @@
     });
   };
 
-  /**
-   * @desc 导出聊天记录
-   */
+  // 导出聊天记录
   const exportConversation2Markdown = () => {
     const turndownService = new TurndownService({ codeBlockStyle: 'fenced' });
     turndownService.remove('no-export');
@@ -370,14 +353,12 @@
       language: 'markdown',
     });
   };
-  /**
-   * @desc 监听输入框的回车事件
-   * @param {KeyboardEvent} event
-   */
+
+  // 监听输入框的回车事件
   questionInputElement.addEventListener('keydown', function (event) {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
-      const composing = questionInputElement.composing;
+      // const composing = questionInputElement.composing;
       if (questionInputElement.composing) {
         // 在这里你可以处理输入法被激活时的行为，比如不执行发送、添加提示等等。
         return;
@@ -387,14 +368,13 @@
     }
   });
 
-  /**
-   * @desc 给整个webview添加点击事件
-   */
+  //  给整个webview添加点击事件
   document.addEventListener('click', (e) => {
+    // 阻止默认事件
+    e.preventDefault();
     const targetButton = e.target.closest('button');
     // 点击更多按钮
     if (targetButton?.id === 'more-button') {
-      e.preventDefault();
       chatButtonWrapperElement?.classList.toggle('hidden');
       return;
     } else {
@@ -402,7 +382,6 @@
     }
     // 点击设置按钮
     if (e.target?.id === 'update-settings-button') {
-      e.preventDefault();
       vscode.postMessage({
         type: 'open-settings',
       });
@@ -410,7 +389,6 @@
     }
     // 点击设置提示按钮
     if (e.target?.id === 'settings-prompt-button') {
-      e.preventDefault();
       vscode.postMessage({
         type: 'open-settings-prompt',
       });
@@ -418,7 +396,6 @@
     }
     // 点击登录按钮
     if (targetButton?.id === 'login-button') {
-      e.preventDefault();
       vscode.postMessage({
         type: 'login',
       });
@@ -426,19 +403,16 @@
     }
     // 点击提交问题按钮
     if (targetButton?.id === 'submit-question-button') {
-      e.preventDefault();
       addFreeTextQuestion();
       return;
     }
     // 点击清除对话按钮
     if (targetButton?.id === 'clear-conversation-button') {
-      e.preventDefault();
       clearConversation();
       return;
     }
 
     if (targetButton?.id === 'export-conversation-2-markdown-button') {
-      e.preventDefault();
       exportConversation2Markdown();
       return;
     }
@@ -447,15 +421,11 @@
       targetButton?.id === 'show-conversations-button' ||
       targetButton?.id === 'list-conversations-link'
     ) {
-      e.preventDefault();
-
       vscode.postMessage({ type: 'show-conversations' });
       return;
     }
 
     if (targetButton?.id === 'show-conversation-button') {
-      e.preventDefault();
-
       vscode.postMessage({
         type: 'show-conversation',
         value: targetButton.getAttribute('data-id'),
@@ -473,15 +443,11 @@
     }
 
     if (targetButton?.id === 'refresh-conversations-button') {
-      e.preventDefault();
-
       vscode.postMessage({ type: 'show-conversations' });
       return;
     }
 
     if (targetButton?.id === 'close-conversations-button') {
-      e.preventDefault();
-
       answerListElement.classList.add('hidden');
       conversationElement.classList.add('hidden');
       introductionElement.classList.add('hidden');
@@ -494,7 +460,6 @@
     }
 
     if (targetButton?.id === 'stop-asking-button') {
-      e.preventDefault();
       vscode.postMessage({
         type: 'stop-generating',
       });
@@ -503,7 +468,6 @@
     }
 
     if (targetButton?.classList?.contains('resend-element-ext')) {
-      e.preventDefault();
       const question = targetButton.closest('.question-element-ext');
       const elements = targetButton.nextElementSibling;
       elements.classList.remove('hidden');
@@ -515,8 +479,6 @@
     }
 
     if (targetButton?.classList?.contains('send-element-ext')) {
-      e.preventDefault();
-
       const question = targetButton.closest('.question-element-ext');
       const elements = targetButton.closest('.send-cancel-elements-ext');
       const resendElement = targetButton.parentElement.parentElement.firstElementChild;
@@ -526,7 +488,7 @@
 
       if (question.lastElementChild.textContent?.length > 0) {
         vscode.postMessage({
-          type: 'addFreeTextQuestion',
+          type: 'add-question',
           value: question.lastElementChild.textContent,
         });
       }
@@ -534,7 +496,6 @@
     }
 
     if (targetButton?.classList?.contains('cancel-element-ext')) {
-      e.preventDefault();
       const question = targetButton.closest('.question-element-ext');
       const elements = targetButton.closest('.send-cancel-elements-ext');
       const resendElement = targetButton.parentElement.parentElement.firstElementChild;
@@ -545,13 +506,12 @@
     }
 
     if (targetButton?.classList?.contains('code-element-ext')) {
-      e.preventDefault();
       navigator.clipboard
         .writeText(targetButton.parentElement?.nextElementSibling?.lastChild?.textContent)
         .then(() => {
-          const copiedButtonName = locales[currentLanguage]['chatgpt.webview.copiedButton.name'];
+          const copiedButtonName = chatgptConfig.get('webview.copiedButton.name');
           targetButton.innerHTML = `${copiedStateSvg} ${copiedButtonName}`;
-          const copyButtonName = locales[currentLanguage]['chatgpt.webview.copyButton.name'];
+          const copyButtonName = chatgptConfig.get('webview.copyButton.name');
           setTimeout(() => {
             targetButton.innerHTML = `${copyButtonSvg} ${copyButtonName}`;
           }, 1500);
@@ -561,9 +521,8 @@
     }
 
     if (targetButton?.classList?.contains('insert-button')) {
-      e.preventDefault();
       vscode.postMessage({
-        type: 'editCode',
+        type: 'edit-code',
         value: targetButton.parentElement?.nextElementSibling?.lastChild?.textContent,
       });
 
@@ -571,7 +530,6 @@
     }
 
     if (targetButton?.classList?.contains('new-tab-button')) {
-      e.preventDefault();
       vscode.postMessage({
         type: 'open-new-tab',
         value: targetButton.parentElement?.nextElementSibling?.lastChild?.textContent,

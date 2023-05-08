@@ -4,21 +4,21 @@ import delay from 'delay';
 import fetch from 'isomorphic-fetch';
 import * as fs from 'node:fs';
 import * as os from 'node:os';
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ChatGPTAPI as ChatGPTAPI3 } from '../chatgpt-4.7.2/index';
 import { ChatGPTAPI as ChatGPTAPI35 } from '../chatgpt-5.1.1/index';
 import {
   AuthType,
   LeftOverMessage,
-  Locales,
   LoginMethod,
   MessageOption,
   SendApiRequestOption,
 } from './types';
 export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
-  public currentLanguage: typeof vscode.env.language = vscode.env.language;
-  public locales: Locales;
+  // public currentLanguage: typeof vscode.env.language = vscode.env.language;
+  // public locales: Locales = require(`../package.nls${vscode.env.language === 'en' ? "" : `${vscode.env.language}`}.json`);
   // 是否允许 ChatGPT 机器人回答您的问题时接收通知。
   public subscribeToResponse: boolean;
   public autoScroll: boolean;
@@ -46,19 +46,18 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
   private leftOverMessage?: LeftOverMessage;
 
+  private chatGptConfig: vscode.WorkspaceConfiguration;
+
   /**
    * 如果消息没有被渲染，则延迟渲染
    * 在调用 resolveWebviewView 之前的时间。
    */
   constructor(private context: vscode.ExtensionContext) {
-    this.subscribeToResponse =
-      vscode.workspace.getConfiguration('chatgpt').get('response.subscribeToResponse') || false;
-    this.autoScroll = !!vscode.workspace.getConfiguration('chatgpt').get('response.autoScroll');
-    this.model = vscode.workspace.getConfiguration('chatgpt').get('gpt3.model');
-    this.locales = {
-      ['zh-cn']: require('../package.nls.zh-cn.json'),
-      en: require('../package.nls.json'),
-    };
+    this.chatGptConfig = vscode.workspace.getConfiguration('chatgpt');
+    this.subscribeToResponse = this.chatGptConfig.get('response.subscribeToResponse') || false;
+    this.autoScroll = !!this.chatGptConfig.get('response.autoScroll');
+    this.model = this.chatGptConfig.get('gpt3.model');
+    this.getWebViewContext();
     this.setMethod();
     this.setChromeExecutablePath();
     this.setProfilePath();
@@ -80,36 +79,22 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     webviewView.webview.options = {
       enableScripts: true,
-
       localResourceRoots: [this.context.extensionUri],
     };
     // 设置webview的html内容
     webviewView.webview.html = this.getWebviewHtml(webviewView.webview);
-    // webviewView.webview.html = this.getWebviewHtml("./media/web-view.html");
+    // webviewView.webview.html = this.getWebViewContext();
 
     // 在监听器内部根据消息命令类型执行不同的操作。
     webviewView.webview.onDidReceiveMessage(async (data) => {
       switch (data.type) {
-        case 'get-current-language':
-          this.sendMessage({
-            type: 'set-current-language',
-            value: this.currentLanguage,
-          });
-          break;
-        case 'get-locales':
-          this.sendMessage({
-            type: 'set-locales',
-            value: this.locales,
-          });
-          break;
         // 从webview中获取到用户输入的问题，然后调用sendApiRequest方法发送给后端。
-        case 'addFreeTextQuestion':
+        case 'add-question':
           this.sendApiRequest(data.value, { command: 'freeText' });
           break;
-        case 'editCode':
+        case 'edit-code':
           const escapedString = (data.value as string).replace(/\$/g, '\\$');
           vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(escapedString));
-
           this.logEvent('code-inserted');
           break;
         case 'open-new-tab':
@@ -129,22 +114,19 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           this.conversationId = undefined;
           this.logEvent('conversation-cleared');
           break;
-        case 'cleargpt3':
+        case 'clear-gpt3':
           this.apiGpt3 = undefined;
-
           this.logEvent('gpt3-cleared');
           break;
         case 'login':
-          this.prepareConversation().then((success) => {
-            if (success) {
-              this.sendMessage(
-                { type: 'login-successful', showConversations: this.useAutoLogin },
-                true,
-              );
-
-              this.logEvent('logged-in');
-            }
-          });
+          const status = await this.prepareConversation();
+          if (status) {
+            this.sendMessage(
+              { type: 'login-successful', showConversations: this.useAutoLogin },
+              true,
+            );
+            this.logEvent('logged-in');
+          }
           break;
         case 'open-settings':
           // 打开设置
@@ -173,18 +155,29 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           // 停止生成代码
           this.stopGenerating();
           break;
+        case 'get-chatgpt-config':
+          console.log('get-chatgpt-config', this.chatGptConfig);
+
+          this.sendMessage({
+            type: 'set-chatgpt-config',
+            value: this.chatGptConfig,
+          });
+          break;
         default:
           break;
       }
     });
 
-    if (this.leftOverMessage !== null) {
+    if (!!this.leftOverMessage) {
       // If there were any messages that wasn't delivered, render after resolveWebView is called.
       this.sendMessage(this.leftOverMessage as MessageOption);
       this.leftOverMessage = null;
     }
   }
-
+  /**
+   * @desc 终止生成代码
+   * @returns {void}
+   */
   private stopGenerating(): void {
     this.abortController?.abort?.();
     this.inProgress = false;
@@ -202,7 +195,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     this.logEvent('stopped-generating');
   }
-
+  /**
+   * @desc 清空会话
+   * @returns {void}
+   */
   public clearSession(): void {
     this.stopGenerating();
     this.apiGpt3 = undefined;
@@ -215,21 +211,26 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * @returns {void}
    */
   public setProxyServer(): void {
-    this.proxyServer = vscode.workspace.getConfiguration('chatgpt').get('proxyServer');
+    this.proxyServer = this.chatGptConfig.get('proxyServer');
   }
-
+  /**
+   * @desc
+   */
   public setMethod(): void {
-    this.loginMethod = vscode.workspace.getConfiguration('chatgpt').get('method') as LoginMethod;
+    this.loginMethod = this.chatGptConfig.get<LoginMethod>('method');
     this.useGpt3 = true;
     this.useAutoLogin = false;
     this.clearSession();
   }
 
   public setAuthType(): void {
-    this.authType = vscode.workspace.getConfiguration('chatgpt').get('authenticationType');
+    this.authType = this.chatGptConfig.get('authenticationType');
     this.clearSession();
   }
-
+  /**
+   * @desc 设置chrome执行路径
+   * @returns {void}
+   */
   public setChromeExecutablePath(): void {
     let path = '';
     switch (os.platform()) {
@@ -248,23 +249,23 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         break;
     }
 
-    this.chromiumPath = vscode.workspace.getConfiguration('chatgpt').get('chromiumPath') || path;
+    this.chromiumPath = this.chatGptConfig.get('chromiumPath') || path;
     this.clearSession();
   }
 
   public setProfilePath(): void {
-    this.profilePath = vscode.workspace.getConfiguration('chatgpt').get('profilePath');
+    this.profilePath = this.chatGptConfig.get('profilePath');
     this.clearSession();
   }
   /**
-   * @desc chatgpt是否是 "code-davinci-002","code-cushman-001"
+   * @desc chatgpt模型是否是 "code-davinci-002","code-cushman-001"
    * @returns {boolean}
    */
   private get isCodexModel(): boolean {
     return !!this.model?.startsWith('code-');
   }
   /**
-   * @desc chatgpt是否是 "gpt-3.5-turbo","gpt-3.5-turbo-0301","gpt-4"
+   * @desc chatgpt模型是否是 "gpt-3.5-turbo","gpt-3.5-turbo-0301","gpt-4"
    * @returns {boolean}
    */
   private get isGpt35Model(): boolean {
@@ -288,18 +289,17 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       ) {
         // 全局状态
         const globalState = this.context.globalState;
-        const chatgptConfig = vscode.workspace.getConfiguration('chatgpt');
         let chatgptApiKey =
-          chatgptConfig.get<string>('gpt3.apiKey') ||
+          this.chatGptConfig.get<string>('gpt3.apiKey') ||
           globalState.get<string>('chatgpt-gpt3-apiKey');
-        const organization = chatgptConfig.get<string>('gpt3.organization');
-        const max_tokens = chatgptConfig.get<number>('gpt3.maxTokens');
-        const temperature = chatgptConfig.get<number>('gpt3.temperature');
-        const top_p = chatgptConfig.get<number>('gpt3.top_p');
-        const apiBaseUrl = chatgptConfig.get<string>('gpt3.apiBaseUrl');
-        const noApiKeyMessage = chatgptConfig.get<string>('pageMessage.noApiKey.message')!;
-        const choose1 = chatgptConfig.get<string>('pageMessage.noApiKey.choose1')!;
-        const choose2 = chatgptConfig.get<string>('pageMessage.noApiKey.choose2')!;
+        const organization = this.chatGptConfig.get<string>('gpt3.organization');
+        const max_tokens = this.chatGptConfig.get<number>('gpt3.maxTokens');
+        const temperature = this.chatGptConfig.get<number>('gpt3.temperature');
+        const top_p = this.chatGptConfig.get<number>('gpt3.top_p');
+        const apiBaseUrl = this.chatGptConfig.get<string>('gpt3.apiBaseUrl');
+        const noApiKeyMessage = this.chatGptConfig.get<string>('pageMessage.noApiKey.message')!;
+        const choose1 = this.chatGptConfig.get<string>('pageMessage.noApiKey.choose1')!;
+        const choose2 = this.chatGptConfig.get<string>('pageMessage.noApiKey.choose2')!;
         // 检查apiKey是否存在
         if (!chatgptApiKey) {
           vscode.window.showErrorMessage(noApiKeyMessage, choose1, choose2).then(async (choice) => {
@@ -312,9 +312,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
               );
               return false;
             } else if (choice === choose1) {
-              const title = chatgptConfig.get<string>('pageMessage.noApiKey.inputBox.title')!;
-              const prompt = chatgptConfig.get<string>('pageMessage.noApiKey.inputBox.prompt')!;
-              const placeHolder = chatgptConfig.get<string>(
+              const title = this.chatGptConfig.get<string>('pageMessage.noApiKey.inputBox.title')!;
+              const prompt = this.chatGptConfig.get<string>(
+                'pageMessage.noApiKey.inputBox.prompt',
+              )!;
+              const placeHolder = this.chatGptConfig.get<string>(
                 'pageMessage.noApiKey.inputBox.placeHolder',
               )!;
               // 如果用户选择了存储在会话中
@@ -381,7 +383,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * @desc 给chatgpt的系统信息
    */
   private get systemMessage(): string {
-    return vscode.workspace.getConfiguration('chatgpt').get<string>('gpt3.systemMessage') || '';
+    return this.chatGptConfig.get<string>('gpt3.systemMessage') || '';
   }
   /**
    * @desc 处理问题并将其发送到 API
@@ -407,9 +409,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   public async sendApiRequest(prompt: string, option: SendApiRequestOption): Promise<void> {
     if (this.inProgress) {
       // 给用户一个提示
-      const inprogressMessage = vscode.workspace
-        .getConfiguration('chatgpt')
-        .get<string>('pageMessage.inProgress.message')!;
+      const inprogressMessage = this.chatGptConfig.get<string>('pageMessage.inProgress.message')!;
       vscode.window.showInformationMessage(inprogressMessage);
       return;
     }
@@ -512,20 +512,18 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
       if (hasContinuation) {
         this.response = this.response + ' \r\n ```\r\n';
-        const dontCompleteMessage = vscode.workspace
-          .getConfiguration('chatgpt')
-          .get<string>('pageMessage.dontComplete.message')!;
-        const dontCompleteChoose = vscode.workspace
-          .getConfiguration('chatgpt')
-          .get<string>('pageMessage.dontComplete.choose')!;
+        const dontCompleteMessage = this.chatGptConfig.get<string>(
+          'pageMessage.dontComplete.message',
+        )!;
+        const dontCompleteChoose = this.chatGptConfig.get<string>(
+          'pageMessage.dontComplete.choose',
+        )!;
         vscode.window
           .showInformationMessage(dontCompleteMessage, dontCompleteChoose)
           .then(async (choice) => {
             if (choice === dontCompleteChoose) {
               const prompt =
-                vscode.workspace
-                  .getConfiguration('chatgpt')
-                  .get<string>('pageMessage.dontComplete.prompt') || '';
+                this.chatGptConfig.get<string>('pageMessage.dontComplete.prompt') || '';
               this.sendApiRequest(prompt, {
                 command: option.command,
                 code: undefined,
@@ -547,13 +545,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       // 如果打开了订阅对话的配置
       if (this.subscribeToResponse) {
         const subscribeToResponseMessage =
-          vscode.workspace
-            .getConfiguration('chatgpt')
-            .get<string>('pageMessage.subscribeToResponse.message') || '';
+          this.chatGptConfig.get<string>('pageMessage.subscribeToResponse.message') || '';
         const subscribeToResponseChoose =
-          vscode.workspace
-            .getConfiguration('chatgpt')
-            .get<string>('pageMessage.subscribeToResponse.choose') || '';
+          this.chatGptConfig.get<string>('pageMessage.subscribeToResponse.choose') || '';
         vscode.window
           .showInformationMessage(subscribeToResponseMessage, subscribeToResponseChoose)
           .then(async () => {
@@ -573,14 +567,12 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
       if (error?.response?.status || error?.response?.statusText) {
         message = `${error?.response?.status || ''} ${error?.response?.statusText || ''}`;
+        // 从配置中获取错误信息
         const errorMessage =
-          vscode.workspace
-            .getConfiguration('chatgpt')
-            .get<string>('pageMessage.maxToken.error.message') || '';
+          this.chatGptConfig.get<string>('pageMessage.maxToken.error.message') || '';
+        // 从配置中获取错误选择
         const errorChoose =
-          vscode.workspace
-            .getConfiguration('chatgpt')
-            .get<string>('pageMessage.maxToken.error.choose') || '';
+          this.chatGptConfig.get<string>('pageMessage.maxToken.error.choose') || '';
         vscode.window.showErrorMessage(errorMessage, errorChoose).then(async (choice) => {
           if (choice === errorChoose) {
             // 执行 清空会话 指令
@@ -705,25 +697,58 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     const TurndownJs = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'turndown.js'),
     );
+    const features = this.chatGptConfig.get<string>('webview.features');
+    const feature1 = this.chatGptConfig.get<string>('webview.feature1');
+    const feature2 = this.chatGptConfig.get<string>('webview.feature2');
+    const feature3 = this.chatGptConfig.get<string>('webview.feature3');
+    const feature4 = this.chatGptConfig.get<string>('webview.feature4');
+    const loginButtonName = this.chatGptConfig.get<string>('webview.loginButtonName');
+    const loginButtonTitle = this.chatGptConfig.get<string>('webview.loginButtonTitle');
+    const updateSettingsButtonName = this.chatGptConfig.get<string>(
+      'webview.updateSettingsButtonName',
+    );
+    const updateSettingsButtonTitle = this.chatGptConfig.get<string>(
+      'webview.updateSettingsButtonTitle',
+    );
+    const updatePromptsButtonName = this.chatGptConfig.get<string>(
+      'webview.updatePromptsButtonName',
+    );
+    const updatePromptsButtonTitle = this.chatGptConfig.get<string>(
+      'webview.updatePromptsButtonTitle',
+    );
 
-    const features = this.locales[this.currentLanguage]['chatgpt.webview.features'];
-    const feature1 = this.locales[this.currentLanguage]['chatgpt.webview.feature1'];
-    const feature2 = this.locales[this.currentLanguage]['chatgpt.webview.feature2'];
-    const feature3 = this.locales[this.currentLanguage]['chatgpt.webview.feature3'];
-    const feature4 = this.locales[this.currentLanguage]['chatgpt.webview.feature4'];
-    const loginButtonName = this.locales[this.currentLanguage]['chatgpt.webview.loginButton.name'];
-    const updateSettingsButtonName =
-      this.locales[this.currentLanguage]['chatgpt.webview.updateSettings.name'];
-    const updatePromptsButtonName =
-      this.locales[this.currentLanguage]['chatgpt.webview.updatePrompts.name'];
-    const questionInputPlaceholder =
-      this.locales[this.currentLanguage]['chartgpt.webview.questionInput.placeholder'];
-    const clearConversationButtonName =
-      this.locales[this.currentLanguage]['chatgpt.webview.clearConversationButton.name'];
-    const showConversationsButtonName =
-      this.locales[this.currentLanguage]['chatgpt.webview.showConversationsButton.name'];
-    const exportConversationButtonName =
-      this.locales[this.currentLanguage]['chatgpt.webview.exportConversationButton.name'];
+    const questionInputPlaceholder = this.chatGptConfig.get<string>(
+      'webview.questionInputPlaceholder',
+    );
+    const clearConversationButtonName = this.chatGptConfig.get<string>(
+      'webview.clearConversationButtonName',
+    );
+    const clearConversationButtonTitle = this.chatGptConfig.get<string>(
+      'webview.clearConversationButtonTitle',
+    );
+
+    const showConversationsButtonName = this.chatGptConfig.get<string>(
+      'webview.showConversationsButtonName',
+    );
+    const showConversationsButtonTitle = this.chatGptConfig.get<string>(
+      'webview.showConversationsButtonTitle',
+    );
+    const exportConversationButtonName = this.chatGptConfig.get<string>(
+      'webview.exportConversationButtonName',
+    );
+    const exportConversationButtonTitle = this.chatGptConfig.get<string>(
+      'webview.exportConversationButtonTitle',
+    );
+
+    const moreActionsButtonName = this.chatGptConfig.get<string>('webview.moreActionsButtonName');
+    const moreActionsButtonTitle = this.chatGptConfig.get<string>('webview.moreActionsButtonTitle');
+
+    const submitQuestionButtonName = this.chatGptConfig.get<string>(
+      'webview.submitQuestionButtonName',
+    );
+    const submitQuestionButtonTitle = this.chatGptConfig.get<string>(
+      'webview.submitQuestionButtonTitle',
+    );
 
     const nonce = this.getRandomId();
 
@@ -748,6 +773,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" class="w-6 h-6 m-auto">
 									<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"></path>
 								</svg>
+                <!-- 现有功能 -->
 								<h2>${features}</h2>
 								<ul class="flex flex-col gap-3.5 text-xs">
                   <!-- 访问您的ChatGPT会话记录 -->
@@ -765,7 +791,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 						<div class="flex flex-col gap-4 h-full items-center justify-end text-center">
             
               <!-- 登录按钮 -->
-							<button id="login-button" class="mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md text-xs">${loginButtonName}</button>
+							<button id="login-button" class="mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md text-xs" title=${loginButtonTitle}>${loginButtonName}</button>
 							
               <!-- 显示对话按钮 -->
               <button id="list-conversations-link" class="hidden mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md" title="You can access this feature via the kebab menu below. NOTE: Only available with Browser Auto-login method">
@@ -774,12 +800,12 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 							
               <p class="max-w-sm text-center text-xs text-slate-500">
                 <!-- 更新设置和更新提示按钮 -->
-								<a id="update-settings-button" href="#">${updateSettingsButtonName}</a> &nbsp; | &nbsp; <a id="settings-prompt-button" href="#">${updatePromptsButtonName}</a>
+								<a id="update-settings-button" title=${updateSettingsButtonTitle} href="#">${updateSettingsButtonName}</a> &nbsp; | &nbsp; <a id="settings-prompt-button" title=${updatePromptsButtonTitle} href="#">${updatePromptsButtonName}</a>
 							</p>
 						</div>
 					</div>
 
-          <!-- gpt 回答的答案 -->
+          <!-- gpt 回答的答案列表 -->
 					<div class="flex-1 overflow-y-auto text-sm" id="answer-list"></div>
           <!-- gpt 对话列表 -->
 					<div class="flex-1 overflow-y-auto hidden" id="conversation-list"></div>
@@ -814,23 +840,45 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             <!-- 更多 -->            
 						<div id="chat-button-wrapper" class="absolute bottom-14 items-center more-menu right-8 border border-gray-200 shadow-xl hidden text-xs">
             <!-- 清除对话 -->
-							<button class="flex gap-2 items-center justify-start p-2 w-full" id="clear-conversation-button"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>&nbsp;${clearConversationButtonName}</button>	
+							<button title=${clearConversationButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="clear-conversation-button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                &nbsp;${clearConversationButtonName}
+              </button>	
 							<!-- 显示对话 -->
-              <button class="flex gap-2 items-center justify-start p-2 w-full" id="show-conversations-button"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" /></svg>&nbsp;${showConversationsButtonName}</button>
+              <button title=${showConversationsButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="show-conversations-button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+                </svg>
+                &nbsp;${showConversationsButtonName}
+              </button>
 							<!-- 更新设置 -->
-              <button class="flex gap-2 items-center justify-start p-2 w-full" id="update-settings-button"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /></svg>&nbsp;${updateSettingsButtonName}</button>
+              <button title=${updateSettingsButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="update-settings-button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                &nbsp;${updateSettingsButtonName}
+              </button>
 							<!-- 导出对话为markdown -->
-              <button class="flex gap-2 items-center justify-start p-2 w-full" id="export-conversation-2-markdown-button"><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>&nbsp;${exportConversationButtonName}</button>
+              <button title=${exportConversationButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="export-conversation-2-markdown-button">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                </svg>
+                &nbsp;${exportConversationButtonName}
+              </button>
 						</div>
 
 						<div id="question-input-buttons" class="right-6 absolute p-0.5 ml-5 flex items-center gap-2">
 							<!-- 展示更多按钮 -->
-              <button id="more-button" title="More actions" class="rounded-lg p-0.5">
+              <button id="more-button" title=${moreActionsButtonTitle} class="rounded-lg p-0.5">
 								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg>
 							</button>
               <!-- 提交问题按钮 -->
-							<button id="submit-question-button" title="Submit prompt" class="submit-question-button rounded-lg p-0.5">
-								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" /></svg>
+							<button id="submit-question-button" title=${submitQuestionButtonTitle} class="submit-question-button rounded-lg p-0.5">
+								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                </svg>
 							</button>
 						</div>
 					</div>
@@ -852,5 +900,22 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
     return text;
+  }
+
+  /**
+   * @desc 获取webview的内容
+   * @returns {string}
+   */
+  private getWebViewContext(): string {
+    const webviewHtmlPath = path.join(this.context.extensionPath, 'media', 'web-view.html');
+    const documentPath = path.dirname(webviewHtmlPath);
+    // fs 读取文件
+    let html = fs.readFileSync(webviewHtmlPath, 'utf-8');
+    // vscode 不支持直接加载本地资源，需要替换成其专有路径格式，这里只是简单的将样式和JS的路径替换
+    return html.replace(/(<link.+?href="|<script.+?src="|<img.+?src=")(.+?)"/g, (_m, $1, $2) => {
+      return `${$1}${this.webView?.webview.asWebviewUri(
+        vscode.Uri.file(path.resolve(documentPath, $2)),
+      )}"`;
+    });
   }
 }

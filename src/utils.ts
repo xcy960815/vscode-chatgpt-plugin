@@ -136,8 +136,6 @@ export async function browserPostEventStream(
   let response = '';
 
   try {
-    console.log('browserPostEventStream', url, accessToken, body);
-
     let abortController: AbortController = null;
     if (timeoutMs) {
       abortController = new AbortController();
@@ -154,8 +152,6 @@ export async function browserPostEventStream(
         'content-type': 'application/json',
       },
     });
-
-    console.log('browserPostEventStream response', res);
 
     if (!res.ok) {
       return {
