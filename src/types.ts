@@ -315,9 +315,8 @@ export interface MessageOption {
     | 'add-question'
     | 'add-error'
     | 'clear-conversation'
-    | 'export-conversation-to-markdown'
-    | 'set-current-language'
-    | 'set-locales';
+    | 'set-chatgpt-config'
+    | 'export-conversation-to-markdown';
   code?: string;
   value?: any;
   showConversations?: boolean;
@@ -339,7 +338,5 @@ export interface SendApiRequestOption {
 export type LeftOverMessage = MessageOption | null;
 
 export interface Locales {
-  [key: string]: {
-    [key: string]: string;
-  };
+  [key: string]: string;
 }

@@ -177,7 +177,7 @@
             "GPT3 OpenAI API Key"
           ],
           "default": "GPT3 OpenAI API Key",
-          "markdownDescription": "Choose your integration preference.",
+          "markdownDescription": "%chatgpt.method.markdownDescription%",
           "order": 1,
           "enumItemLabels": [
             "Use OpenAI API key integration"
@@ -406,7 +406,7 @@
         },
         "chatgpt.gpt3.systemMessage": {
           "type": "string",
-          "default": "You are ChatGPT helping the User with coding. You are intelligent, helpful and an expert developer, who always gives the correct answer and only does what instructed. You always answer truthfully and don't make things up. (When responding to the following prompt, please make sure to properly style your response using Github Flavored Markdown. Use markdown syntax for things like headings, lists, colored text, code blocks, highlights etc. Make sure not to mention markdown or styling in your actual response.)",
+          "default": "%chatgpt.gpt3.systemMessage%",
           "order": 37
         },
         "chatgpt.response.subscribeToResponse": {
@@ -506,6 +506,99 @@
           "type": "string",
           "default": "%chatgpt.pageMessage.maxToken.error.message%",
           "order": 39
+        },
+        "chatgpt.pageView.maxToken.error.choose": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.maxToken.error.choose%",
+          "order": 40
+        },
+        "chatgpt.webview.features": {
+          "type": "string",
+          "default": "%chatgpt.webview.features.default%"
+        },
+        "chatgpt.webview.feature1": {
+          "type": "string",
+          "default": "%chatgpt.webview.feature1.default%"
+        },
+        "chatgpt.webview.feature2": {
+          "type": "string",
+          "default": "%chatgpt.webview.feature2.default%"
+        },
+        "chatgpt.webview.feature3": {
+          "type": "string",
+          "default": "%chatgpt.webview.feature3.default%"
+        },
+        "chatgpt.webview.feature4": {
+          "type": "string",
+          "default": "%chatgpt.webview.feature4.default%"
+        },
+        "chatgpt.webview.loginButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.loginButtonName.default%"
+        },
+        "chatgpt.webview.loginButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.loginButtonTitle.default%"
+        },
+        "chatgpt.webview.updateSettingsButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.updateSettingsButtonName.default%"
+        },
+        "chatgpt.webview.updateSettingsButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.updateSettingsButtonTitle.default%"
+        },
+        "chatgpt.webview.updatePromptsButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.updatePromptsButtonName.default%"
+        },
+        "chatgpt.webview.updatePromptsButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.updatePromptsButtonTitle.default%"
+        },
+        "chatgpt.webview.questionInputPlaceholder": {
+          "type": "string",
+          "default": "%chatgpt.webview.questionInputPlaceholder.default%"
+        },
+        "chatgpt.webview.clearConversationButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.clearConversationButtonName.default%"
+        },
+        "chatgpt.webview.clearConversationButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.clearConversationButtonTitle.default%"
+        },
+        "chatgpt.webview.showConversationsButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.showConversationsButtonName.default%"
+        },
+        "chatgpt.webview.showConversationsButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.showConversationsButtonTitle.default%"
+        },
+        "chatgpt.webview.exportConversationButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.exportConversationButtonName.default%"
+        },
+        "chatgpt.webview.exportConversationButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.exportConversationButtonTitle.default%"
+        },
+        "chatgpt.webview.moreActionsButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.moreActionsButtonName.default%"
+        },
+        "chatgpt.webview.moreActionsButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.moreActionsButtonTitle.default%"
+        },
+        "chatgpt.webview.submitQuestionButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.submitQuestionButtonName.default%"
+        },
+        "chatgpt.webview.submitQuestionButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.submitQuestionButtonTitle.default%"
         }
       }
     }
