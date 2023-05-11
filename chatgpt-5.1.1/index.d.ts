@@ -1,12 +1,12 @@
+// declare module 'chatgpt-5.1.1' {
+
 import fetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
 type Role = 'user' | 'assistant' | 'system';
-type TFetch = typeof fetch;
+type Fetch = typeof fetch;
 type ChatGPTAPIOptions = {
   apiKey: string;
-  /** @defaultValue `'https://api.openai.com'` **/
   apiBaseUrl?: string;
-  /** @defaultValue `false` **/
   debug?: boolean;
   completionParams?: Partial<Omit<openai.CreateChatCompletionRequest, 'messages' | 'n' | 'stream'>>;
   systemMessage?: string;
@@ -19,7 +19,7 @@ type ChatGPTAPIOptions = {
   messageStore?: Keyv;
   getMessageById?: GetMessageByIdFunction;
   upsertMessage?: UpsertMessageFunction;
-  fetch?: TFetch;
+  fetch?: Fetch;
 };
 type SendMessageOptions = {
   /** The name of a user in a multi-user chat. */
@@ -60,58 +60,30 @@ declare class ChatGPTError extends Error {
   accountId?: string;
   reason?: string;
 }
-/** Returns a chat message from a store by it's ID (or null if not found). */
 type GetMessageByIdFunction = (id: string) => Promise<ChatMessage>;
-/** Upserts a chat message to a store. */
 type UpsertMessageFunction = (message: ChatMessage) => Promise<void>;
-/**
- * https://chat.openapi.com/backend-api/conversation
- */
 type ConversationJSONBody = {
-  /**
-   * The action to take
-   */
   action: string;
-  /**
-   * The ID of the conversation
-   */
+
   conversation_id?: string;
-  /**
-   * Prompts to provide
-   */
+
   messages: Prompt[];
-  /**
-   * The model to use
-   */
+
   model: string;
-  /**
-   * The parent message ID
-   */
+
   parent_message_id: string;
 };
 type Prompt = {
-  /**
-   * The content of the prompt
-   */
   content: PromptContent;
-  /**
-   * The ID of the prompt
-   */
+
   id: string;
-  /**
-   * The role played in the prompt
-   */
+
   role: Role;
 };
 type ContentType = 'text';
 type PromptContent = {
-  /**
-   * The content type of the prompt
-   */
   content_type: ContentType;
-  /**
-   * The parts to the prompt
-   */
+
   parts: string[];
 };
 type ConversationResponseEvent = {
@@ -153,29 +125,10 @@ declare namespace openai {
       },
     ];
   }
-  /**
-   *
-   * @export
-   * @interface ChatCompletionRequestMessage
-   */
+
   interface ChatCompletionRequestMessage {
-    /**
-     * The role of the author of this message.
-     * @type {string}
-     * @memberof ChatCompletionRequestMessage
-     */
     role: ChatCompletionRequestMessageRoleEnum;
-    /**
-     * The contents of the message
-     * @type {string}
-     * @memberof ChatCompletionRequestMessage
-     */
     content: string;
-    /**
-     * The name of the user in a multi-user chat
-     * @type {string}
-     * @memberof ChatCompletionRequestMessage
-     */
     name?: string;
   }
   const ChatCompletionRequestMessageRoleEnum: {
@@ -185,23 +138,9 @@ declare namespace openai {
   };
   type ChatCompletionRequestMessageRoleEnum =
     (typeof ChatCompletionRequestMessageRoleEnum)[keyof typeof ChatCompletionRequestMessageRoleEnum];
-  /**
-   *
-   * @export
-   * @interface ChatCompletionResponseMessage
-   */
   interface ChatCompletionResponseMessage {
-    /**
-     * The role of the author of this message.
-     * @type {string}
-     * @memberof ChatCompletionResponseMessage
-     */
     role: ChatCompletionResponseMessageRoleEnum;
-    /**
-     * The contents of the message
-     * @type {string}
-     * @memberof ChatCompletionResponseMessage
-     */
+
     content: string;
   }
   const ChatCompletionResponseMessageRoleEnum: {
@@ -211,11 +150,7 @@ declare namespace openai {
   };
   type ChatCompletionResponseMessageRoleEnum =
     (typeof ChatCompletionResponseMessageRoleEnum)[keyof typeof ChatCompletionResponseMessageRoleEnum];
-  /**
-   *
-   * @export
-   * @interface CreateChatCompletionRequest
-   */
+
   interface CreateChatCompletionRequest {
     /**
      * ID of the model to use. Currently, only `gpt-3.5-turbo` and `gpt-3.5-turbo-0301` are supported.
@@ -290,108 +225,31 @@ declare namespace openai {
      */
     user?: string;
   }
-  /**
-   * @type CreateChatCompletionRequestStop
-   * Up to 4 sequences where the API will stop generating further tokens.
-   * @export
-   */
+
   type CreateChatCompletionRequestStop = Array<string> | string;
-  /**
-   *
-   * @export
-   * @interface CreateChatCompletionResponse
-   */
   interface CreateChatCompletionResponse {
-    /**
-     *
-     * @type {string}
-     * @memberof CreateChatCompletionResponse
-     */
     id: string;
-    /**
-     *
-     * @type {string}
-     * @memberof CreateChatCompletionResponse
-     */
     object: string;
-    /**
-     *
-     * @type {number}
-     * @memberof CreateChatCompletionResponse
-     */
     created: number;
-    /**
-     *
-     * @type {string}
-     * @memberof CreateChatCompletionResponse
-     */
     model: string;
-    /**
-     *
-     * @type {Array<CreateChatCompletionResponseChoicesInner>}
-     * @memberof CreateChatCompletionResponse
-     */
     choices: Array<CreateChatCompletionResponseChoicesInner>;
-    /**
-     *
-     * @type {CreateCompletionResponseUsage}
-     * @memberof CreateChatCompletionResponse
-     */
     usage?: CreateCompletionResponseUsage;
   }
-  /**
-   *
-   * @export
-   * @interface CreateChatCompletionResponseChoicesInner
-   */
   interface CreateChatCompletionResponseChoicesInner {
-    /**
-     *
-     * @type {number}
-     * @memberof CreateChatCompletionResponseChoicesInner
-     */
     index?: number;
-    /**
-     *
-     * @type {ChatCompletionResponseMessage}
-     * @memberof CreateChatCompletionResponseChoicesInner
-     */
     message?: ChatCompletionResponseMessage;
-    /**
-     *
-     * @type {string}
-     * @memberof CreateChatCompletionResponseChoicesInner
-     */
     finish_reason?: string;
   }
-  /**
-   *
-   * @export
-   * @interface CreateCompletionResponseUsage
-   */
   interface CreateCompletionResponseUsage {
-    /**
-     *
-     * @type {number}
-     * @memberof CreateCompletionResponseUsage
-     */
     prompt_tokens: number;
-    /**
-     *
-     * @type {number}
-     * @memberof CreateCompletionResponseUsage
-     */
+
     completion_tokens: number;
-    /**
-     *
-     * @type {number}
-     * @memberof CreateCompletionResponseUsage
-     */
+
     total_tokens: number;
   }
 }
 
-declare class ChatGPTAPI {
+declare class ChATGPTAPI {
   protected _apiKey: string;
   protected _apiBaseUrl: string;
   protected _debug: boolean;
@@ -399,48 +257,12 @@ declare class ChatGPTAPI {
   protected _completionParams: Omit<openai.CreateChatCompletionRequest, 'messages' | 'n'>;
   protected _maxModelTokens: number;
   protected _maxResponseTokens: number;
-  protected _fetch: TFetch;
+  protected _fetch: Fetch;
   protected _getMessageById: GetMessageByIdFunction;
   protected _upsertMessage: UpsertMessageFunction;
   protected _messageStore: Keyv<ChatMessage>;
   protected _organization: string;
-  /**
-   * Creates a new client wrapper around OpenAI's chat completion API, mimicing the official ChatGPT webapp's functionality as closely as possible.
-   *
-   * @param apiKey - OpenAI API key (required).
-   * @param apiBaseUrl - Optional override for the OpenAI API base URL.
-   * @param debug - Optional enables logging debugging info to stdout.
-   * @param completionParams - Param overrides to send to the [OpenAI chat completion API](https://platform.openai.com/docs/api-reference/chat/create). Options like `temperature` and `presence_penalty` can be tweaked to change the personality of the assistant.
-   * @param maxModelTokens - Optional override for the maximum number of tokens allowed by the model's context. Defaults to 4096.
-   * @param maxResponseTokens - Optional override for the minimum number of tokens allowed for the model's response. Defaults to 1000.
-   * @param messageStore - Optional [Keyv](https://github.com/jaredwray/keyv) store to persist chat messages to. If not provided, messages will be lost when the process exits.
-   * @param getMessageById - Optional function to retrieve a message by its ID. If not provided, the default implementation will be used (using an in-memory `messageStore`).
-   * @param upsertMessage - Optional function to insert or update a message. If not provided, the default implementation will be used (using an in-memory `messageStore`).
-   * @param organization - Optional organization string for openai calls
-   * @param fetch - Optional override for the `fetch` implementation to use. Defaults to the global `fetch` function.
-   */
   constructor(opts: ChatGPTAPIOptions);
-  /**
-   * Sends a message to the OpenAI chat completions endpoint, waits for the response
-   * to resolve, and returns the response.
-   *
-   * If you want your response to have historical context, you must provide a valid `parentMessageId`.
-   *
-   * If you want to receive a stream of partial responses, use `opts.onProgress`.
-   *
-   * Set `debug: true` in the `ChatGPTAPI` constructor to log more info on the full prompt sent to the OpenAI chat completions API. You can override the `systemMessage` in `opts` to customize the assistant's instructions.
-   *
-   * @param message - The prompt message to send
-   * @param opts.parentMessageId - Optional ID of the previous message in the conversation (defaults to `undefined`)
-   * @param opts.messageId - Optional ID of the message to send (defaults to a random UUID)
-   * @param opts.systemMessage - Optional override for the chat "system message" which acts as instructions to the model (defaults to the ChatGPT system message)
-   * @param opts.timeoutMs - Optional timeout in milliseconds (defaults to no timeout)
-   * @param opts.onProgress - Optional callback which will be invoked every time the partial response is updated
-   * @param opts.abortSignal - Optional callback used to abort the underlying `fetch` call using an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
-   * @param completionParams - Optional overrides to send to the [OpenAI chat completion API](https://platform.openai.com/docs/api-reference/chat/create). Options like `temperature` and `presence_penalty` can be tweaked to change the personality of the assistant.
-   *
-   * @returns The response from ChatGPT
-   */
   sendMessage(text: string, opts?: SendMessageOptions): Promise<ChatMessage>;
   get apiKey(): string;
   set apiKey(apiKey: string);
@@ -455,14 +277,14 @@ declare class ChatGPTAPI {
 }
 
 export {
-  ChatGPTAPI,
+  ChATGPTAPI,
   ChatGPTAPIOptions,
   ChatGPTError,
   ChatMessage,
   ContentType,
   ConversationJSONBody,
   ConversationResponseEvent,
-  TFetch,
+  Fetch,
   GetMessageByIdFunction,
   Message,
   MessageActionType,

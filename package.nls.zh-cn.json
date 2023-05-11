@@ -78,7 +78,7 @@
   "chatgpt.pageMessage.adhocCommand.inputBox.title": "为您的临时命令添加前缀",
   "chatgpt.pageMessage.adhocCommand.inputBox.prompt": "使用您的自定义提示为您的代码添加前缀",
   "chatgpt.pageMessage.adhocCommand.inputBox.placeholder": "随便提问...",
-  "chatgpt.pageMessage.noApiKey.message": "请添加您的 API 密钥以使用 OpenAI 官方 API。 出于安全原因，不鼓励在设置中存储 API 密钥，但您仍然可以选择使用它来将其保存在设置中。 相反，您也可以一次性临时设置 API Key：您需要在重启 vs-code 后重新输入。",
+  "chatgpt.pageMessage.noApiKey.message": "请添加您的 API 密钥以使用 OpenAI 官方 API。 出于安全原因，不鼓励在设置中存储 API 密钥，但您仍然可以选择使用它来将其保存在设置中。 相反，您也可以一次性临时设置 API Key, 需要您在重启 vscode 后重新输入。",
   "chatgpt.pageMessage.noApiKey.choose1": "存储在会话中（推荐）",
   "chatgpt.pageMessage.noApiKey.choose2": "打开设置",
   "chatgpt.pageMessage.noApiKey.inputBox.title": "在会话中存储 OpenAI API 密钥",
