@@ -1,19 +1,29 @@
-/* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/naming-convention */
-// Adapted from https://github.com/transitive-bullshit/chatgpt-api
+import {
+  ChatGPTAPIOptions,
+  ChatMessage,
+  GetMessageByIdFunction,
+  SendMessageOptions,
+  UpsertMessageFunction,
+  openai,
+} from './index';
+// import type { EventSourceParseCallback } from "eventsource-parser";
 import { createParser } from 'eventsource-parser';
+import fetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
 import pTimeout from 'p-timeout';
 import QuickLRU from 'quick-lru';
 import { v4 as uuidv4 } from 'uuid';
-var ChatGPTError = class extends Error {};
-var openai;
-((openai2) => {})(openai || (openai = {}));
 
-var fetch = globalThis.fetch;
+class ChatGPTError extends Error {
+  statusCode?: number;
+  statusText?: string;
+  isFinal?: boolean;
+  accountId?: string;
+  reason?: string;
+}
 
-// src/stream-async-iterable.ts
-async function* streamAsyncIterable(stream) {
+async function* streamAsyncIterable(stream: ReadableStream<Uint8Array>): AsyncIterable<Uint8Array> {
   const reader = stream.getReader();
   try {
     while (true) {
@@ -28,8 +38,11 @@ async function* streamAsyncIterable(stream) {
   }
 }
 
-// src/fetch-sse.ts
-async function fetchSSE(url, options, fetch2 = fetch) {
+async function fetchSSE(
+  url: string,
+  options: { [key: string]: any; onMessage: (message: string) => void },
+  fetch2: typeof fetch = fetch,
+) {
   const { onMessage, ...fetchOptions } = options;
   const res = await fetch2(url, fetchOptions);
   if (!res.ok) {
@@ -52,7 +65,7 @@ async function fetchSSE(url, options, fetch2 = fetch) {
     }
   });
   if (!res.body.getReader) {
-    const body = res.body;
+    const body: any = res.body;
     if (!body.on || !body.read) {
       throw new ChatGPTError('unsupported "fetch" implementation');
     }
@@ -70,11 +83,27 @@ async function fetchSSE(url, options, fetch2 = fetch) {
   }
 }
 
-var CHATGPT_MODEL = 'gpt-3.5-turbo';
-var USER_LABEL_DEFAULT = 'User';
-var ASSISTANT_LABEL_DEFAULT = 'ChatGPT';
-var ChatGPTAPI = class {
-  constructor(opts) {
+const CHATGPT_MODEL = 'gpt-3.5-turbo';
+const USER_LABEL_DEFAULT = 'User';
+const ASSISTANT_LABEL_DEFAULT = 'ChatGPT';
+
+class ChatGPTAPI {
+  private _apiKey: string;
+  private _apiBaseUrl: string;
+  private _organization?: string;
+  private _debug: boolean;
+  private _fetch: typeof fetch;
+  private _completionParams: Partial<
+    Omit<openai.CreateChatCompletionRequest, 'messages' | 'n' | 'stream'>
+  >;
+  private _systemMessage: string;
+  private _maxModelTokens: number;
+  private _maxResponseTokens: number;
+  private _getMessageById: GetMessageByIdFunction;
+  private _upsertMessage: UpsertMessageFunction;
+  private _messageStore: Keyv<ChatMessage>;
+
+  constructor(options: ChatGPTAPIOptions) {
     const {
       apiKey,
       apiBaseUrl = 'https://api.openai.com',
@@ -83,12 +112,12 @@ var ChatGPTAPI = class {
       messageStore,
       completionParams,
       systemMessage,
-      maxModelTokens = 4e3,
-      maxResponseTokens = 1e3,
+      maxModelTokens = 4000,
+      maxResponseTokens = 1000,
       getMessageById,
       upsertMessage,
       fetch: fetch2 = fetch,
-    } = opts;
+    } = options;
     this._apiKey = apiKey;
     this._apiBaseUrl = apiBaseUrl;
     this._organization = organization;
@@ -101,22 +130,20 @@ var ChatGPTAPI = class {
       presence_penalty: 1,
       ...completionParams,
     };
-    this._systemMessage = systemMessage;
-    if (this._systemMessage === void 0) {
-      const currentDate = /* @__PURE__ */ new Date().toISOString().split('T')[0];
-      this._systemMessage = `You are ChatGPT, a large language model trained by OpenAI. Answer as concisely as possible.
-Knowledge cutoff: 2021-09-01
-Current date: ${currentDate}`;
-    }
+    this._systemMessage =
+      systemMessage ||
+      `You are ChatGPT, a large language model trained by OpenAI.Answer as concisely as possible.Knowledge cutoff: 2021 - 09 - 01 Current date: ${
+        new Date().toISOString().split('T')[0]
+      }`;
     this._maxModelTokens = maxModelTokens;
     this._maxResponseTokens = maxResponseTokens;
-    this._getMessageById = getMessageById ?? this._defaultGetMessageById;
-    this._upsertMessage = upsertMessage ?? this._defaultUpsertMessage;
+    this._getMessageById = getMessageById || this._defaultGetMessageById;
+    this._upsertMessage = upsertMessage || this._defaultUpsertMessage;
     if (messageStore) {
       this._messageStore = messageStore;
     } else {
-      this._messageStore = new Keyv({
-        store: new QuickLRU({ maxSize: 1e4 }),
+      this._messageStore = new Keyv<ChatMessage>({
+        store: new QuickLRU({ maxSize: 10000 }),
       });
     }
     if (!this._apiKey) {
@@ -129,28 +156,8 @@ Current date: ${currentDate}`;
       throw new Error('Invalid "fetch" is not a function');
     }
   }
-  /**
-   * Sends a message to the OpenAI chat completions endpoint, waits for the response
-   * to resolve, and returns the response.
-   *
-   * If you want your response to have historical context, you must provide a valid `parentMessageId`.
-   *
-   * If you want to receive a stream of partial responses, use `opts.onProgress`.
-   *
-   * Set `debug: true` in the `ChatGPTAPI` constructor to log more info on the full prompt sent to the OpenAI chat completions API. You can override the `systemMessage` in `opts` to customize the assistant's instructions.
-   *
-   * @param message - The prompt message to send
-   * @param opts.parentMessageId - Optional ID of the previous message in the conversation (defaults to `undefined`)
-   * @param opts.messageId - Optional ID of the message to send (defaults to a random UUID)
-   * @param opts.systemMessage - Optional override for the chat "system message" which acts as instructions to the model (defaults to the ChatGPT system message)
-   * @param opts.timeoutMs - Optional timeout in milliseconds (defaults to no timeout)
-   * @param opts.onProgress - Optional callback which will be invoked every time the partial response is updated
-   * @param opts.abortSignal - Optional callback used to abort the underlying `fetch` call using an [AbortController](https://developer.mozilla.org/en-US/docs/Web/API/AbortController)
-   * @param completionParams - Optional overrides to send to the [OpenAI chat completion API](https://platform.openai.com/docs/api-reference/chat/create). Options like `temperature` and `presence_penalty` can be tweaked to change the personality of the assistant.
-   *
-   * @returns The response from ChatGPT
-   */
-  async sendMessage(text, opts = {}) {
+
+  public async sendMessage(text: string, options: SendMessageOptions): Promise<any> {
     const {
       parentMessageId,
       messageId = uuidv4(),
@@ -158,32 +165,41 @@ Current date: ${currentDate}`;
       onProgress,
       stream = onProgress ? true : false,
       completionParams,
-    } = opts;
-    let { abortSignal } = opts;
-    let abortController = null;
+    }: {
+      parentMessageId?: string;
+      messageId?: string;
+      timeoutMs?: number;
+      onProgress?: (message: any) => void;
+      stream?: boolean;
+      completionParams?: any;
+    } = options;
+    let { abortSignal }: { abortSignal?: AbortSignal } = options;
+    let abortController: AbortController | null = null;
     if (timeoutMs && !abortSignal) {
       abortController = new AbortController();
       abortSignal = abortController.signal;
     }
-    const message = {
+    const message: StoredMessage = {
       role: 'user',
       id: messageId,
       parentMessageId,
       text,
     };
     await this._upsertMessage(message);
-    const { messages } = await this._buildMessages(text, opts);
-    console.log('messages', messages);
+    const { messages } = await this._buildMessages(text, options);
+
     const result = {
       role: 'assistant',
       id: uuidv4(),
       parentMessageId: messageId,
       text: '',
+      detail: null,
+      delta: null,
     };
     const responseP = new Promise(async (resolve, reject) => {
       var _a, _b;
       const url = `${this._apiBaseUrl}/v1/chat/completions`;
-      const headers = {
+      const headers: { [key: string]: string } = {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${this._apiKey}`,
       };
@@ -204,7 +220,7 @@ Current date: ${currentDate}`;
             headers,
             body: JSON.stringify(body),
             signal: abortSignal,
-            onMessage: (data) => {
+            onMessage: (data: string) => {
               var _a2;
               if (data === '[DONE]') {
                 result.text = result.text.trim();
@@ -229,9 +245,9 @@ Current date: ${currentDate}`;
                   }
                   onProgress == null ? void 0 : onProgress(result);
                 }
-              } catch (err) {
+              } catch (error) {
                 console.warn('OpenAI stream SEE event unexpected error', err);
-                return reject(err);
+                return reject(error);
               }
             },
           },
@@ -257,10 +273,10 @@ Current date: ${currentDate}`;
           if (this._debug) {
             console.log(response);
           }
-          if (response == null ? void 0 : response.id) {
+          if (response?.id) {
             result.id = response.id;
           }
-          if ((_a = response == null ? void 0 : response.choices) == null ? void 0 : _a.length) {
+          if (response?.choices?.length) {
             const message2 = response.choices[0].message;
             result.text = message2.content;
             if (message2.role) {
@@ -269,13 +285,7 @@ Current date: ${currentDate}`;
           } else {
             const res2 = response;
             return reject(
-              new Error(
-                `OpenAI error: ${
-                  ((_b = res2 == null ? void 0 : res2.detail) == null ? void 0 : _b.message) ||
-                  (res2 == null ? void 0 : res2.detail) ||
-                  'unknown'
-                }`,
-              ),
+              new Error(`OpenAI error: ${res2?.detail?.message || res2?.detail || 'unknown'}`),
             );
           }
           result.detail = response;
@@ -290,7 +300,7 @@ Current date: ${currentDate}`;
     if (timeoutMs) {
       if (abortController) {
         responseP.cancel = () => {
-          abortController.abort();
+          abortController?.abort();
         };
       }
       return pTimeout(responseP, {
@@ -301,18 +311,16 @@ Current date: ${currentDate}`;
       return responseP;
     }
   }
-  get apiKey() {
-    return this._apiKey;
-  }
-  set apiKey(apiKey) {
-    this._apiKey = apiKey;
-  }
-  async _buildMessages(text, opts) {
-    const { systemMessage = this._systemMessage } = opts;
-    let { parentMessageId } = opts;
-    const userLabel = USER_LABEL_DEFAULT;
-    const assistantLabel = ASSISTANT_LABEL_DEFAULT;
-    let messages = [];
+
+  private async _buildMessages(
+    text: string,
+    options: BuildMessagesOpts,
+  ): Promise<{ messages: Message[] }> {
+    const { systemMessage = this._systemMessage } = options;
+    let { parentMessageId } = options;
+    const userLabel = 'User';
+    const assistantLabel = 'Assistant';
+    let messages: Message[] = [];
     if (systemMessage) {
       messages.push({
         role: 'system',
@@ -325,41 +333,39 @@ Current date: ${currentDate}`;
           {
             role: 'user',
             content: text,
-            name: opts.name,
+            name: options.name,
           },
         ])
       : messages;
+
     do {
       const prompt = nextMessages
-        .reduce((prompt2, message) => {
+        .reduce<string[]>((prompt2, message) => {
           switch (message.role) {
             case 'system':
-              return prompt2.concat([
-                `Instructions:
-${message.content}`,
-              ]);
+              return prompt2.concat([`Instructions:\n${message.content}`]);
             case 'user':
-              return prompt2.concat([
-                `${userLabel}:
-${message.content}`,
-              ]);
+              return prompt2.concat([`${userLabel}:\n${message.content}`]);
             default:
-              return prompt2.concat([
-                `${assistantLabel}:
-${message.content}`,
-              ]);
+              return prompt2.concat([`${assistantLabel}:\n${message.content}`]);
           }
         }, [])
         .join('\n\n');
+
       messages = nextMessages;
+
       if (!parentMessageId) {
         break;
       }
+
       const parentMessage = await this._getMessageById(parentMessageId);
+
       if (!parentMessage) {
         break;
       }
+
       const parentMessageRole = parentMessage.role || 'user';
+
       nextMessages = nextMessages.slice(0, systemMessageOffset).concat([
         {
           role: parentMessageRole,
@@ -368,20 +374,17 @@ ${message.content}`,
         },
         ...nextMessages.slice(systemMessageOffset),
       ]);
+
       parentMessageId = parentMessage.parentMessageId;
     } while (true);
+
     return { messages };
   }
-  // protected get _isCodexModel() {
-  //   return this._completionParams.model.startsWith('code-')
-  // }
-  async _defaultGetMessageById(id) {
-    const res = await this._messageStore.get(id);
-    return res;
+  private _defaultGetMessageById(id: string): Promise<ChatMessage | undefined> {
+    return this._messageStore.get(id);
   }
-  async _defaultUpsertMessage(message) {
+
+  private async _defaultUpsertMessage(message: ChatMessage): Promise<void> {
     await this._messageStore.set(message.id, message);
   }
-};
-export { ChatGPTAPI, ChatGPTError, openai };
-//# sourceMappingURL=index.js.map
+}
