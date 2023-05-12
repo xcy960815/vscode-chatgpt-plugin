@@ -15,10 +15,6 @@ const menuCommands = [
 ];
 
 export async function activate(context: vscode.ExtensionContext) {
-  // vscode.commands.executeCommand(
-  //   'workbench.action.openSettings'
-  // );
-
   // 注册webview
   const chatGptViewProvider = new ChatgptViewProvider(context);
   const webviewViewProvider = vscode.window.registerWebviewViewProvider(
