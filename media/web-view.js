@@ -390,7 +390,7 @@
     // 点击设置提示按钮
     if (e.target?.id === 'settings-prompt-button') {
       vscode.postMessage({
-        type: 'open-settings-prompt',
+        type: 'open-prompt-settings',
       });
       return;
     }

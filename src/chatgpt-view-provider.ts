@@ -6,19 +6,19 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-import { ChatGPTAPI as ChatGPTAPI3 } from '../chatgpt-4.7.2/index';
-import { ChatGPTAPI as ChatGPTAPI35 } from '../chatgpt-5.1.1/index';
+// import { ChatGPTAPI as ChatGPTAPI3 } from '../chatgpt-4.7.2/index';
+// import { ChatGPTAPI as ChatGPTAPI35 } from '../chatgpt-5.1.1/index';
+import { ChatGPTAPI as ChatGPTAPI3 } from './chatgpt-4.7.2';
+import { ChatGPTAPI as ChatGPTAPI35 } from './chatgpt-5.1.1';
 import {
   AuthType,
   LeftOverMessage,
   LoginMethod,
-  MessageOption,
   SendApiRequestOption,
+  SendMessageOption,
 } from './types';
 export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
-  // public currentLanguage: typeof vscode.env.language = vscode.env.language;
-  // public locales: Locales = require(`../package.nls${vscode.env.language === 'en' ? "" : `${vscode.env.language}`}.json`);
   // 是否允许 ChatGPT 机器人回答您的问题时接收通知。
   public subscribeToResponse: boolean;
   public autoScroll: boolean;
@@ -34,7 +34,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private proxyServer?: string;
   private loginMethod?: LoginMethod;
   private authType?: AuthType;
-
   // 问题数量
   private questionCount: number = 0;
   private inProgress: boolean = false;
@@ -130,17 +129,16 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           // 打开设置
           vscode.commands.executeCommand(
             'workbench.action.openSettings',
-            '@ext:YOUR_PUBLISHER_NAME.vscode-chatgpt chatgpt.',
+            '@ext:YOUR_PUBLISHER_NAME.vscode-chatgpt-plugin chatgpt.',
           );
 
           this.logEvent('settings-opened');
           break;
-        case 'open-settings-prompt':
+        case 'open-prompt-settings':
           vscode.commands.executeCommand(
             'workbench.action.openSettings',
-            '@ext:YOUR_PUBLISHER_NAME.vscode-chatgpt promptPrefix',
+            '@ext:YOUR_PUBLISHER_NAME.vscode-chatgpt-plugin promptPrefix',
           );
-
           this.logEvent('settings-prompt-opened');
           break;
         case 'show-conversations':
@@ -166,7 +164,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     if (!!this.leftOverMessage) {
       // If there were any messages that wasn't delivered, render after resolveWebView is called.
-      this.sendMessage(this.leftOverMessage as MessageOption);
+      this.sendMessage(this.leftOverMessage as SendMessageOption);
       this.leftOverMessage = null;
     }
   }
@@ -218,7 +216,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.useAutoLogin = false;
     this.clearSession();
   }
-
+  /**
+   * @desc 设置认证类型
+   */
   public setAuthType(): void {
     this.authType = this.chatGptConfig.get('authenticationType');
     this.clearSession();
@@ -616,11 +616,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
   /**
    * @desc 消息发送器 将消息发送到webview
-   * @param {MessageOption} message
+   * @param {SendMessageOption} message
    * @param {boolean} ignoreMessageIfNullWebView
    * @returns {void}
    */
-  public sendMessage(messageOption: MessageOption, ignoreMessageIfNullWebView?: boolean): void {
+  public sendMessage(messageOption: SendMessageOption, ignoreMessageIfNullWebView?: boolean): void {
     if (this.webView) {
       this.webView?.webview.postMessage(messageOption);
     } else if (!ignoreMessageIfNullWebView) {
