@@ -40,11 +40,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private abortController?: AbortController;
   private currentMessageId: string = '';
   private response: string = '';
-
   private leftOverMessage?: LeftOverMessage;
-
   private chatGptConfig: vscode.WorkspaceConfiguration;
-
   /**
    * 如果消息没有被渲染，则延迟渲染
    * 在调用 resolveWebviewView 之前的时间。
@@ -246,6 +243,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     }
 
     this.chromiumPath = this.chatGptConfig.get('chromiumPath') || path;
+
     this.clearSession();
   }
 
@@ -267,119 +265,144 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private get isGpt35Model(): boolean {
     return !!this.model?.startsWith('gpt-');
   }
-  /**
-   * @desc 回话前准备
-   * @param {boolean} modelChanged
-   * @returns {Promise<boolean>}
-   */
+
   public async prepareConversation(modelChanged?: boolean): Promise<boolean> {
     if (modelChanged && this.useAutoLogin) {
       return false;
     }
-    if (this.useGpt3) {
-      if (
-        (this.isGpt35Model && !this.apiGpt35) ||
-        (!this.isGpt35Model && !this.apiGpt3) ||
-        modelChanged
-      ) {
-        // 全局状态
-        const globalState = this.context.globalState;
-        let chatgptApiKey =
-          this.chatGptConfig.get<string>('gpt3.apiKey') ||
-          globalState.get<string>('chatgpt-gpt3-apiKey');
-        const organization = this.chatGptConfig.get<string>('gpt3.organization');
-        const max_tokens = this.chatGptConfig.get<number>('gpt3.maxTokens');
-        const temperature = this.chatGptConfig.get<number>('gpt3.temperature');
-        const top_p = this.chatGptConfig.get<number>('gpt3.top_p');
-        const apiBaseUrl = this.chatGptConfig.get<string>('gpt3.apiBaseUrl');
-        const noApiKeyMessage = this.chatGptConfig.get<string>('pageMessage.noApiKey.message')!;
-        const choose1 = this.chatGptConfig.get<string>('pageMessage.noApiKey.choose1')!;
-        const choose2 = this.chatGptConfig.get<string>('pageMessage.noApiKey.choose2')!;
-        // 检查apiKey是否存在
-        if (!chatgptApiKey) {
-          const showErrorMessageResult = await vscode.window
-            .showErrorMessage(noApiKeyMessage, choose1, choose2)
-            .then(async (choice) => {
-              // 如果用户选择了打开设置
-              if (choice === choose2) {
-                // 打开 关于openai apiKey的设置项
-                vscode.commands.executeCommand(
-                  'workbench.action.openSettings',
-                  'chatgpt.gpt3.apiKey',
-                );
-                return false;
-              } else if (choice === choose1) {
-                const title = this.chatGptConfig.get<string>(
-                  'pageMessage.noApiKey.inputBox.title',
-                )!;
-                const prompt = this.chatGptConfig.get<string>(
-                  'pageMessage.noApiKey.inputBox.prompt',
-                )!;
-                const placeHolder = this.chatGptConfig.get<string>(
-                  'pageMessage.noApiKey.inputBox.placeHolder',
-                )!;
-                // 如果用户选择了存储在会话中
-                await vscode.window
-                  .showInputBox({
-                    title,
-                    prompt,
-                    ignoreFocusOut: true,
-                    placeHolder,
-                    value: chatgptApiKey || '',
-                  })
-                  .then((value) => {
-                    if (value) {
-                      chatgptApiKey = value.trim();
-                      // 存储在全局状态中
-                      globalState.update('chatgpt-gpt3-apiKey', chatgptApiKey);
-                      this.sendMessage(
-                        { type: 'login-successful', showConversations: this.useAutoLogin },
-                        true,
-                      );
-                    }
-                  });
-              }
-            });
-          console.log('showErrorMessageResult', showErrorMessageResult);
+    const hasApiKey = await this.checkAPIExistence();
+    if (!hasApiKey) {
+      return false;
+    }
+    const hasChatGPTModel = await this.initChatGPTModel();
 
+    if (hasChatGPTModel) {
+      this.sendMessage({ type: 'login-successful', showConversations: this.useAutoLogin }, true);
+    }
+    return hasChatGPTModel;
+  }
+  /**
+   * @desc 检查api是否存在
+   * @returns {Promise<boolean>}
+   */
+  private async checkAPIExistence(): Promise<boolean> {
+    if (this.useGpt3) {
+      const apiKey = this.getChatGPTApiKey();
+      // 检查apiKey是否存在
+      if (!apiKey) {
+        const result = await this.promptApiKey();
+        if (result) {
+          return true;
+        } else {
           return false;
         }
-
-        // 初始化 chatgpt 模型
-        if (this.isGpt35Model) {
-          this.apiGpt35 = new ChatGPTAPI35({
-            apiKey: chatgptApiKey,
-            fetch: fetch,
-            apiBaseUrl: apiBaseUrl?.trim(),
-            organization,
-            completionParams: {
-              model: this.model,
-              max_tokens,
-              temperature,
-              top_p,
-            },
-          });
-        } else {
-          this.apiGpt3 = new ChatGPTAPI3({
-            apiKey: chatgptApiKey,
-            fetch: fetch,
-            apiBaseUrl: apiBaseUrl?.trim(),
-            organization,
-            completionParams: {
-              model: this.model,
-              max_tokens,
-              temperature,
-              top_p,
-            },
-          });
-        }
+      } else {
+        return true;
       }
+    } else {
+      return true;
     }
-
-    this.sendMessage({ type: 'login-successful', showConversations: this.useAutoLogin }, true);
-
-    return true;
   }
+  /**
+   * @desc 初始化chatgpt模型
+   * @returns {Promise<boolean>}
+   */
+  private async initChatGPTModel(): Promise<boolean> {
+    if (this.useGpt3) {
+      const apiKey = this.getChatGPTApiKey()!;
+      const organization = this.chatGptConfig.get<string>('gpt3.organization');
+      const max_tokens = this.chatGptConfig.get<number>('gpt3.maxTokens');
+      const temperature = this.chatGptConfig.get<number>('gpt3.temperature');
+      const top_p = this.chatGptConfig.get<number>('gpt3.top_p');
+      const apiBaseUrl = this.chatGptConfig.get<string>('gpt3.apiBaseUrl');
+      // 初始化chatgpt模型
+      if (this.isGpt35Model) {
+        this.apiGpt35 = new ChatGPTAPI35({
+          apiKey,
+          fetch: fetch,
+          apiBaseUrl: apiBaseUrl?.trim(),
+          organization,
+          completionParams: {
+            model: this.model,
+            max_tokens,
+            temperature,
+            top_p,
+          },
+        });
+      } else {
+        this.apiGpt3 = new ChatGPTAPI3({
+          apiKey,
+          fetch: fetch,
+          apiBaseUrl: apiBaseUrl?.trim(),
+          organization,
+          completionParams: {
+            model: this.model,
+            max_tokens,
+            temperature,
+            top_p,
+          },
+        });
+      }
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  private getChatGPTApiKey(): string | undefined {
+    const globalState = this.context.globalState;
+    return (
+      this.chatGptConfig.get<string>('gpt3.apiKey') ||
+      globalState.get<string>('chatgpt-gpt3-apiKey')
+    );
+  }
+
+  private async promptApiKey(): Promise<boolean> {
+    const noApiKeyMessage = this.chatGptConfig.get<string>('pageMessage.noApiKey.message')!;
+    const noApiKeyChoose1 = this.chatGptConfig.get<string>('pageMessage.noApiKey.choose1')!;
+    const noApiKeyChoose2 = this.chatGptConfig.get<string>('pageMessage.noApiKey.choose2')!;
+    const noApiKeyInputTitle = this.chatGptConfig.get<string>(
+      'pageMessage.noApiKey.inputBox.title',
+    )!;
+    const noApiKeyInputPrompt = this.chatGptConfig.get<string>(
+      'pageMessage.noApiKey.inputBox.prompt',
+    )!;
+    const noApiKeyInputPlaceHolder = this.chatGptConfig.get<string>(
+      'pageMessage.noApiKey.inputBox.placeHolder',
+    )!;
+    return await vscode.window
+      .showErrorMessage(noApiKeyMessage, noApiKeyChoose1, noApiKeyChoose2)
+      .then(async (choice) => {
+        // 如果用户选择了打开设置
+        if (choice === noApiKeyChoose2) {
+          // 打开关于openai apiKey的设置项
+          vscode.commands.executeCommand('workbench.action.openSettings', 'chatgpt.gpt3.apiKey');
+          return false;
+        } else if (choice === noApiKeyChoose1) {
+          return await vscode.window
+            .showInputBox({
+              title: noApiKeyInputTitle,
+              prompt: noApiKeyInputPrompt,
+              ignoreFocusOut: true,
+              placeHolder: noApiKeyInputPlaceHolder,
+            })
+            .then((value) => {
+              if (value?.trim()) {
+                // 全局状态
+                const globalState = this.context.globalState;
+                // 存储在全局状态中
+                globalState.update('chatgpt-gpt3-apiKey', value?.trim());
+                return true;
+              } else {
+                return false;
+              }
+            });
+        } else {
+          return false;
+        }
+      });
+  }
+
   /**
    * @desc 给chatgpt的系统信息
    */
@@ -847,7 +870,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
                 </svg>
                 &nbsp;${clearConversationButtonName}
               </button>	
-							<!-- 显示对话 -->
+							<!-- 显示对话按钮 -->
               <button title=${showConversationsButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="show-conversations-button">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
@@ -910,7 +933,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private getWebViewContext(): string {
     const webviewHtmlPath = path.join(this.context.extensionPath, 'media', 'web-view.html');
     const documentPath = path.dirname(webviewHtmlPath);
-    // fs 读取文件
     let html = fs.readFileSync(webviewHtmlPath, 'utf-8');
     // vscode 不支持直接加载本地资源，需要替换成其专有路径格式，这里只是简单的将样式和JS的路径替换
     return html.replace(/(<link.+?href="|<script.+?src="|<img.+?src=")(.+?)"/g, (_m, $1, $2) => {
