@@ -98,16 +98,25 @@
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#039;');
         };
+
+        const editButtonTitle = chatgptConfig.webview.editButtonTitle;
+        const sendButtonName = chatgptConfig.webview.sendButtonName;
+        const sendButtonTitle = chatgptConfig.webview.sendButtonTitle;
+        const cancelButtonName = chatgptConfig.webview.cancelButtonName;
+        const cancelButtonTitle = chatgptConfig.webview.cancelButtonTitle;
+
         answerListElement.innerHTML += `<div class="p-4 self-end mt-2 question-element-ext relative input-background">
-                        <h3 class="mb-5 flex">${userSvg} You</h3>
+                        <h3 class="mb-5 mt-0 flex">${userSvg} You</h3>
                        <no-export class="mb-2 flex items-center">
-                            <button title="Edit and resend this prompt" class="resend-element-ext p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editButtonSvg}</button>
+                            <button title="${editButtonTitle}" class="resend-element-ext p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editButtonSvg}</button>
                             <div class="hidden send-cancel-elements-ext flex gap-2">
-                                <button title="Send this prompt" class="send-element-ext p-1 pr-2 flex items-center">${sendButtonSvg}&nbsp;Send</button>
-                                <button title="Cancel" class="cancel-element-ext p-1 pr-2 flex items-center">${cancelButtonSvg}&nbsp;Cancel</button>
+                                <button title="${sendButtonTitle}" class="send-element-ext p-1 pr-2 flex items-center">${sendButtonSvg}&nbsp;${sendButtonName}</button>
+                                <button title="${cancelButtonTitle}" class="cancel-element-ext p-1 pr-2 flex items-center">${cancelButtonSvg}&nbsp;${cancelButtonName}</button>
                             </div>
                         </no-export>
-                        <div class="overflow-y-auto">${escapeHtml(messageOption.value)}</div>
+                        <div class="overflow-y-auto pt-1 pb-1 pl-3 pr-3 rounded-md">${escapeHtml(
+                          messageOption.value,
+                        )}</div>
                     </div>`;
 
         if (messageOption.autoScroll) {
@@ -147,7 +156,7 @@
           existingMessageElement.innerHTML = markedResponse;
         } else {
           answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 answer-element-ext">
-                        <h2 class="mb-5 flex">${aiSvg}ChatGPT</h2>
+                        <h3 class="mb-5 flex">${aiSvg}ChatGPT</h3>
                         <div class="result-streaming" id="${messageOption.id}">${markedResponse}</div>
                     </div>`;
         }
@@ -181,8 +190,8 @@
             );
             // 复制按钮
             const copyButton = document.createElement('button');
-            const copyButtonName = chatgptConfig.get('webview.copyButton.name');
-            const copyButtonTitle = chatgptConfig.get('webview.copyButton.title');
+            const copyButtonName = chatgptConfig.webview.copyButtonName;
+            const copyButtonTitle = chatgptConfig.webview.copyButtonTitle;
             copyButton.title = copyButtonTitle;
             copyButton.innerHTML = `${copyButtonSvg} ${copyButtonName}`;
             copyButton.classList.add(
@@ -195,8 +204,8 @@
             );
             //  插入按钮
             const insertButton = document.createElement('button');
-            const insertButtonName = chatgptConfig.get('webview.insertButton.name');
-            const insertButtonTitle = chatgptConfig.get('webview.insertButton.title');
+            const insertButtonName = chatgptConfig.webview.insertButtonName;
+            const insertButtonTitle = chatgptConfig.webview.insertButtonTitle;
             insertButton.title = insertButtonTitle;
             insertButton.innerHTML = `${insertButtonSvg} ${insertButtonName}`;
             insertButton.classList.add(
@@ -209,8 +218,8 @@
             );
             // 右侧content 新开tab按钮
             const newTabButton = document.createElement('button');
-            const newTabButtonName = chatgptConfig.get('webview.newTabButton.name');
-            const newTabButtonTitle = chatgptConfig.get('webview.newTabButton.title');
+            const newTabButtonName = chatgptConfig.webview.newTabButtonName;
+            const newTabButtonTitle = chatgptConfig.webview.newTabButtonTitle;
             newTabButton.title = newTabButtonTitle;
             newTabButton.innerHTML = `${newTabButtonSvg} ${newTabButtonName}`;
 
@@ -280,6 +289,7 @@
         exportConversation2Markdown();
         break;
       case 'login-successful':
+        console.log('login-successful');
         // 登陆成功隐藏登录按钮
         loginButtonElement?.classList?.add('hidden');
         if (messageOption.showConversations) {
@@ -313,6 +323,7 @@
 
       case 'set-chatgpt-config':
         chatgptConfig = messageOption.value;
+        console.log('chatgptConfig', chatgptConfig);
         break;
       default:
         break;
@@ -509,11 +520,16 @@
       navigator.clipboard
         .writeText(targetButton.parentElement?.nextElementSibling?.lastChild?.textContent)
         .then(() => {
-          const copiedButtonName = chatgptConfig.get('webview.copiedButton.name');
+          const copiedButtonName = chatgptConfig.webview.copiedButtonName;
+          const copiedButtonTitle = chatgptConfig.webview.copiedButtonTitle;
           targetButton.innerHTML = `${copiedStateSvg} ${copiedButtonName}`;
-          const copyButtonName = chatgptConfig.get('webview.copyButton.name');
+          targetButton.title = copiedButtonTitle;
+          const copyButtonName = chatgptConfig.webview.copyButtonName;
+          const copyButtonTitle = chatgptConfig.webview.copyButtonTitle;
           setTimeout(() => {
+            // 恢复按钮
             targetButton.innerHTML = `${copyButtonSvg} ${copyButtonName}`;
+            targetButton.title = copyButtonTitle;
           }, 1500);
         });
 

@@ -72,13 +72,13 @@ export async function activate(context: vscode.ExtensionContext) {
         .get('response.autoScroll');
     }
 
-    if (event.affectsConfiguration('chatgpt.useAutoLogin')) {
-      chatGptViewProvider.useAutoLogin =
-        vscode.workspace.getConfiguration('chatgpt').get('useAutoLogin') || false;
-      context.globalState.update('chatgpt-session-token', null);
-      context.globalState.update('chatgpt-clearance-token', null);
-      context.globalState.update('chatgpt-user-agent', null);
-    }
+    // if (event.affectsConfiguration('chatgpt.useAutoLogin')) {
+    //   chatGptViewProvider.useAutoLogin =
+    //     vscode.workspace.getConfiguration('chatgpt').get('useAutoLogin') || false;
+    //   context.globalState.update('chatgpt-session-token', null);
+    //   context.globalState.update('chatgpt-clearance-token', null);
+    //   context.globalState.update('chatgpt-user-agent', null);
+    // }
 
     if (event.affectsConfiguration('chatgpt.chromiumPath')) {
       chatGptViewProvider.setChromeExecutablePath();

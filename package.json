@@ -482,9 +482,9 @@
           "default": "%chatgpt.pageMessage.dontComplete.message%",
           "order": 35
         },
-        "chatgpt.pageMessage.dontComplete.choose1": {
+        "chatgpt.pageMessage.dontComplete.choose": {
           "type": "string",
-          "default": "%chatgpt.pageMessage.dontComplete.choose1%",
+          "default": "%chatgpt.pageMessage.dontComplete.choose%",
           "order": 36
         },
         "chatgpt.pageMessage.dontComplete.prompt": {
@@ -599,6 +599,58 @@
         "chatgpt.webview.submitQuestionButtonTitle": {
           "type": "string",
           "default": "%chatgpt.webview.submitQuestionButtonTitle.default%"
+        },
+        "chatgpt.webview.copyButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.copyButtonName.default%"
+        },
+        "chatgpt.webview.copyButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.copyButtonTitle.default%"
+        },
+        "chatgpt.webview.copiedButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.copiedButtonName.default%"
+        },
+        "chatgpt.webview.copiedButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.copiedButtonTitle.default%"
+        },
+        "chatgpt.webview.insertButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.insertButtonName.default%"
+        },
+        "chatgpt.webview.insertButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.insertButtonTitle.default%"
+        },
+        "chatgpt.webview.newTabButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.newTabButtonName.default%"
+        },
+        "chatgpt.webview.newTabButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.newTabButtonTitle.default%"
+        },
+        "chatgpt.webview.editButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.editButtonTitle.default%"
+        },
+        "chatgpt.webview.sendButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.sendButtonName.default%"
+        },
+        "chatgpt.webview.sendButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.sendButtonTitle.default%"
+        },
+        "chatgpt.webview.cancelButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.cancelButtonName.default%"
+        },
+        "chatgpt.webview.cancelButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.cancelButtonTitle.default%"
         }
       }
     }
