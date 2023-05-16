@@ -477,52 +477,61 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     });
 
     try {
-      if (this.useGpt3) {
-        if (this.isGpt35Model && this.chatgpt35Model) {
-          const gpt3Response = await this.chatgpt35Model.sendMessage(question, {
-            systemMessage: this.systemMessage,
-            messageId: this.conversationId,
-            parentMessageId: this.messageId,
-            abortSignal: this.abortController.signal,
-            onProgress: (partialResponse) => {
-              this.response = partialResponse.text;
-              this.sendMessageToWebview({
-                type: 'add-answer',
-                value: this.response,
-                id: this.currentMessageId,
-                autoScroll: this.autoScroll,
-                responseInMarkdown,
-              });
-            },
-          });
-          ({
-            text: this.response,
-            id: this.conversationId,
-            parentMessageId: this.messageId,
-          } = gpt3Response);
-        } else if (!this.isGpt35Model && this.chatgpt3Model) {
-          ({
-            text: this.response,
-            conversationId: this.conversationId,
-            parentMessageId: this.messageId,
-          } = await this.chatgpt3Model.sendMessage(question, {
-            promptPrefix: this.systemMessage,
-            abortSignal: this.abortController.signal,
-            onProgress: (partialResponse) => {
-              this.response = partialResponse.text;
-              this.sendMessageToWebview({
-                type: 'add-answer',
-                value: this.response,
-                id: this.currentMessageId,
-                autoScroll: this.autoScroll,
-                responseInMarkdown,
-              });
-            },
-          }));
-        }
+      // if (this.useGpt3) {
+      if (this.isGpt35Model && this.chatgpt35Model) {
+        ({
+          text: this.response,
+          id: this.conversationId,
+          parentMessageId: this.messageId,
+        } = await this.chatgpt35Model.sendMessage(question, {
+          systemMessage: this.systemMessage,
+          messageId: this.conversationId,
+          parentMessageId: this.messageId,
+          abortSignal: this.abortController.signal,
+          onProgress: (partialResponse) => {
+            this.response = partialResponse.text;
+            this.sendMessageToWebview({
+              type: 'add-answer',
+              value: this.response,
+              id: this.currentMessageId,
+              autoScroll: this.autoScroll,
+              responseInMarkdown,
+            });
+          },
+        }));
+        // console.log('this.response', this.response);
+        // console.log('this.conversationId', this.conversationId);
+        // console.log('this.messageId', this.messageId);
+        // ({
+        //   text: this.response,
+        //   id: this.conversationId,
+        //   parentMessageId: this.messageId,
+        // } = gpt3Response);
+      } else if (!this.isGpt35Model && this.chatgpt3Model) {
+        ({
+          text: this.response,
+          conversationId: this.conversationId,
+          parentMessageId: this.messageId,
+        } = await this.chatgpt3Model.sendMessage(question, {
+          promptPrefix: this.systemMessage,
+          abortSignal: this.abortController.signal,
+          onProgress: (partialResponse) => {
+            this.response = partialResponse.text;
+            this.sendMessageToWebview({
+              type: 'add-answer',
+              value: this.response,
+              id: this.currentMessageId,
+              autoScroll: this.autoScroll,
+              responseInMarkdown,
+            });
+          },
+        }));
       }
+      // }
+      console.log('option', option);
 
-      if (option.previousAnswer != null) {
+      // 如果存在上一个回答
+      if (!!option.previousAnswer) {
         this.response = option.previousAnswer + this.response;
       }
 

@@ -40,14 +40,14 @@ export async function activate(context: vscode.ExtensionContext) {
   const clearConversationCommand = vscode.commands.registerCommand(
     'vscode-chatgpt.clearConversation',
     async () => {
-      chatGptViewProvider?.sendMessage({ type: 'clear-conversation' }, true);
+      chatGptViewProvider?.sendMessageToWebview({ type: 'clear-conversation' }, true);
     },
   );
   // 注册 exportConversation 命令
   const exportConversationCommand = vscode.commands.registerCommand(
     'vscode-chatgpt.exportConversation',
     async () => {
-      chatGptViewProvider?.sendMessage({ type: 'export-conversation-to-markdown' }, true);
+      chatGptViewProvider?.sendMessageToWebview({ type: 'export-conversation-to-markdown' }, true);
     },
   );
   // 注册 clearSession 命令
