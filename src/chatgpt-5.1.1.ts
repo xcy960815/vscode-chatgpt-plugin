@@ -2,11 +2,12 @@
 import { createParser } from 'eventsource-parser';
 import fetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
-import pTimeout from 'p-timeout';
+import pTimeout, { ClearablePromise } from 'p-timeout';
 import QuickLRU from 'quick-lru';
 import { PassThrough } from 'stream';
 import { v4 as uuidv4 } from 'uuid';
 import { streamAsyncIterable } from './utils';
+
 /**
  * @desc Fetches a URL and returns the response as a ReadableStream.
  * @param {String} url
@@ -136,71 +137,16 @@ export declare namespace openai {
 
   interface CreateChatCompletionRequest {
     model: string;
-    /**
-     * 要生成聊天完成的消息，格式为 [聊天格式](/docs/guides/chat/introduction) 的数组。
-     * @type {Array<ChatCompletionRequestMessage>}
-     * @memberof CreateChatCompletionRequest
-     */
     messages: Array<ChatCompletionRequestMessage>;
-    /**
-     * 用于采样的温度值，介于 0 和 2 之间。更高的值（如 0.8）会使输出更随机，而更低的值（如 0.2）会使其更专注和确定性。通常建议修改此值或 `top_p`，但不要同时修改两者。
-     * @type {number}
-     * @memberof CreateChatCompletionRequest
-     */
     temperature?: number | null;
-    /**
-     * 温度值采样的替代方法，称为 Nucleus 采样，其中模型考虑具有 top_p 概率质量的令牌结果。因此，0.1 表示仅考虑组成前 10% 概率质量的令牌。通常建议修改此值或 `temperature`，但不要同时修改两者。
-     * @type {number}
-     * @memberof CreateChatCompletionRequest
-     */
     top_p?: number | null;
-    /**
-     * 对于每个输入消息要生成多少个聊天完成选项。
-     * @type {number}
-     * @memberof CreateChatCompletionRequest
-     */
     n?: number | null;
-    /**
-     * 如果设置了该参数，则会发送部分消息增量，就像在 ChatGPT 中一样。令牌将作为仅数据 [服务器发送的事件](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format) 发送，随着它们变得可用，流通过 `data: [DONE]` 消息终止。
-     * @type {boolean}
-     * @memberof CreateChatCompletionRequest
-     */
     stream?: boolean | null;
-    /**
-     *
-     * @type {CreateChatCompletionRequestStop}
-     * @memberof CreateChatCompletionRequest
-     */
     stop?: CreateChatCompletionRequestStop;
-    /**
-     * 生成的回答允许的最大标记数。默认情况下，模型可以返回的标记数量为（4096-提示标记）。
-     * @type {number}
-     * @memberof CreateChatCompletionRequest
-     */
     max_tokens?: number;
-    /**
-     * -2.0 到 2.0 之间的数字。正值会根据令牌是否出现在迄今为止的文本中对新令牌进行惩罚，从而增加了模型谈论新主题的可能性。[查看有关频率和存在惩罚的更多信息](/docs/api-reference/parameter-details)。
-     * @type {number}
-     * @memberof CreateChatCompletionRequest
-     */
     presence_penalty?: number | null;
-    /**
-     * -2.0 到 2.0 之间的数字。正值会根据令牌在迄今为止的文本中的现有频率对新令牌进行惩罚，从而降低了模型复制完全相同的行的可能性。[查看有关频率和存在惩罚的更多信息](/docs/api-reference/parameter-details)。
-     * @type {number}
-     * @memberof CreateChatCompletionRequest
-     */
     frequency_penalty?: number | null;
-    /**
-     * 修改指定令牌在完成中出现的可能性。接受将令牌（由其标记器中的令牌 ID 指定）映射到 -100 到 100 的相关偏差值的 JSON 对象。在数学上，在采样之前，将 logits 生成的偏差添加到每个 token 中。确切的效果因模型而异，但介于 -1 和 1 的值应该会减少或增加选择的可能性；像 -100 或 100 这样的值则应该禁止或专门选择相应的令牌。
-     * @type {object}
-     * @memberof CreateChatCompletionRequest
-     */
     logit_bias?: object | null;
-    /**
-     * 表示您最终用户的唯一标识符，可以帮助 OpenAI 监视和检测滥用行为。了解更多。
-     * @type {string}
-     * @memberof CreateChatCompletionRequest
-     */
     user?: string;
   }
 
@@ -323,6 +269,12 @@ export class ChatGPTAPI {
       throw new Error('Invalid "fetch" is not a function');
     }
   }
+  /**
+   * @desc 发送消息
+   * @param {string} text
+   * @param {SendMessageOptions} options
+   * @returns {Promise<ChatMessage>}
+   */
   public async sendMessage(text: string, options: SendMessageOptions): Promise<ChatMessage> {
     const {
       parentMessageId,
@@ -334,6 +286,7 @@ export class ChatGPTAPI {
     } = options;
     let { abortSignal } = options;
     let abortController: AbortController | null = null;
+    // 如果设置了超时时间，那么就使用 AbortController
     if (timeoutMs && !abortSignal) {
       abortController = new AbortController();
       abortSignal = abortController.signal;
@@ -454,10 +407,11 @@ export class ChatGPTAPI {
     }).then((message2) => {
       return this._upsertMessage(message2).then(() => message2);
     });
+    // 如果设置了超时时间，那么就使用 AbortController
     if (timeoutMs) {
       if (abortController) {
-        // @ts-ignore
-        responseP.cancel = () => {
+        //  cancel
+        (responseP as ClearablePromise<ChatMessage>).clear = () => {
           abortController?.abort();
         };
       }
@@ -469,6 +423,12 @@ export class ChatGPTAPI {
       return responseP;
     }
   }
+  /**
+   * @desc 构建消息
+   * @param {string} text
+   * @param {SendMessageOptions} options
+   * @returns {Promise<{ messages: openai.ChatCompletionRequestMessage[]; }>}
+   */
   private async _buildMessages(
     text: string,
     options: SendMessageOptions,
@@ -537,6 +497,11 @@ export class ChatGPTAPI {
 
     return { messages };
   }
+  /**
+   * @desc 获取消息
+   * @param {string} id
+   * @returns {Promise<ChatMessage | undefined>}
+   */
   private _defaultGetMessageById(id: string): Promise<ChatMessage | undefined> {
     return this._messageStore.get(id);
   }

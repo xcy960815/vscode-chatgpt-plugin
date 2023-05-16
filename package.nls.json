@@ -52,7 +52,7 @@
   "chatgpt.gpt3.apiBaseUrl.markdownDescription": "Optional override for the OpenAI API base URL. If you customize it, please make sure you have the same format. e.g. starts with `https://` without a trailing slash. The completions endpoint suffix is added internally, e.g. for reference: `${apiBaseUrl}/v1/completions`",
   "chatgpt.gpt3.organization.markdownDescription": "OpenAI Organization ID. [Documentation](https://platform.openai.com/docs/api-reference/requesting-organization). \n\n**Please enable OpenAI API Key method to use this setting.**",
   "chatgpt.gpt3.model.markdownDescription": "OpenAI models to use for your prompts. [Documentation](https://platform.openai.com/docs/models/models). \n\n**If you face 400 Bad Request please make sure you are using the right model for your integration method.**",
-  "chatgpt.gpt3.model.enumItemLabels1": "BrowserThe maximum number of tokens to generate in the completion. \n\nThe token count of your prompt plus max_tokens cannot exceed the model's context length. Most models have a context length of 2048 tokens (except for the newest models, which support 4096). [Documentation](https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens) \n\n**Please enable OpenAI API Key method to use this setting.** autologin - default ChatGPT model",
+  "chatgpt.gpt3.model.enumItemLabels1": "Browser autologin - default ChatGPT model",
   "chatgpt.gpt3.model.enumItemLabels2": "Browser autologin - ChatGPT Plus GPT-4",
   "chatgpt.gpt3.model.enumItemLabels3": "Browser autologin - ChatGPT Plus default model",
   "chatgpt.gpt3.model.enumItemLabels4": "Browser autologin - ChatGPT Plus legacy model",

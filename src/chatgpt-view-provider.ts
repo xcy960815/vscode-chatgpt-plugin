@@ -15,7 +15,7 @@ import {
   LeftOverMessage,
   LoginMethod,
   SendApiRequestOption,
-  SendMessageOption,
+  WebviewMessageOption,
 } from './types';
 export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
@@ -27,8 +27,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   public chromiumPath?: string;
   public profilePath?: string;
   public model?: string;
-  private apiGpt3?: ChatGPTAPI3;
-  private apiGpt35?: ChatGPTAPI35;
+  private chatgpt3Model?: ChatGPTAPI3;
+  private chatgpt35Model?: ChatGPTAPI35;
   private conversationId?: string;
   private messageId?: string;
   private proxyServer?: string;
@@ -49,9 +49,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   constructor(private context: vscode.ExtensionContext) {
     this.chatGptConfig = vscode.workspace.getConfiguration('chatgpt');
     this.subscribeToResponse = this.chatGptConfig.get('response.subscribeToResponse') || false;
-    this.autoScroll = !!this.chatGptConfig.get('response.autoScroll');
+    this.autoScroll = this.chatGptConfig.get<boolean>('response.autoScroll') || false;
     this.model = this.chatGptConfig.get('gpt3.model');
-    this.getWebViewContext();
+    // this.getWebViewContext();
     this.setMethod();
     this.setChromeExecutablePath();
     this.setProfilePath();
@@ -82,11 +82,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     // 在监听器内部根据消息命令类型执行不同的操作。
     webviewView.webview.onDidReceiveMessage(async (data) => {
       switch (data.type) {
-        // 从webview中获取到用户输入的问题，然后调用sendApiRequest方法发送给后端。
         case 'add-question':
           this.sendApiRequest(data.value, { command: 'freeText' });
           break;
-        case 'edit-code':
+        case 'insert-code':
           const escapedString = (data.value as string).replace(/\$/g, '\\$');
           vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(escapedString));
           this.logEvent('code-inserted');
@@ -109,13 +108,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           this.logEvent('conversation-cleared');
           break;
         case 'clear-gpt3':
-          this.apiGpt3 = undefined;
+          this.chatgpt3Model = undefined;
           this.logEvent('gpt3-cleared');
           break;
         case 'login':
-          const status = await this.prepareConversation();
-          if (status) {
-            this.sendMessage(
+          const loginStatus = await this.prepareConversation();
+          if (loginStatus) {
+            this.sendMessageToWebview(
               { type: 'login-successful', showConversations: this.useAutoLogin },
               true,
             );
@@ -149,7 +148,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           this.stopGenerating();
           break;
         case 'get-chatgpt-config':
-          this.sendMessage({
+          this.sendMessageToWebview({
             type: 'set-chatgpt-config',
             value: this.chatGptConfig,
           });
@@ -160,8 +159,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     });
 
     if (!!this.leftOverMessage) {
-      // If there were any messages that wasn't delivered, render after resolveWebView is called.
-      this.sendMessage(this.leftOverMessage as SendMessageOption);
+      // 如果有任何消息未传送，则在调用 resolveWebView 后展示
+      this.sendMessageToWebview(this.leftOverMessage as WebviewMessageOption);
       this.leftOverMessage = null;
     }
   }
@@ -172,10 +171,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private stopGenerating(): void {
     this.abortController?.abort?.();
     this.inProgress = false;
-    this.sendMessage({ type: 'show-in-progress', inProgress: this.inProgress });
+    this.sendMessageToWebview({ type: 'show-in-progress', inProgress: this.inProgress });
     const responseInMarkdown = !this.isCodexModel;
 
-    this.sendMessage({
+    this.sendMessageToWebview({
       type: 'add-answer',
       value: this.response,
       done: true,
@@ -192,7 +191,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   public clearSession(): void {
     this.stopGenerating();
-    this.apiGpt3 = undefined;
+    this.chatgpt3Model = undefined;
     this.messageId = undefined;
     this.conversationId = undefined;
     this.logEvent('cleared-session');
@@ -215,6 +214,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   }
   /**
    * @desc 设置认证类型
+   * @returns {void}
    */
   public setAuthType(): void {
     this.authType = this.chatGptConfig.get('authenticationType');
@@ -274,79 +274,74 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     if (!hasApiKey) {
       return false;
     }
-    const hasChatGPTModel = await this.initChatGPTModel();
-
-    if (hasChatGPTModel) {
-      this.sendMessage({ type: 'login-successful', showConversations: this.useAutoLogin }, true);
-    }
-    return hasChatGPTModel;
+    return await this.initChatGPTModel();
   }
   /**
    * @desc 检查api是否存在
    * @returns {Promise<boolean>}
    */
   private async checkAPIExistence(): Promise<boolean> {
-    if (this.useGpt3) {
-      const apiKey = this.getChatGPTApiKey();
-      // 检查apiKey是否存在
-      if (!apiKey) {
-        const result = await this.promptApiKey();
-        if (result) {
-          return true;
-        } else {
-          return false;
-        }
-      } else {
-        return true;
-      }
+    // if (this.useGpt3) {
+    const apiKey = this.getChatGPTApiKey();
+    // 检查apiKey是否存在
+    if (!apiKey) {
+      return await this.promptApiKey();
     } else {
       return true;
     }
+    // } else {
+    //   return false;
+    // }
   }
   /**
    * @desc 初始化chatgpt模型
    * @returns {Promise<boolean>}
    */
   private async initChatGPTModel(): Promise<boolean> {
-    if (this.useGpt3) {
-      const apiKey = this.getChatGPTApiKey()!;
-      const organization = this.chatGptConfig.get<string>('gpt3.organization');
-      const max_tokens = this.chatGptConfig.get<number>('gpt3.maxTokens');
-      const temperature = this.chatGptConfig.get<number>('gpt3.temperature');
-      const top_p = this.chatGptConfig.get<number>('gpt3.top_p');
-      const apiBaseUrl = this.chatGptConfig.get<string>('gpt3.apiBaseUrl');
-      // 初始化chatgpt模型
-      if (this.isGpt35Model) {
-        this.apiGpt35 = new ChatGPTAPI35({
-          apiKey,
-          fetch: fetch,
-          apiBaseUrl: apiBaseUrl?.trim(),
-          organization,
-          completionParams: {
-            model: this.model,
-            max_tokens,
-            temperature,
-            top_p,
-          },
-        });
-      } else {
-        this.apiGpt3 = new ChatGPTAPI3({
-          apiKey,
-          fetch: fetch,
-          apiBaseUrl: apiBaseUrl?.trim(),
-          organization,
-          completionParams: {
-            model: this.model,
-            max_tokens,
-            temperature,
-            top_p,
-          },
-        });
-      }
-      return true;
+    // if (this.useGpt3) {
+    const apiKey = this.getChatGPTApiKey()!;
+    const organization = this.chatGptConfig.get<string>('gpt3.organization');
+    const max_tokens = this.chatGptConfig.get<number>('gpt3.maxTokens');
+    const temperature = this.chatGptConfig.get<number>('gpt3.temperature');
+    const top_p = this.chatGptConfig.get<number>('gpt3.top_p');
+    const apiBaseUrl = this.chatGptConfig.get<string>('gpt3.apiBaseUrl');
+    // 初始化chatgpt模型
+    if (this.isGpt35Model) {
+      this.chatgpt35Model = new ChatGPTAPI35({
+        apiKey,
+        fetch: fetch,
+        apiBaseUrl: apiBaseUrl?.trim(),
+        organization,
+        completionParams: {
+          model: this.model,
+          max_tokens,
+          temperature,
+          top_p,
+        },
+      });
     } else {
-      return false;
+      this.chatgpt3Model = new ChatGPTAPI3({
+        apiKey,
+        fetch: fetch,
+        apiBaseUrl: apiBaseUrl?.trim(),
+        organization,
+        completionParams: {
+          model: this.model,
+          max_tokens,
+          temperature,
+          top_p,
+        },
+      });
     }
+    // 登录成功
+    this.sendMessageToWebview(
+      { type: 'login-successful', showConversations: this.useAutoLogin },
+      true,
+    );
+    return true;
+    // } else {
+    //   return false;
+    // }
   }
 
   private getChatGPTApiKey(): string | undefined {
@@ -416,7 +411,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * @param {String} language
    * @returns  {String}
    */
-  private processQuestion(question: string, code?: string, language?: string): string {
+  private buildQuestion(question: string, code?: string, language?: string): string {
     if (!!code) {
       question = `${question}${
         language ? ` (The following code is in ${language} programming language)` : ''
@@ -432,7 +427,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   public async sendApiRequest(prompt: string, option: SendApiRequestOption): Promise<void> {
     if (this.inProgress) {
-      // 给用户一个提示
+      // 如果正在进行中 给用户一个提示
       const inprogressMessage = this.chatGptConfig.get<string>('pageMessage.inProgress.message')!;
       vscode.window.showInformationMessage(inprogressMessage);
       return;
@@ -445,14 +440,14 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     // 	'chatgpt.hasCode': String(!!option.code),
     // 	'chatgpt.hasPreviousAnswer': String(!!option.previousAnswer),
     // });
-
+    // 校验是否登录
     if (!(await this.prepareConversation())) {
       return;
     }
 
     this.response = '';
 
-    const question = this.processQuestion(prompt, option.code, option.language);
+    const question = this.buildQuestion(prompt, option.code, option.language);
 
     const responseInMarkdown = !this.isCodexModel;
 
@@ -466,7 +461,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     this.abortController = new AbortController();
 
-    this.sendMessage({
+    this.sendMessageToWebview({
       type: 'show-in-progress',
       inProgress: this.inProgress,
       showStopButton: this.useGpt3,
@@ -474,7 +469,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     this.currentMessageId = this.getRandomId();
 
-    this.sendMessage({
+    this.sendMessageToWebview({
       type: 'add-question',
       value: prompt,
       code: option.code,
@@ -483,15 +478,15 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     try {
       if (this.useGpt3) {
-        if (this.isGpt35Model && this.apiGpt35) {
-          const gpt3Response = await this.apiGpt35.sendMessage(question, {
+        if (this.isGpt35Model && this.chatgpt35Model) {
+          const gpt3Response = await this.chatgpt35Model.sendMessage(question, {
             systemMessage: this.systemMessage,
             messageId: this.conversationId,
             parentMessageId: this.messageId,
             abortSignal: this.abortController.signal,
             onProgress: (partialResponse) => {
               this.response = partialResponse.text;
-              this.sendMessage({
+              this.sendMessageToWebview({
                 type: 'add-answer',
                 value: this.response,
                 id: this.currentMessageId,
@@ -505,17 +500,17 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             id: this.conversationId,
             parentMessageId: this.messageId,
           } = gpt3Response);
-        } else if (!this.isGpt35Model && this.apiGpt3) {
+        } else if (!this.isGpt35Model && this.chatgpt3Model) {
           ({
             text: this.response,
             conversationId: this.conversationId,
             parentMessageId: this.messageId,
-          } = await this.apiGpt3.sendMessage(question, {
+          } = await this.chatgpt3Model.sendMessage(question, {
             promptPrefix: this.systemMessage,
             abortSignal: this.abortController.signal,
             onProgress: (partialResponse) => {
               this.response = partialResponse.text;
-              this.sendMessage({
+              this.sendMessageToWebview({
                 type: 'add-answer',
                 value: this.response,
                 id: this.currentMessageId,
@@ -557,7 +552,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           });
       }
 
-      this.sendMessage({
+      this.sendMessageToWebview({
         type: 'add-answer',
         value: this.response,
         done: true,
@@ -609,8 +604,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       } else if (error.statusCode === 400) {
         message = `Your method: '${this.loginMethod}' and your model: '${this.model}' may be incompatible or one of your parameters is unknown. Reset your settings to default. (HTTP 400 Bad Request)`;
       } else if (error.statusCode === 401) {
-        message =
-          'Make sure you are properly signed in. If you are using Browser Auto-login method, make sure the browser is open (You could refresh the browser tab manually if you face any issues, too). If you stored your API key in settings.json, make sure it is accurate. If you stored API key in session, you can reset it with `ChatGPT: Reset session` command. (HTTP 401 Unauthorized) Potential reasons: \r\n- 1.Invalid Authentication\r\n- 2.Incorrect API key provided.\r\n- 3.Incorrect Organization provided. \r\n See https://platform.openai.com/docs/guides/error-codes for more details.';
+        message = `Make sure you are properly signed in. 
+If you are using Browser Auto-login method, 
+make sure the browser is open (You could refresh the browser tab manually if you face any issues, too). 
+If you stored your API key in settings.json, make sure it is accurate. 
+If you stored API key in session, 
+you can reset it with “ChatGPT: Reset session” command.
+(HTTP 401 Unauthorized) Potential reasons: \r\n- 1.Invalid Authentication\r\n- 2.Incorrect API key provided.\r\n- 3.Incorrect Organization provided. \r\n See https://platform.openai.com/docs/guides/error-codes for more details.`;
       } else if (error.statusCode === 403) {
         message = 'Your token has expired. Please try authenticating again. (HTTP 403 Forbidden)';
       } else if (error.statusCode === 404) {
@@ -629,25 +629,28 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 	${apiMessage}
 `;
       }
-      this.sendMessage({ type: 'add-error', value: message, autoScroll: this.autoScroll });
+      this.sendMessageToWebview({ type: 'add-error', value: message, autoScroll: this.autoScroll });
       return;
     } finally {
       this.inProgress = false;
-      this.sendMessage({ type: 'show-in-progress', inProgress: this.inProgress });
+      this.sendMessageToWebview({ type: 'show-in-progress', inProgress: this.inProgress });
     }
   }
 
   /**
    * @desc 消息发送器 将消息发送到webview
-   * @param {SendMessageOption} message
+   * @param {WebviewMessageOption} webviewMessageOption
    * @param {boolean} ignoreMessageIfNullWebView
    * @returns {void}
    */
-  public sendMessage(messageOption: SendMessageOption, ignoreMessageIfNullWebView?: boolean): void {
+  public sendMessageToWebview(
+    webviewMessageOption: WebviewMessageOption,
+    ignoreMessageIfNullWebView?: boolean,
+  ): void {
     if (this.webView) {
-      this.webView?.webview.postMessage(messageOption);
+      this.webView?.webview.postMessage(webviewMessageOption);
     } else if (!ignoreMessageIfNullWebView) {
-      this.leftOverMessage = messageOption;
+      this.leftOverMessage = webviewMessageOption;
     }
   }
 
@@ -764,12 +767,12 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       'webview.exportConversationButtonTitle',
     );
 
-    const moreActionsButtonName = this.chatGptConfig.get<string>('webview.moreActionsButtonName');
+    // const moreActionsButtonName = this.chatGptConfig.get<string>('webview.moreActionsButtonName');
     const moreActionsButtonTitle = this.chatGptConfig.get<string>('webview.moreActionsButtonTitle');
 
-    const submitQuestionButtonName = this.chatGptConfig.get<string>(
-      'webview.submitQuestionButtonName',
-    );
+    // const submitQuestionButtonName = this.chatGptConfig.get<string>(
+    //   'webview.submitQuestionButtonName',
+    // );
     const submitQuestionButtonTitle = this.chatGptConfig.get<string>(
       'webview.submitQuestionButtonTitle',
     );
@@ -834,7 +837,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           <!-- gpt 对话列表 -->
 					<div class="flex-1 overflow-y-auto hidden" id="conversation-list"></div>
 
-        <!-- gpt 回答的答案的动画 -->
+        <!-- gpt 回答的答案的动画  -->
 					<div id="in-progress" class="hidden pl-4 pr-4 pt-2 flex items-center justify-between text-xs ">
 						<div class="typing flex items-center">
               <span>Thinking</span>
@@ -846,7 +849,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             </div>
 						
             <!-- gpt 停止回答的答案的按钮 -->
-						<button id="stop-asking-button" class="btn btn-primary flex items-end p-1 pr-2 rounded-md ml-5">
+						<button id="stop-asking-button" class="btn btn-primary flex items-center p-1 pr-2 rounded-md ml-5">
 							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Stop responding
 						</button>
             </div>
@@ -927,7 +930,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   }
 
   /**
-   * @desc 获取webview的内容
+   * @desc 获取webview的内容 暂时不用
    * @returns {string}
    */
   private getWebViewContext(): string {

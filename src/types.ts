@@ -6,7 +6,7 @@ export type AuthType =
   | 'Google Authentication'
   | 'Microsoft Authentication';
 
-export interface SendMessageOption {
+export interface WebviewMessageOption {
   type:
     | 'show-in-progress'
     | 'login-successful'
@@ -34,4 +34,4 @@ export interface SendApiRequestOption {
   language?: string;
 }
 
-export type LeftOverMessage = SendMessageOption | null;
+export type LeftOverMessage = WebviewMessageOption | null;

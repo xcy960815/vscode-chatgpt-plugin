@@ -104,7 +104,6 @@
         const sendButtonTitle = chatgptConfig.webview.sendButtonTitle;
         const cancelButtonName = chatgptConfig.webview.cancelButtonName;
         const cancelButtonTitle = chatgptConfig.webview.cancelButtonTitle;
-
         answerListElement.innerHTML += `<div class="p-4 self-end mt-2 question-element-ext relative input-background">
                         <h3 class="mb-5 mt-0 flex">${userSvg} You</h3>
                        <no-export class="mb-2 flex items-center">
@@ -128,6 +127,7 @@
         }
         break;
       case 'add-answer':
+        console.log('add-answer', messageOption);
         // 如果存在现有消息
         let existingMessageElement = messageOption.id && document.getElementById(messageOption.id);
         let updatedValue = '';
@@ -538,7 +538,7 @@
 
     if (targetButton?.classList?.contains('insert-button')) {
       vscode.postMessage({
-        type: 'edit-code',
+        type: 'insert-code',
         value: targetButton.parentElement?.nextElementSibling?.lastChild?.textContent,
       });
 
