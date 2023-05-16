@@ -180,10 +180,10 @@
           "markdownDescription": "%chatgpt.method.markdownDescription%",
           "order": 1,
           "enumItemLabels": [
-            "Use OpenAI API key integration"
+            "%chatgpt.method.enumItemLabel1%"
           ],
           "markdownEnumDescriptions": [
-            "Various text & code completion models are supported including ChatGPT Turbo models. \n\n- GPT3.5 -> i.e. `'chatgpt.gpt3.model': 'gpt-3.5-turbo'`\n\n- GPT3 -> i.e. `'chatgpt.gpt3.model': 'text-davinci-003'`\n\n- Codex -> i.e.`'chatgpt.gpt3.model': 'code-davinci-002'`"
+            "%chatgpt.method.markdownEnumDescriptions2%"
           ]
         },
         "chatgpt.authenticationType": {
@@ -195,6 +195,11 @@
           ],
           "default": "OpenAI Authentication",
           "markdownDescription": "%chatgpt.authenticationType.markdownDescription%",
+          "enumItemLabels": [
+            "%chatgpt.authenticationType.enumItemLabel1%",
+            "%chatgpt.authenticationType.enumItemLabel2%",
+            "%chatgpt.authenticationType.enumItemLabel3%"
+          ],
           "order": 2
         },
         "chatgpt.emailAddress": {
