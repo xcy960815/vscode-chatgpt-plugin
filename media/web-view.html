@@ -95,8 +95,8 @@
       <!-- gpt 对话列表 -->
       <div class="flex-1 overflow-y-auto hidden" id="conversation-list"></div>
 
-      <!-- gpt 回答的答案的动画 -->
-      <div id="in-progress" class="hidden pl-4 pr-4 pt-2 flex items-center justify-between text-xs">
+      <!-- gpt 回答的答案的动画 hidden-->
+      <div id="in-progress" class="pl-4 pr-4 pt-2 flex items-center justify-between text-xs">
         <div class="typing flex items-center">
           <span>Thinking</span>
           <div class="spinner">
@@ -827,7 +827,7 @@
       //     if (targetButton?.classList?.contains('insert-button')) {
       //         e.preventDefault();
       //         vscode.postMessage({
-      //             type: 'edit-code',
+      //             type: 'insert-code',
       //             value: targetButton.parentElement?.nextElementSibling?.lastChild?.textContent,
       //         });
 
