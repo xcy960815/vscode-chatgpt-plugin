@@ -6,14 +6,13 @@ import * as fs from 'node:fs';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import * as vscode from 'vscode';
-// import { ChatGPTAPI as ChatGPTAPI3 } from '../chatgpt-4.7.2/index';
-// import { ChatGPTAPI as ChatGPTAPI35 } from '../chatgpt-5.1.1/index';
 import { ChatGPTAPI as ChatGPTAPI3 } from './chatgpt-4.7.2';
 import { ChatGPTAPI as ChatGPTAPI35 } from './chatgpt-5.1.1';
 import {
   AuthType,
   LeftOverMessage,
   LoginMethod,
+  OnDidReceiveMessageOption,
   SendApiRequestOption,
   WebviewMessageOption,
 } from './types';
@@ -80,10 +79,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     // webviewView.webview.html = this.getWebViewContext();
 
     // 在监听器内部根据消息命令类型执行不同的操作。
-    webviewView.webview.onDidReceiveMessage(async (data) => {
+    webviewView.webview.onDidReceiveMessage(async (data: OnDidReceiveMessageOption) => {
       switch (data.type) {
         case 'add-question':
-          this.sendApiRequest(data.value, { command: 'freeText' });
+          this.sendApiRequest(data.value || '', { command: 'freeText' });
           break;
         case 'insert-code':
           const escapedString = (data.value as string).replace(/\$/g, '\\$');
@@ -528,7 +527,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         }));
       }
       // }
-      console.log('option', option);
+      // console.log('option', option);
 
       // 如果存在上一个回答
       if (!!option.previousAnswer) {

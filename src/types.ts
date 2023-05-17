@@ -27,6 +27,24 @@ export interface WebviewMessageOption {
   responseInMarkdown?: boolean;
 }
 
+export interface OnDidReceiveMessageOption {
+  type:
+    | 'add-question'
+    | 'insert-code'
+    | 'open-new-tab'
+    | 'clear-gpt3'
+    | 'clear-conversation'
+    | 'login'
+    | 'open-settings'
+    | 'open-prompt-settings'
+    | 'show-conversations'
+    | 'show-conversation'
+    | 'stop-generating'
+    | 'get-chatgpt-config';
+  value?: string;
+  language?: string;
+}
+
 export interface SendApiRequestOption {
   command: string;
   code?: string;
