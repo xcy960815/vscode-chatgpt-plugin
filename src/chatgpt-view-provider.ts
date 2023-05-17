@@ -82,7 +82,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (data: OnDidReceiveMessageOption) => {
       switch (data.type) {
         case 'add-question':
-          this.sendApiRequest(data.value || '', { command: 'freeText' });
+          this.sendApiRequest(data.value as string, { command: 'freeText' });
           break;
         case 'insert-code':
           const escapedString = (data.value as string).replace(/\$/g, '\\$');
