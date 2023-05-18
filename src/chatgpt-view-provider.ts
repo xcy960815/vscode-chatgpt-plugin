@@ -25,6 +25,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   public useGpt3?: boolean;
   public chromiumPath?: string;
   public profilePath?: string;
+  public apiKey?: string;
   public model?: string;
   private chatgpt3Model?: ChatGPTAPI3;
   private chatgpt35Model?: ChatGPTAPI35;
@@ -40,13 +41,15 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private currentMessageId: string = '';
   private response: string = '';
   private leftOverMessage?: LeftOverMessage;
-  private chatGptConfig: vscode.WorkspaceConfiguration;
+  private chatGptConfig: vscode.WorkspaceConfiguration =
+    vscode.workspace.getConfiguration('chatgpt');
   /**
    * 如果消息没有被渲染，则延迟渲染
    * 在调用 resolveWebviewView 之前的时间。
    */
   constructor(private context: vscode.ExtensionContext) {
-    this.chatGptConfig = vscode.workspace.getConfiguration('chatgpt');
+    // this.chatGptConfig = vscode.workspace.getConfiguration('chatgpt');
+    this.apiKey = this.getChatGPTApiKey();
     this.subscribeToResponse = this.chatGptConfig.get('response.subscribeToResponse') || false;
     this.autoScroll = this.chatGptConfig.get<boolean>('response.autoScroll') || false;
     this.model = this.chatGptConfig.get('gpt3.model');
@@ -281,9 +284,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   private async checkAPIExistence(): Promise<boolean> {
     // if (this.useGpt3) {
-    const apiKey = this.getChatGPTApiKey();
+    // const apiKey = this.getChatGPTApiKey();
     // 检查apiKey是否存在
-    if (!apiKey) {
+    if (!this.apiKey) {
       return await this.promptApiKey();
     } else {
       return true;
@@ -298,7 +301,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   private async initChatGPTModel(): Promise<boolean> {
     // if (this.useGpt3) {
-    const apiKey = this.getChatGPTApiKey()!;
+    // const apiKey = this.getChatGPTApiKey()!;
     const organization = this.chatGptConfig.get<string>('gpt3.organization');
     const max_tokens = this.chatGptConfig.get<number>('gpt3.maxTokens');
     const temperature = this.chatGptConfig.get<number>('gpt3.temperature');
@@ -307,7 +310,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     // 初始化chatgpt模型
     if (this.isGpt35Model) {
       this.chatgpt35Model = new ChatGPTAPI35({
-        apiKey,
+        apiKey: this.apiKey!,
         fetch: fetch,
         apiBaseUrl: apiBaseUrl?.trim(),
         organization,
@@ -320,7 +323,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       });
     } else {
       this.chatgpt3Model = new ChatGPTAPI3({
-        apiKey,
+        apiKey: this.apiKey!,
         fetch: fetch,
         apiBaseUrl: apiBaseUrl?.trim(),
         organization,
