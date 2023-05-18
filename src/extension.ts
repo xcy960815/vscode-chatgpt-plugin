@@ -103,6 +103,11 @@ export async function activate(context: vscode.ExtensionContext) {
     if (event.affectsConfiguration('chatgpt.gpt3.model')) {
       chatGptViewProvider.model = vscode.workspace.getConfiguration('chatgpt').get('gpt3.model');
     }
+
+    if (event.affectsConfiguration('chatgpt.gpt3.apiKey')) {
+      chatGptViewProvider.apiKey = vscode.workspace.getConfiguration('chatgpt').get('gpt3.apiKey');
+    }
+
     // 当关于chatgpt 的配置发生变成的时候 重置 chatgpt 里面的配置
     if (
       event.affectsConfiguration('chatgpt.gpt3.apiBaseUrl') ||
