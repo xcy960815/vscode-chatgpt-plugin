@@ -52,10 +52,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.model = this.chatGptConfig.get('gpt3.model');
     // this.getWebViewContext();
     this.setMethod();
-    this.setChromeExecutablePath();
-    this.setProfilePath();
-    this.setProxyServer();
-    this.setAuthType();
+    // this.setChromeExecutablePath();
+    // this.setProfilePath();
+    // this.setProxyServer();
+    // this.setAuthType();
   }
   /**
    * @desc 加载webview
