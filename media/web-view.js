@@ -52,13 +52,13 @@
   const introductionElement = document.getElementById('introduction');
   const conversationElement = document.getElementById('conversation-list');
   const loginButtonElement = document.getElementById('login-button');
-  const listConversationsLinkElement = document.getElementById('list-conversations-link');
+  const showConversationsButton2 = document.getElementById('show-conversations-button2');
   const chatButtonWrapperElement = document.getElementById('chat-button-wrapper');
-
+  // const thinkingElement = document.getElementById('thinking');
+  // const askingElmenet = document.getElementById('asking');
   // 接收来自 webview 的消息
   window.addEventListener('message', (event) => {
     const messageOption = event.data;
-
     switch (messageOption.type) {
       case 'show-in-progress':
         if (messageOption.showStopButton) {
@@ -106,7 +106,7 @@
         const cancelButtonTitle = chatgptConfig.webview.cancelButtonTitle;
         answerListElement.innerHTML += `<div class="p-4 self-end mt-2 question-element-ext relative input-background">
                         <h3 class="mb-5 mt-0 flex">${userSvg} You</h3>
-                       <no-export class="mb-2 flex items-center">
+                        <no-export class="mb-2 flex items-center">
                             <button title="${editButtonTitle}" class="resend-element-ext p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editButtonSvg}</button>
                             <div class="hidden send-cancel-elements-ext flex gap-2">
                                 <button title="${sendButtonTitle}" class="send-element-ext p-1 pr-2 flex items-center">${sendButtonSvg}&nbsp;${sendButtonName}</button>
@@ -116,7 +116,7 @@
                         <div class="overflow-y-auto pt-1 pb-1 pl-3 pr-3 rounded-md">${escapeHtml(
                           messageOption.value,
                         )}</div>
-                    </div>`;
+        </div>`;
 
         if (messageOption.autoScroll) {
           answerListElement.lastChild?.scrollIntoView({
@@ -127,7 +127,6 @@
         }
         break;
       case 'add-answer':
-        console.log('add-answer', messageOption);
         // 如果存在现有消息
         let existingMessageElement = messageOption.id && document.getElementById(messageOption.id);
         let updatedValue = '';
@@ -149,12 +148,14 @@
               ? messageOption.value
               : messageOption.value + '\n\n```\n\n';
         }
-
+        //  将 markdown 转换为 html
         const markedResponse = marked.parse(updatedValue);
 
         if (existingMessageElement) {
+          // 更新现有消息
           existingMessageElement.innerHTML = markedResponse;
         } else {
+          // 第一次回答
           answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 answer-element-ext">
                         <h3 class="mb-5 flex">${aiSvg}ChatGPT</h3>
                         <div class="result-streaming" id="${messageOption.id}">${markedResponse}</div>
@@ -289,12 +290,11 @@
         exportConversation2Markdown();
         break;
       case 'login-successful':
-        console.log('login-successful');
         // 登陆成功隐藏登录按钮
         loginButtonElement?.classList?.add('hidden');
         if (messageOption.showConversations) {
           // 显示会话列表按钮
-          listConversationsLinkElement?.classList?.remove('hidden');
+          showConversationsButton2?.classList?.remove('hidden');
         }
         break;
       case 'show-conversations':
@@ -323,7 +323,6 @@
 
       case 'set-chatgpt-config':
         chatgptConfig = messageOption.value;
-        console.log('chatgptConfig', chatgptConfig);
         break;
       default:
         break;
@@ -357,7 +356,6 @@
     const turndownService = new TurndownService({ codeBlockStyle: 'fenced' });
     turndownService.remove('no-export');
     const markdownContent = turndownService.turndown(answerListElement);
-
     vscode.postMessage({
       type: 'open-new-tab',
       value: markdownContent,
@@ -430,7 +428,7 @@
 
     if (
       targetButton?.id === 'show-conversations-button' ||
-      targetButton?.id === 'list-conversations-link'
+      targetButton?.id === 'show-conversations-button2'
     ) {
       vscode.postMessage({ type: 'show-conversations' });
       return;

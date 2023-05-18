@@ -163,7 +163,7 @@
         {
           "type": "webview",
           "id": "vscode-chatgpt.view",
-          "name": "Conversation window"
+          "name": "%vscode-chatgpt-view-container.name%"
         }
       ]
     },
