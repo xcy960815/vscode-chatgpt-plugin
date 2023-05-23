@@ -2,39 +2,21 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import delay from 'delay';
 import fetch from 'isomorphic-fetch';
-import * as fs from 'node:fs';
-import * as os from 'node:os';
-import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { ChatGPTAPI as ChatGPTAPI3 } from './chatgpt-4.7.2';
 import { ChatGPTAPI as ChatGPTAPI35 } from './chatgpt-5.1.1';
 import {
-  AuthType,
   LeftOverMessage,
-  LoginMethod,
   OnDidReceiveMessageOption,
   SendApiRequestOption,
   WebviewMessageOption,
 } from './types';
 export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
-  // 是否允许 ChatGPT 机器人回答您的问题时接收通知。
-  public subscribeToResponse: boolean;
-  public autoScroll: boolean;
-  public useAutoLogin?: boolean;
-  public useGpt3?: boolean;
-  public chromiumPath?: string;
-  public profilePath?: string;
-  public apiKey?: string;
-  public model?: string;
   private chatgpt3Model?: ChatGPTAPI3;
   private chatgpt35Model?: ChatGPTAPI35;
   private conversationId?: string;
   private messageId?: string;
-  private proxyServer?: string;
-  private loginMethod?: LoginMethod;
-  private authType?: AuthType;
-  // 问题数量
   private questionCount: number = 0;
   private inProgress: boolean = false;
   private abortController?: AbortController;
@@ -48,17 +30,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * 在调用 resolveWebviewView 之前的时间。
    */
   constructor(private context: vscode.ExtensionContext) {
-    // this.chatGptConfig = vscode.workspace.getConfiguration('chatgpt');
-    this.apiKey = this.getChatGPTApiKey();
-    this.subscribeToResponse = this.chatGptConfig.get('response.subscribeToResponse') || false;
-    this.autoScroll = this.chatGptConfig.get<boolean>('response.autoScroll') || false;
-    this.model = this.chatGptConfig.get('gpt3.model');
-    // this.getWebViewContext();
-    this.setMethod();
-    // this.setChromeExecutablePath();
-    // this.setProfilePath();
-    // this.setProxyServer();
-    // this.setAuthType();
+    this.clearSession();
   }
   /**
    * @desc 加载webview
@@ -79,7 +51,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     };
     // 设置webview的html内容
     webviewView.webview.html = this.getWebviewHtml(webviewView.webview);
-    // webviewView.webview.html = this.getWebViewContext();
 
     // 在监听器内部根据消息命令类型执行不同的操作。
     webviewView.webview.onDidReceiveMessage(async (data: OnDidReceiveMessageOption) => {
@@ -90,7 +61,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         case 'insert-code':
           const escapedString = (data.value as string).replace(/\$/g, '\\$');
           vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(escapedString));
-          this.logEvent('code-inserted');
+
           break;
         case 'open-new-tab':
           // 打开新的tab页
@@ -100,27 +71,20 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           });
           vscode.window.showTextDocument(document);
 
-          this.logEvent(data.language === 'markdown' ? 'code-exported' : 'code-opened');
           break;
-
         case 'clear-conversation':
           // 清空会话
           this.messageId = undefined;
           this.conversationId = undefined;
-          this.logEvent('conversation-cleared');
           break;
         case 'clear-gpt3':
           this.chatgpt3Model = undefined;
-          this.logEvent('gpt3-cleared');
+
           break;
         case 'login':
           const loginStatus = await this.prepareConversation();
           if (loginStatus) {
-            this.sendMessageToWebview(
-              { type: 'login-successful', showConversations: this.useAutoLogin },
-              true,
-            );
-            this.logEvent('logged-in');
+            this.sendMessageToWebview({ type: 'login-successful', showConversations: false }, true);
           }
           break;
         case 'open-settings':
@@ -129,19 +93,15 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             'workbench.action.openSettings',
             '@ext:YOUR_PUBLISHER_NAME.vscode-chatgpt-plugin chatgpt.',
           );
-
-          this.logEvent('settings-opened');
           break;
         case 'open-prompt-settings':
           vscode.commands.executeCommand(
             'workbench.action.openSettings',
             '@ext:YOUR_PUBLISHER_NAME.vscode-chatgpt-plugin promptPrefix',
           );
-          this.logEvent('settings-prompt-opened');
           break;
         case 'show-conversations':
           // 显示对话
-          this.logEvent('conversations-list-attempted');
           break;
         case 'show-conversation':
           break;
@@ -159,12 +119,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           break;
       }
     });
+    console.log('this.leftOverMessage', this.leftOverMessage);
 
-    if (!!this.leftOverMessage) {
-      // 如果有任何消息未传送，则在调用 resolveWebView 后展示
-      this.sendMessageToWebview(this.leftOverMessage as WebviewMessageOption);
-      this.leftOverMessage = null;
-    }
+    // if (!!this.leftOverMessage) {
+    //   // 如果有任何消息未传送，则在调用 resolveWebView 后展示
+    //   this.sendMessageToWebview(this.leftOverMessage as WebviewMessageOption);
+    //   this.leftOverMessage = null;
+    // }
   }
   /**
    * @desc 终止生成代码
@@ -184,8 +145,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       autoScroll: this.autoScroll,
       responseInMarkdown,
     });
-
-    this.logEvent('stopped-generating');
   }
   /**
    * @desc 清空会话
@@ -196,63 +155,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.chatgpt3Model = undefined;
     this.messageId = undefined;
     this.conversationId = undefined;
-    this.logEvent('cleared-session');
-  }
-  /**
-   * @desc 设置代理服务器
-   * @returns {void}
-   */
-  public setProxyServer(): void {
-    this.proxyServer = this.chatGptConfig.get('proxyServer');
-  }
-  /**
-   * @desc
-   */
-  public setMethod(): void {
-    this.loginMethod = this.chatGptConfig.get<LoginMethod>('method');
-    this.useGpt3 = true;
-    this.useAutoLogin = false;
-    this.clearSession();
-  }
-  /**
-   * @desc 设置认证类型
-   * @returns {void}
-   */
-  public setAuthType(): void {
-    this.authType = this.chatGptConfig.get('authenticationType');
-    this.clearSession();
-  }
-  /**
-   * @desc 设置chrome执行路径
-   * @returns {void}
-   */
-  public setChromeExecutablePath(): void {
-    let path = '';
-    switch (os.platform()) {
-      case 'win32':
-        path = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
-        break;
-
-      case 'darwin':
-        path = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
-        break;
-
-      default:
-        const chromeExists = fs.existsSync('/usr/bin/google-chrome');
-
-        path = chromeExists ? '/usr/bin/google-chrome' : '/usr/bin/google-chrome-stable';
-        break;
-    }
-
-    this.chromiumPath = this.chatGptConfig.get('chromiumPath') || path;
-
-    this.clearSession();
   }
 
-  public setProfilePath(): void {
-    this.profilePath = this.chatGptConfig.get('profilePath');
-    this.clearSession();
-  }
   /**
    * @desc chatgpt模型是否是 "code-davinci-002","code-cushman-001"
    * @returns {boolean}
@@ -268,10 +172,19 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     return !!this.model?.startsWith('gpt-');
   }
 
-  public async prepareConversation(modelChanged?: boolean): Promise<boolean> {
-    if (modelChanged && this.useAutoLogin) {
-      return false;
-    }
+  private get autoScroll(): boolean {
+    return this.chatGptConfig.get<boolean>('response.autoScroll') || false;
+  }
+
+  private get subscribeToResponse(): boolean {
+    return this.chatGptConfig.get<boolean>('response.subscribeToResponse') || false;
+  }
+
+  private get model(): string {
+    return this.chatGptConfig.get<string>('gpt3.model') || '';
+  }
+
+  public async prepareConversation(): Promise<boolean> {
     const hasApiKey = await this.checkAPIExistence();
     if (!hasApiKey) {
       return false;
@@ -283,77 +196,83 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * @returns {Promise<boolean>}
    */
   private async checkAPIExistence(): Promise<boolean> {
-    // if (this.useGpt3) {
-    // const apiKey = this.getChatGPTApiKey();
-    // 检查apiKey是否存在
     if (!this.apiKey) {
       return await this.promptApiKey();
     } else {
       return true;
     }
-    // } else {
-    //   return false;
-    // }
   }
+
+  private get organization(): string {
+    return this.chatGptConfig.get<string>('gpt3.organization') || '';
+  }
+
+  private get max_tokens(): number {
+    return this.chatGptConfig.get<number>('gpt3.maxTokens') || 2048;
+  }
+
+  private get temperature(): number {
+    return this.chatGptConfig.get<number>('gpt3.temperature') || 0.9;
+  }
+
+  private get top_p(): number {
+    return this.chatGptConfig.get<number>('gpt3.top_p') || 1;
+  }
+
+  private get apiBaseUrl(): string {
+    return this.chatGptConfig.get<string>('gpt3.apiBaseUrl')?.trim() || '';
+  }
+
+  private get apiKey(): string {
+    const globalState = this.context.globalState;
+    return (
+      this.chatGptConfig.get<string>('gpt3.apiKey') ||
+      globalState.get<string>('chatgpt-gpt3-apiKey') ||
+      ''
+    );
+  }
+
   /**
    * @desc 初始化chatgpt模型
    * @returns {Promise<boolean>}
    */
   private async initChatGPTModel(): Promise<boolean> {
-    // if (this.useGpt3) {
-    // const apiKey = this.getChatGPTApiKey()!;
-    const organization = this.chatGptConfig.get<string>('gpt3.organization');
-    const max_tokens = this.chatGptConfig.get<number>('gpt3.maxTokens');
-    const temperature = this.chatGptConfig.get<number>('gpt3.temperature');
-    const top_p = this.chatGptConfig.get<number>('gpt3.top_p');
-    const apiBaseUrl = this.chatGptConfig.get<string>('gpt3.apiBaseUrl');
     // 初始化chatgpt模型
     if (this.isGpt35Model) {
       this.chatgpt35Model = new ChatGPTAPI35({
-        apiKey: this.apiKey!,
+        apiKey: this.apiKey,
         fetch: fetch,
-        apiBaseUrl: apiBaseUrl?.trim(),
-        organization,
+        apiBaseUrl: this.apiBaseUrl,
+        organization: this.organization,
         completionParams: {
           model: this.model,
-          max_tokens,
-          temperature,
-          top_p,
+          max_tokens: this.max_tokens,
+          temperature: this.temperature,
+          top_p: this.top_p,
         },
       });
     } else {
       this.chatgpt3Model = new ChatGPTAPI3({
-        apiKey: this.apiKey!,
+        apiKey: this.apiKey,
         fetch: fetch,
-        apiBaseUrl: apiBaseUrl?.trim(),
-        organization,
+        apiBaseUrl: this.apiBaseUrl,
+        organization: this.organization,
         completionParams: {
           model: this.model,
-          max_tokens,
-          temperature,
-          top_p,
+          max_tokens: this.max_tokens,
+          temperature: this.temperature,
+          top_p: this.top_p,
         },
       });
     }
     // 登录成功
-    this.sendMessageToWebview(
-      { type: 'login-successful', showConversations: this.useAutoLogin },
-      true,
-    );
+    this.sendMessageToWebview({ type: 'login-successful', showConversations: false }, true);
     return true;
-    // } else {
-    //   return false;
-    // }
   }
-
-  private getChatGPTApiKey(): string | undefined {
-    const globalState = this.context.globalState;
-    return (
-      this.chatGptConfig.get<string>('gpt3.apiKey') ||
-      globalState.get<string>('chatgpt-gpt3-apiKey')
-    );
-  }
-
+  /**
+   * @desc 提示输入apiKey
+   * @returns {Promise<boolean>}
+   */
   private async promptApiKey(): Promise<boolean> {
     const noApiKeyMessage = this.chatGptConfig.get<string>('pageMessage.noApiKey.message')!;
     const noApiKeyChoose1 = this.chatGptConfig.get<string>('pageMessage.noApiKey.choose1')!;
@@ -367,41 +286,40 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     const noApiKeyInputPlaceHolder = this.chatGptConfig.get<string>(
       'pageMessage.noApiKey.inputBox.placeHolder',
     )!;
-    return await vscode.window
-      .showErrorMessage(noApiKeyMessage, noApiKeyChoose1, noApiKeyChoose2)
-      .then(async (choice) => {
-        // 如果用户选择了打开设置
-        if (choice === noApiKeyChoose2) {
-          // 打开关于openai apiKey的设置项
-          vscode.commands.executeCommand('workbench.action.openSettings', 'chatgpt.gpt3.apiKey');
-          return false;
-        } else if (choice === noApiKeyChoose1) {
-          return await vscode.window
-            .showInputBox({
-              title: noApiKeyInputTitle,
-              prompt: noApiKeyInputPrompt,
-              ignoreFocusOut: true,
-              placeHolder: noApiKeyInputPlaceHolder,
-            })
-            .then((value) => {
-              if (value?.trim()) {
-                // 全局状态
-                const globalState = this.context.globalState;
-                // 存储在全局状态中
-                globalState.update('chatgpt-gpt3-apiKey', value?.trim());
-                return true;
-              } else {
-                return false;
-              }
-            });
-        } else {
-          return false;
-        }
+    const choice = await vscode.window.showErrorMessage(
+      noApiKeyMessage,
+      noApiKeyChoose1,
+      noApiKeyChoose2,
+    );
+    // 如果用户选择了打开设置
+    if (choice === noApiKeyChoose2) {
+      // 打开关于openai apiKey的设置项
+      vscode.commands.executeCommand('workbench.action.openSettings', 'chatgpt.gpt3.apiKey');
+      return false;
+    } else if (choice === noApiKeyChoose1) {
+      const apiKeyValue = await vscode.window.showInputBox({
+        title: noApiKeyInputTitle,
+        prompt: noApiKeyInputPrompt,
+        ignoreFocusOut: true,
+        placeHolder: noApiKeyInputPlaceHolder,
       });
+      if (apiKeyValue?.trim()) {
+        // 全局状态
+        const globalState = this.context.globalState;
+        // 存储在全局状态中
+        globalState.update('chatgpt-gpt3-apiKey', apiKeyValue?.trim());
+        return true;
+      } else {
+        return false;
+      }
+    } else {
+      return false;
+    }
   }
 
   /**
    * @desc 给chatgpt的系统信息
+   * @returns {string}
    */
   private get systemMessage(): string {
     return this.chatGptConfig.get<string>('gpt3.systemMessage') || '';
@@ -437,12 +355,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     this.questionCount++;
 
-    // this.logEvent('api-request-sent', {
-    // 	'chatgpt.command': option.command,
-    // 	'chatgpt.hasCode': String(!!option.code),
-    // 	'chatgpt.hasPreviousAnswer': String(!!option.previousAnswer),
-    // });
-
     // 校验是否登录
     if (!(await this.prepareConversation())) {
       return;
@@ -467,7 +379,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.sendMessageToWebview({
       type: 'show-in-progress',
       inProgress: this.inProgress,
-      showStopButton: this.useGpt3,
+      showStopButton: true,
     });
 
     this.currentMessageId = this.getRandomId();
@@ -480,7 +392,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     });
 
     try {
-      // if (this.useGpt3) {
       if (this.isGpt35Model && this.chatgpt35Model) {
         ({
           text: this.response,
@@ -502,11 +413,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             });
           },
         }));
-        // ({
-        //   text: this.response,
-        //   id: this.conversationId,
-        //   parentMessageId: this.messageId,
-        // } = gpt3Response);
       } else if (!this.isGpt35Model && this.chatgpt3Model) {
         ({
           text: this.response,
@@ -527,7 +433,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           },
         }));
       }
-      // }
 
       // 如果存在上一个回答
       if (!!option.previousAnswer) {
@@ -545,21 +450,20 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         const dontCompleteChoose = this.chatGptConfig.get<string>(
           'pageMessage.dontComplete.choose',
         )!;
-        vscode.window
-          .showInformationMessage(dontCompleteMessage, dontCompleteChoose)
-          .then(async (choice) => {
-            if (choice === dontCompleteChoose) {
-              const prompt =
-                this.chatGptConfig.get<string>('pageMessage.dontComplete.prompt') || '';
-              this.sendApiRequest(prompt, {
-                command: option.command,
-                code: undefined,
-                previousAnswer: this.response,
-              });
-            }
+        const choice = await vscode.window.showInformationMessage(
+          dontCompleteMessage,
+          dontCompleteChoose,
+        );
+        if (choice === dontCompleteChoose) {
+          const prompt = this.chatGptConfig.get<string>('pageMessage.dontComplete.prompt') || '';
+          this.sendApiRequest(prompt, {
+            command: option.command,
+            code: undefined,
+            previousAnswer: this.response,
           });
+        }
       }
-
+      // 回答完毕
       this.sendMessageToWebview({
         type: 'add-answer',
         value: this.response,
@@ -590,8 +494,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         error?.message ||
         error?.name;
 
-      this.logError('api-request-failed');
-
       if (error?.response?.status || error?.response?.statusText) {
         message = `${error?.response?.status || ''} ${error?.response?.statusText || ''}`;
         // 从配置中获取错误信息
@@ -610,7 +512,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           }
         });
       } else if (error.statusCode === 400) {
-        message = `Your method: '${this.loginMethod}' and your model: '${this.model}' may be incompatible or one of your parameters is unknown. Reset your settings to default. (HTTP 400 Bad Request)`;
+        message = `your model: '${this.model}' may be incompatible or one of your parameters is unknown. Reset your settings to default. (HTTP 400 Bad Request)`;
       } else if (error.statusCode === 401) {
         message = `Make sure you are properly signed in. 
 If you are using Browser Auto-login method, 
@@ -622,7 +524,7 @@ you can reset it with “ChatGPT: Reset session” command.
       } else if (error.statusCode === 403) {
         message = 'Your token has expired. Please try authenticating again. (HTTP 403 Forbidden)';
       } else if (error.statusCode === 404) {
-        message = `Your method: '${this.loginMethod}' and your model: '${this.model}' may be incompatible or you may have exhausted your ChatGPT subscription allowance. (HTTP 404 Not Found)`;
+        message = `your model: '${this.model}' may be incompatible or you may have exhausted your ChatGPT subscription allowance. (HTTP 404 Not Found)`;
       } else if (error.statusCode === 429) {
         message =
           'Too many requests try again later. (HTTP 429 Too Many Requests) Potential reasons: \r\n 1. You exceeded your current quota, please check your plan and billing details\r\n 2. You are sending requests too quickly \r\n 3. The engine is currently overloaded, please try again later. \r\n See https://platform.openai.com/docs/guides/error-codes for more details.';
@@ -662,17 +564,6 @@ you can reset it with “ChatGPT: Reset session” command.
     }
   }
 
-  private logEvent(eventName: string, properties?: {}): void {
-    // You can initialize your telemetry reporter and consume it here - *replaced with console.debug to prevent unwanted telemetry logs
-    // this.reporter?.sendTelemetryEvent(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown", ...properties }, { "chatgpt.questionCount": this.questionCount });
-    // console.debug(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown", ...properties }, { "chatgpt.questionCount": this.questionCount });
-  }
-
-  private logError(eventName: string): void {
-    // You can initialize your telemetry reporter and consume it here - *replaced with console.error to prevent unwanted telemetry logs
-    // this.reporter?.sendTelemetryErrorEvent(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown" }, { "chatgpt.questionCount": this.questionCount });
-    // console.error(eventName, { "chatgpt.loginMethod": this.loginMethod!, "chatgpt.authType": this.authType!, "chatgpt.model": this.model || "unknown" }, { "chatgpt.questionCount": this.questionCount });
-  }
   /**
    * @desc 获取webview的html
    * @param {vscode.Webview} webview
@@ -685,50 +576,18 @@ you can reset it with “ChatGPT: Reset session” command.
     const webViewCss = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'web-view.css'),
     );
-    /**
-     * highlight.css 包是一个基于 highlight.js 的语法高亮度显示样式库。
-     * 它提供了一系列漂亮的预定义样式，可以应用于任何使用 highlight.js 库进行代码高亮的项目中。
-     * 当你在你的网站或博客中需要为代码段设置语法高亮时，你可以使用 highlight.css 来实现界面美观度更高，风格更加多样化的效果。
-     * 通过引入该库提供的 CSS 样式，你可以快速而轻松地将已经使用 highlight.js 高亮处理过的代码块呈现成更具有吸引力的方式。
-     */
     const HighlightCss = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'highlight.min.css'),
     );
-    /**
-     * highlight.js 是一个 JavaScript 语法高亮显示库，支持多种编程语言和文档格式。
-     * 它可以在代码片段上自动进行色彩编码，而不需要额外的配置。
-     * 它适用于各种网站、博客（例如 WordPress 等）、平台（例如 GitHub、Reddit）以及其他应用程序中。
-     * 另外，highlight.js 还提供了对可读性更强的 CSS 样式的支持，可以轻松定制代码块的样式。
-     * 它可以在浏览器端直接使用，也可以在 Node.js 中使用。
-     */
     const HighlightJs = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'highlight.min.js'),
     );
-    /**
-     * markedjs是一个流行的用于将Markdown语法转换成HTML代码的JavaScript库。
-     * 它可以将包含Markdown的字符串解析成HTML，同时保留Markdown原始文本中的样式。
-     * 这个库简单易用，支持GFM（GitHub风格的Markdown）以及其他一些扩展语法，例如：表格、代码块、任务列表、删除线等等。该库还支持自定义选项和各种插件，提供广泛的选择来生成所需的格式化输出。
-     * 由于其方便快捷、性能好，因此很受欢迎，常常用于编写Markdown编辑器或博客系统。
-     */
     const MarkedJs = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'marked.min.js'),
     );
-    /**
-     * tailwindcss 是一个全新的、未来感极强的 CSS 框架，它能够帮助开发人员快速构建现代、美观且高效的网站。
-     * 与传统的 CSS 框架不同，Tailwind 不是提供单独的CSS类，而是通过一组小型的原子级别类来构建 UI 界面。例如, Tailwind 提供了用于颜色、字体、定位、边框等元素的简单 CSS 类，并在组合这些类时提供了大量自定义选项。
-     * 使用 tailwindcss 可以让开发者尽可能的最小化 CSS 代码，同时也避免了样式冗余和未使用样式的 wastage。
-     * 另外，Tailwind 具有复用性高的特点，可以让开发者在任何情况下轻松定制并扩展框架。
-     * 总之，tailwindcss可以帮助开发者更加高效地编写 CSS 样式和快速构建出更具有现代感及美观的 Web 应用程序。
-     */
     const TailwindJs = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'tailwindcss.3.2.4.min.js'),
     );
-    /**
-     * Turndown.js 是一个用于将HTML转换为markdown格式的JavaScript库。它可以将大部分 HTML 标记转换为与之等价的 markdown 语法。
-     * Turndown.js可在浏览器端和Node.js环境中运行。
-     * 由于 Turndown.js 能够将HTML文本转换为 Markdown 格式的文本，所以Turndown.js是许多应用程序中非常有用的一个工具包。
-     * 它可以帮助将从富文本编辑器、博客等地方获取到的HTML数据转化为Markdown格式，并进行展示或者存储。
-     */
     const TurndownJs = webview.asWebviewUri(
       vscode.Uri.joinPath(this.context.extensionUri, 'media', 'turndown.js'),
     );
@@ -924,7 +783,6 @@ you can reset it with “ChatGPT: Reset session” command.
 			</body>
 			</html>`;
   }
-
   /**
    * @desc 获取随机字符串
    * @returns {string}
@@ -936,21 +794,5 @@ you can reset it with “ChatGPT: Reset session” command.
       text += possible.charAt(Math.floor(Math.random() * possible.length));
     }
     return text;
-  }
-
-  /**
-   * @desc 获取webview的内容 暂时不用
-   * @returns {string}
-   */
-  private getWebViewContext(): string {
-    const webviewHtmlPath = path.join(this.context.extensionPath, 'media', 'web-view.html');
-    const documentPath = path.dirname(webviewHtmlPath);
-    let html = fs.readFileSync(webviewHtmlPath, 'utf-8');
-    // vscode 不支持直接加载本地资源，需要替换成其专有路径格式，这里只是简单的将样式和JS的路径替换
-    return html.replace(/(<link.+?href="|<script.+?src="|<img.+?src=")(.+?)"/g, (_m, $1, $2) => {
-      return `${$1}${this.webView?.webview.asWebviewUri(
-        vscode.Uri.file(path.resolve(documentPath, $2)),
-      )}"`;
-    });
   }
 }

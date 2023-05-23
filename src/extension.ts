@@ -9,9 +9,9 @@ const menuCommands = [
   'addComments',
   'completeCode',
   'generateCode',
+  'adhoc',
   'customPrompt1',
   'customPrompt2',
-  'adhoc',
 ];
 
 export async function activate(context: vscode.ExtensionContext) {
@@ -36,20 +36,23 @@ export async function activate(context: vscode.ExtensionContext) {
       chatGptViewProvider?.sendApiRequest(value, { command: 'freeText' });
     }
   });
-  // 注册 clearConversation 命令
+
+  // 注册对空对话命令
   const clearConversationCommand = vscode.commands.registerCommand(
     'vscode-chatgpt.clearConversation',
     async () => {
       chatGptViewProvider?.sendMessageToWebview({ type: 'clear-conversation' }, true);
     },
   );
-  // 注册 exportConversation 命令
+
+  // 注册导出对话命令
   const exportConversationCommand = vscode.commands.registerCommand(
     'vscode-chatgpt.exportConversation',
     async () => {
-      chatGptViewProvider?.sendMessageToWebview({ type: 'export-conversation-to-markdown' }, true);
+      chatGptViewProvider?.sendMessageToWebview({ type: 'export-conversation' }, true);
     },
   );
+
   // 注册 clearSession 命令
   const clearSessionCommand = vscode.commands.registerCommand('vscode-chatgpt.clearSession', () => {
     context.globalState.update('chatgpt-session-token', null);
@@ -59,56 +62,8 @@ export async function activate(context: vscode.ExtensionContext) {
     chatGptViewProvider?.clearSession();
   });
 
-  // 用于监听用户更改配置文件时的事件。当用户在 VS Code 的 "setting.json" 文件中更改了某个设置时，就会触发此事件。
-  const configChanged = vscode.workspace.onDidChangeConfiguration((event) => {
-    if (event.affectsConfiguration('chatgpt.response.subscribeToResponse')) {
-      chatGptViewProvider.subscribeToResponse =
-        vscode.workspace.getConfiguration('chatgpt').get('response.subscribeToResponse') || false;
-    }
-
-    if (event.affectsConfiguration('chatgpt.response.autoScroll')) {
-      chatGptViewProvider.autoScroll = !!vscode.workspace
-        .getConfiguration('chatgpt')
-        .get('response.autoScroll');
-    }
-
-    // if (event.affectsConfiguration('chatgpt.useAutoLogin')) {
-    //   chatGptViewProvider.useAutoLogin =
-    //     vscode.workspace.getConfiguration('chatgpt').get('useAutoLogin') || false;
-    //   context.globalState.update('chatgpt-session-token', null);
-    //   context.globalState.update('chatgpt-clearance-token', null);
-    //   context.globalState.update('chatgpt-user-agent', null);
-    // }
-
-    if (event.affectsConfiguration('chatgpt.chromiumPath')) {
-      chatGptViewProvider.setChromeExecutablePath();
-    }
-
-    if (event.affectsConfiguration('chatgpt.profilePath')) {
-      chatGptViewProvider.setProfilePath();
-    }
-
-    if (event.affectsConfiguration('chatgpt.proxyServer')) {
-      chatGptViewProvider.setProxyServer();
-    }
-
-    if (event.affectsConfiguration('chatgpt.method')) {
-      chatGptViewProvider.setMethod();
-    }
-
-    if (event.affectsConfiguration('chatgpt.authenticationType')) {
-      chatGptViewProvider.setAuthType();
-    }
-
-    if (event.affectsConfiguration('chatgpt.gpt3.model')) {
-      chatGptViewProvider.model = vscode.workspace.getConfiguration('chatgpt').get('gpt3.model');
-    }
-
-    if (event.affectsConfiguration('chatgpt.gpt3.apiKey')) {
-      chatGptViewProvider.apiKey = vscode.workspace.getConfiguration('chatgpt').get('gpt3.apiKey');
-    }
-
-    // 当关于chatgpt 的配置发生变成的时候 重置 chatgpt 里面的配置
+  const vscodeConfigChanged = vscode.workspace.onDidChangeConfiguration((event) => {
+    // 关于chatgpt的配置发生变更后重新 init 模型
     if (
       event.affectsConfiguration('chatgpt.gpt3.apiBaseUrl') ||
       event.affectsConfiguration('chatgpt.gpt3.model') ||
@@ -117,14 +72,13 @@ export async function activate(context: vscode.ExtensionContext) {
       event.affectsConfiguration('chatgpt.gpt3.temperature') ||
       event.affectsConfiguration('chatgpt.gpt3.top_p')
     ) {
-      chatGptViewProvider.prepareConversation(true);
+      chatGptViewProvider.prepareConversation();
     }
 
     if (
       event.affectsConfiguration('chatgpt.promptPrefix') ||
       event.affectsConfiguration('chatgpt.gpt3.generateCode-enabled') ||
-      event.affectsConfiguration('chatgpt.gpt3.model') ||
-      event.affectsConfiguration('chatgpt.method')
+      event.affectsConfiguration('chatgpt.gpt3.model')
     ) {
       setContext();
     }
@@ -168,12 +122,10 @@ export async function activate(context: vscode.ExtensionContext) {
     }
     // 保存用户输入的临时指令
     context.globalState.update('chatgpt-adhoc-prompt', chatgptAdhocPrompt);
-    if (chatgptAdhocPrompt) {
-      chatGptViewProvider?.sendApiRequest(chatgptAdhocPrompt, {
-        command: 'adhoc',
-        code: selectedCode,
-      });
-    }
+    chatGptViewProvider?.sendApiRequest(chatgptAdhocPrompt, {
+      command: 'adhoc',
+      code: selectedCode,
+    });
   });
 
   // 注册 generateCode 命令
@@ -183,12 +135,13 @@ export async function activate(context: vscode.ExtensionContext) {
       return;
     }
     const selectedCode = editor.document.getText(editor.selection).trim();
-    if (selectedCode) {
-      chatGptViewProvider?.sendApiRequest(selectedCode, {
-        command: 'generateCode',
-        language: editor.document.languageId,
-      });
+    if (!selectedCode) {
+      return;
     }
+    chatGptViewProvider?.sendApiRequest(selectedCode, {
+      command: 'generateCode',
+      language: editor.document.languageId,
+    });
   });
 
   // 注册菜单命令
@@ -224,7 +177,7 @@ export async function activate(context: vscode.ExtensionContext) {
     clearConversationCommand,
     exportConversationCommand,
     clearSessionCommand,
-    configChanged,
+    vscodeConfigChanged,
     adhocCommand,
     generateCodeCommand,
     ...registeredCommands,
@@ -238,14 +191,13 @@ export async function activate(context: vscode.ExtensionContext) {
           .get<boolean>('gpt3.generateCode-enabled');
         const modelName =
           vscode.workspace.getConfiguration('chatgpt').get<string>('gpt3.model') || '';
-        const method = vscode.workspace.getConfiguration('chatgpt').get<string>('method') || '';
-        generateCodeEnabled =
-          generateCodeEnabled && method === 'GPT3 OpenAI API Key' && modelName.startsWith('code-');
+        generateCodeEnabled = generateCodeEnabled && modelName.startsWith('code-');
         vscode.commands.executeCommand('setContext', 'generateCode-enabled', generateCodeEnabled);
       } else {
-        const enabled = !!vscode.workspace
-          .getConfiguration('chatgpt.promptPrefix')
-          .get<boolean>(`${command}-enabled`);
+        const enabled =
+          vscode.workspace
+            .getConfiguration('chatgpt.promptPrefix')
+            .get<boolean>(`${command}-enabled`) || false;
         vscode.commands.executeCommand('setContext', `${command}-enabled`, enabled);
       }
     });
