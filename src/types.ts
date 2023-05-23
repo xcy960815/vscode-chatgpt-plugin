@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-export type LoginMethod = 'GPT3 OpenAI API Key';
+export type LoginMethod = 'GPT3 OpenAI API Key' | undefined;
 
 export type AuthType =
   | 'OpenAI Authentication'
@@ -15,7 +15,7 @@ export interface WebviewMessageOption {
     | 'add-error'
     | 'clear-conversation'
     | 'set-chatgpt-config'
-    | 'export-conversation-to-markdown';
+    | 'export-conversation';
   code?: string;
   value?: any;
   showConversations?: boolean;

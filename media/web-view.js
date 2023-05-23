@@ -286,8 +286,8 @@
       case 'clear-conversation':
         clearConversation();
         break;
-      case 'export-conversation-to-markdown':
-        exportConversation2Markdown();
+      case 'export-conversation':
+        exportConversation();
         break;
       case 'login-successful':
         // 登陆成功隐藏登录按钮
@@ -352,7 +352,7 @@
   };
 
   // 导出聊天记录
-  const exportConversation2Markdown = () => {
+  const exportConversation = () => {
     const turndownService = new TurndownService({ codeBlockStyle: 'fenced' });
     turndownService.remove('no-export');
     const markdownContent = turndownService.turndown(answerListElement);
@@ -422,7 +422,7 @@
     }
 
     if (targetButton?.id === 'export-conversation-2-markdown-button') {
-      exportConversation2Markdown();
+      exportConversation();
       return;
     }
 

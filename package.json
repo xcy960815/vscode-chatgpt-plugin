@@ -88,11 +88,11 @@
       },
       {
         "command": "vscode-chatgpt.clearSession",
-        "title": "ChatGPT: Reset session"
+        "title": "%vscode-chatgpt.clearSession.title%"
       },
       {
         "command": "vscode-chatgpt.generateCode",
-        "title": "ChatGPT-Codex: Generate code",
+        "title": "%vscode-chatgpt.generateCode.title%",
         "enablement": "editorHasSelection"
       },
       {
@@ -171,60 +171,6 @@
       "title": "%chatgpt-config.title%",
       "type": "object",
       "properties": {
-        "chatgpt.method": {
-          "type": "string",
-          "enum": [
-            "GPT3 OpenAI API Key"
-          ],
-          "default": "GPT3 OpenAI API Key",
-          "markdownDescription": "%chatgpt.method.markdownDescription%",
-          "order": 1,
-          "enumItemLabels": [
-            "%chatgpt.method.enumItemLabel1%"
-          ],
-          "markdownEnumDescriptions": [
-            "%chatgpt.method.markdownEnumDescriptions2%"
-          ]
-        },
-        "chatgpt.authenticationType": {
-          "type": "string",
-          "enum": [
-            "OpenAI Authentication",
-            "Google Authentication",
-            "Microsoft Authentication"
-          ],
-          "default": "OpenAI Authentication",
-          "markdownDescription": "%chatgpt.authenticationType.markdownDescription%",
-          "enumItemLabels": [
-            "%chatgpt.authenticationType.enumItemLabel1%",
-            "%chatgpt.authenticationType.enumItemLabel2%",
-            "%chatgpt.authenticationType.enumItemLabel3%"
-          ],
-          "order": 2
-        },
-        "chatgpt.emailAddress": {
-          "type": "string",
-          "default": null,
-          "description": "%chatgpt.emailAddress.description%",
-          "order": 3
-        },
-        "chatgpt.password": {
-          "type": "string",
-          "default": null,
-          "description": "%chatgpt.password.description%",
-          "order": 4
-        },
-        "chatgpt.proxyServer": {
-          "type": "string",
-          "default": null,
-          "markdownDescription": "%chatgpt.proxyServer.markdownDescription%",
-          "order": 5
-        },
-        "chatgpt.chromiumPath": {
-          "type": "string",
-          "markdownDescription": "%chatgpt.chromiumPath.markdownDescription%",
-          "order": 6
-        },
         "chatgpt.gpt3.generateCode-enabled": {
           "type": "boolean",
           "default": true,

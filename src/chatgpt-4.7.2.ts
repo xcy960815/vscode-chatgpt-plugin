@@ -372,9 +372,10 @@ export class ChatGPTAPI {
                   result.detail = response;
                   onProgress?.(result);
                 }
-              } catch (err) {
-                console.warn('ChatGPT stream SEE event unexpected error', err);
-                return reject(err);
+              } catch (error) {
+                console.warn('ChatGPT stream SEE event unexpected error', error);
+                reject(error);
+                return;
               }
             },
           },
@@ -407,16 +408,17 @@ export class ChatGPTAPI {
           if (response?.choices?.length) {
             result.text = response.choices[0].text.trim();
           } else {
-            const res2 = response;
             return reject(
-              new Error(`OpenAI error: ${res2?.detail?.message || res2?.detail || 'unknown'}`),
+              new Error(
+                `OpenAI error: ${response?.detail?.message || response?.detail || 'unknown'}`,
+              ),
             );
           }
           result.detail = response;
           resolve(result);
           return;
-        } catch (err) {
-          return reject(err);
+        } catch (error) {
+          return reject(error);
         }
       }
     }).then((message2) => {
@@ -459,7 +461,6 @@ Current date: ${currentDate}${this._sepToken}`;
     const promptSuffix =
       options.promptSuffix ||
       `
-      
 ${this._assistantLabel}:
 `;
     const maxNumTokens = this._maxModelTokens - this._maxResponseTokens;
