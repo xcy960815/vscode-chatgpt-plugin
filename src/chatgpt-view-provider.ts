@@ -5,12 +5,7 @@ import fetch from 'isomorphic-fetch';
 import * as vscode from 'vscode';
 import { ChatGPTAPI as ChatGPTAPI3 } from './chatgpt-4.7.2';
 import { ChatGPTAPI as ChatGPTAPI35 } from './chatgpt-5.1.1';
-import {
-  LeftOverMessage,
-  OnDidReceiveMessageOption,
-  SendApiRequestOption,
-  WebviewMessageOption,
-} from './types';
+import { OnDidReceiveMessageOption, SendApiRequestOption, WebviewMessageOption } from './types';
 export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
   private chatgpt3Model?: ChatGPTAPI3;
@@ -22,7 +17,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private abortController?: AbortController;
   private currentMessageId: string = '';
   private response: string = '';
-  private leftOverMessage?: LeftOverMessage;
   private chatGptConfig: vscode.WorkspaceConfiguration =
     vscode.workspace.getConfiguration('chatgpt');
   /**
@@ -30,8 +24,63 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * 在调用 resolveWebviewView 之前的时间。
    */
   constructor(private context: vscode.ExtensionContext) {
-    this.clearSession();
+    // this.clearSession();
   }
+  /**
+   * @desc chatgpt模型是否是 "code-davinci-002","code-cushman-001"
+   * @returns {boolean}
+   */
+  private get isCodexModel(): boolean {
+    return !!this.model?.startsWith('code-');
+  }
+  /**
+   * @desc chatgpt模型是否是 "gpt-3.5-turbo","gpt-3.5-turbo-0301","gpt-4"
+   * @returns {boolean}
+   */
+  private get isGpt35Model(): boolean {
+    return !!this.model?.startsWith('gpt-');
+  }
+
+  private get autoScroll(): boolean {
+    return this.chatGptConfig.get<boolean>('response.autoScroll') || false;
+  }
+
+  private get subscribeToResponse(): boolean {
+    return this.chatGptConfig.get<boolean>('response.subscribeToResponse') || false;
+  }
+
+  private get model(): string {
+    return this.chatGptConfig.get<string>('gpt3.model') || '';
+  }
+  private get organization(): string {
+    return this.chatGptConfig.get<string>('gpt3.organization') || '';
+  }
+
+  private get max_tokens(): number {
+    return this.chatGptConfig.get<number>('gpt3.maxTokens') || 2048;
+  }
+
+  private get temperature(): number {
+    return this.chatGptConfig.get<number>('gpt3.temperature') || 0.9;
+  }
+
+  private get top_p(): number {
+    return this.chatGptConfig.get<number>('gpt3.top_p') || 1;
+  }
+
+  private get apiBaseUrl(): string {
+    return this.chatGptConfig.get<string>('gpt3.apiBaseUrl')?.trim() || '';
+  }
+
+  private get apiKey(): string {
+    const globalState = this.context.globalState;
+    return (
+      this.chatGptConfig.get<string>('gpt3.apiKey') ||
+      globalState.get<string>('chatgpt-gpt3-apiKey') ||
+      ''
+    );
+  }
+
   /**
    * @desc 加载webview
    * @param {vscode.WebviewView} webviewView
@@ -84,7 +133,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         case 'login':
           const loginStatus = await this.prepareConversation();
           if (loginStatus) {
-            this.sendMessageToWebview({ type: 'login-successful', showConversations: false }, true);
+            this.sendMessageToWebview({ type: 'login-successful', showConversations: false });
           }
           break;
         case 'open-settings':
@@ -119,13 +168,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           break;
       }
     });
-    console.log('this.leftOverMessage', this.leftOverMessage);
-
-    // if (!!this.leftOverMessage) {
-    //   // 如果有任何消息未传送，则在调用 resolveWebView 后展示
-    //   this.sendMessageToWebview(this.leftOverMessage as WebviewMessageOption);
-    //   this.leftOverMessage = null;
-    // }
   }
   /**
    * @desc 终止生成代码
@@ -136,7 +178,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.inProgress = false;
     this.sendMessageToWebview({ type: 'show-in-progress', inProgress: this.inProgress });
     const responseInMarkdown = !this.isCodexModel;
-
     this.sendMessageToWebview({
       type: 'add-answer',
       value: this.response,
@@ -156,34 +197,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.messageId = undefined;
     this.conversationId = undefined;
   }
-
   /**
-   * @desc chatgpt模型是否是 "code-davinci-002","code-cushman-001"
-   * @returns {boolean}
+   * @desc 会话前准备
+   * @returns {Promise<boolean>}
    */
-  private get isCodexModel(): boolean {
-    return !!this.model?.startsWith('code-');
-  }
-  /**
-   * @desc chatgpt模型是否是 "gpt-3.5-turbo","gpt-3.5-turbo-0301","gpt-4"
-   * @returns {boolean}
-   */
-  private get isGpt35Model(): boolean {
-    return !!this.model?.startsWith('gpt-');
-  }
-
-  private get autoScroll(): boolean {
-    return this.chatGptConfig.get<boolean>('response.autoScroll') || false;
-  }
-
-  private get subscribeToResponse(): boolean {
-    return this.chatGptConfig.get<boolean>('response.subscribeToResponse') || false;
-  }
-
-  private get model(): string {
-    return this.chatGptConfig.get<string>('gpt3.model') || '';
-  }
-
   public async prepareConversation(): Promise<boolean> {
     const hasApiKey = await this.checkAPIExistence();
     if (!hasApiKey) {
@@ -202,36 +219,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       return true;
     }
   }
-
-  private get organization(): string {
-    return this.chatGptConfig.get<string>('gpt3.organization') || '';
-  }
-
-  private get max_tokens(): number {
-    return this.chatGptConfig.get<number>('gpt3.maxTokens') || 2048;
-  }
-
-  private get temperature(): number {
-    return this.chatGptConfig.get<number>('gpt3.temperature') || 0.9;
-  }
-
-  private get top_p(): number {
-    return this.chatGptConfig.get<number>('gpt3.top_p') || 1;
-  }
-
-  private get apiBaseUrl(): string {
-    return this.chatGptConfig.get<string>('gpt3.apiBaseUrl')?.trim() || '';
-  }
-
-  private get apiKey(): string {
-    const globalState = this.context.globalState;
-    return (
-      this.chatGptConfig.get<string>('gpt3.apiKey') ||
-      globalState.get<string>('chatgpt-gpt3-apiKey') ||
-      ''
-    );
-  }
-
   /**
    * @desc 初始化chatgpt模型
    * @returns {Promise<boolean>}
@@ -266,7 +253,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       });
     }
     // 登录成功
-    this.sendMessageToWebview({ type: 'login-successful', showConversations: false }, true);
+    this.sendMessageToWebview({ type: 'login-successful', showConversations: false });
     return true;
   }
   /**
@@ -316,7 +303,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       return false;
     }
   }
-
   /**
    * @desc 给chatgpt的系统信息
    * @returns {string}
@@ -352,7 +338,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       vscode.window.showInformationMessage(inprogressMessage);
       return;
     }
-
     this.questionCount++;
 
     // 校验是否登录
@@ -472,9 +457,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         autoScroll: this.autoScroll,
         responseInMarkdown,
       });
+      console.log('xxxxxxx', this.subscribeToResponse);
 
       // 如果打开了订阅对话的配置
       if (this.subscribeToResponse) {
+        // 给用户通知
         const subscribeToResponseMessage =
           this.chatGptConfig.get<string>('pageMessage.subscribeToResponse.message') || '';
         const subscribeToResponseChoose =
@@ -534,10 +521,7 @@ you can reset it with “ChatGPT: Reset session” command.
       }
 
       if (apiMessage) {
-        message = `${message ? message + ' ' : ''}
-
-	${apiMessage}
-`;
+        message = `${message ? message + ' ' : ''}${apiMessage}`;
       }
       this.sendMessageToWebview({ type: 'add-error', value: message, autoScroll: this.autoScroll });
       return;
@@ -546,7 +530,6 @@ you can reset it with “ChatGPT: Reset session” command.
       this.sendMessageToWebview({ type: 'show-in-progress', inProgress: this.inProgress });
     }
   }
-
   /**
    * @desc 消息发送器 将消息发送到webview
    * @param {WebviewMessageOption} webviewMessageOption
@@ -560,7 +543,7 @@ you can reset it with “ChatGPT: Reset session” command.
     if (this.webView) {
       this.webView?.webview.postMessage(webviewMessageOption);
     } else if (!ignoreMessageIfNullWebView) {
-      this.leftOverMessage = webviewMessageOption;
+      console.log('webview is null');
     }
   }
 
