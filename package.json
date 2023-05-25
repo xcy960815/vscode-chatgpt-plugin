@@ -378,6 +378,11 @@
           "markdownDescription": "%chatgpt.telemetry.disable.markdownDescription%",
           "order": 39
         },
+        "chatgpt.pageMessage.askAnything.inputBox.prompt": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.askAnything.inputBox.prompt%",
+          "order": 25
+        },
         "chatgpt.pageMessage.adhocCommand.inputBox.title": {
           "type": "string",
           "default": "%chatgpt.pageMessage.adhocCommand.inputBox.title%",

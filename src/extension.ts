@@ -28,16 +28,19 @@ export async function activate(context: vscode.ExtensionContext) {
   );
   // 注册 freeText 命令
   const freeTextCommand = vscode.commands.registerCommand('vscode-chatgpt.freeText', async () => {
+    const inputBoxPrompt =
+      vscode.workspace
+        .getConfiguration('chatgpt')
+        .get<string>('pageMessage.askAnything.inputBox.prompt') || '';
     const value = await vscode.window.showInputBox({
-      prompt: 'Ask anything...',
+      prompt: inputBoxPrompt,
     });
-
     if (value) {
       chatGptViewProvider?.sendApiRequest(value, { command: 'freeText' });
     }
   });
 
-  // 注册对空对话命令
+  // 注册清空对话命令
   const clearConversationCommand = vscode.commands.registerCommand(
     'vscode-chatgpt.clearConversation',
     async () => {
@@ -55,12 +58,21 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // 注册 clearSession 命令
   const clearSessionCommand = vscode.commands.registerCommand('vscode-chatgpt.clearSession', () => {
-    context.globalState.update('chatgpt-session-token', null);
-    context.globalState.update('chatgpt-clearance-token', null);
-    context.globalState.update('chatgpt-user-agent', null);
-    context.globalState.update('chatgpt-gpt3-apiKey', null);
+    // context.globalState.update('chatgpt-session-token', null);
+    // context.globalState.update('chatgpt-clearance-token', null);
+    // context.globalState.update('chatgpt-user-agent', null);
+    // context.globalState.update('chatgpt-gpt3-apiKey', null);
     chatGptViewProvider?.clearSession();
   });
+
+  const setRightMenuCommand = vscode.commands.registerCommand(
+    'vscode-chatgpt.setRightMenu',
+    (name: string, value: boolean) => {
+      console.log('setRightMenuCommand', name, value);
+      // 更新vscode配置
+      vscode.workspace.getConfiguration('chatgpt').update(name, value, true);
+    },
+  );
 
   const vscodeConfigChanged = vscode.workspace.onDidChangeConfiguration((event) => {
     // 关于chatgpt的配置发生变更后重新 init 模型
@@ -80,7 +92,7 @@ export async function activate(context: vscode.ExtensionContext) {
       event.affectsConfiguration('chatgpt.gpt3.generateCode-enabled') ||
       event.affectsConfiguration('chatgpt.gpt3.model')
     ) {
-      setContext();
+      // setRightMenu();
     }
   });
 
@@ -146,7 +158,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // 注册菜单命令
   const registeredCommands = menuCommands
-    .filter((command) => command !== 'adhoc' && command !== 'generateCode')
+    .filter((command) => !['adhoc', 'generateCode'].includes(command))
     .map((command) =>
       vscode.commands.registerCommand(`vscode-chatgpt.${command}`, () => {
         // 获取配置的 prompt
@@ -154,19 +166,18 @@ export async function activate(context: vscode.ExtensionContext) {
           .getConfiguration('chatgpt')
           .get<string>(`promptPrefix.${command}`);
         // 获取当前编辑器
-        const editor = vscode.window.activeTextEditor;
+        const activeTextEditor = vscode.window.activeTextEditor;
 
-        if (!editor) {
-          return;
-        }
-        // 获取选中的文本
-        const selectedCode = editor.document.getText(editor.selection);
-        if (selectedCode && prompt) {
-          chatGptViewProvider?.sendApiRequest(prompt, {
-            command,
-            code: selectedCode,
-            language: editor.document.languageId,
-          });
+        if (activeTextEditor) {
+          // 获取选中的文本
+          const selectedCode = activeTextEditor.document.getText(activeTextEditor.selection).trim();
+          if (selectedCode && prompt) {
+            chatGptViewProvider?.sendApiRequest(prompt, {
+              command,
+              code: selectedCode,
+              language: activeTextEditor.document.languageId,
+            });
+          }
         }
       }),
     );
@@ -177,33 +188,33 @@ export async function activate(context: vscode.ExtensionContext) {
     clearConversationCommand,
     exportConversationCommand,
     clearSessionCommand,
+    setRightMenuCommand,
     vscodeConfigChanged,
     adhocCommand,
     generateCodeCommand,
     ...registeredCommands,
   );
 
-  const setContext = () => {
-    menuCommands.forEach((command) => {
-      if (command === 'generateCode') {
-        let generateCodeEnabled = vscode.workspace
-          .getConfiguration('chatgpt')
-          .get<boolean>('gpt3.generateCode-enabled');
-        const modelName =
-          vscode.workspace.getConfiguration('chatgpt').get<string>('gpt3.model') || '';
-        generateCodeEnabled = generateCodeEnabled && modelName.startsWith('code-');
-        vscode.commands.executeCommand('setContext', 'generateCode-enabled', generateCodeEnabled);
-      } else {
-        const enabled =
-          vscode.workspace
-            .getConfiguration('chatgpt.promptPrefix')
-            .get<boolean>(`${command}-enabled`) || false;
-        vscode.commands.executeCommand('setContext', `${command}-enabled`, enabled);
-      }
-    });
-  };
+  // const setRightMenu = () => {
+  //   menuCommands.forEach((command) => {
+  //     if (command === 'generateCode') {
+  //       const generateCodeEnabled = vscode.workspace
+  //         .getConfiguration('chatgpt')
+  //         .get<boolean>('gpt3.generateCode-enabled');
+  //       const modelName = vscode.workspace.getConfiguration('chatgpt').get<string>('gpt3.model') || '';
+  //       const allowGenerateCodeEnabled = generateCodeEnabled && modelName.startsWith('code-');
+  //       vscode.commands.executeCommand('vscode-chatgpt.setRightMenu', 'generateCode-enabled', allowGenerateCodeEnabled);
+  //     } else {
+  //       const commandEnabled =
+  //         vscode.workspace
+  //           .getConfiguration('chatgpt.promptPrefix')
+  //           .get<boolean>(`${command}-enabled`) || false;
+  //       vscode.commands.executeCommand('vscode-chatgpt.setRightMenu', `${command}-enabled`, commandEnabled);
+  //     }
+  //   });
+  // };
 
-  setContext();
+  // setRightMenu();
 }
 
 export function deactivate() {}

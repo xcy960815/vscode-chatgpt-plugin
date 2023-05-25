@@ -51,5 +51,3 @@ export interface SendApiRequestOption {
   previousAnswer?: string;
   language?: string;
 }
-
-export type LeftOverMessage = WebviewMessageOption | null;
