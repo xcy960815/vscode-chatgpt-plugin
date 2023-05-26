@@ -128,7 +128,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           break;
         case 'clear-gpt3':
           this.chatgpt3Model = undefined;
-
           break;
         case 'login':
           const loginStatus = await this.prepareConversation();
@@ -378,11 +377,27 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     try {
       if (this.isGpt35Model && this.chatgpt35Model) {
-        ({
-          text: this.response,
-          id: this.conversationId,
-          parentMessageId: this.messageId,
-        } = await this.chatgpt35Model.sendMessage(question, {
+        // ({
+        //   text: this.response,
+        //   id: this.conversationId,
+        //   parentMessageId: this.messageId,
+        // } = await this.chatgpt35Model.sendMessage(question, {
+        //   systemMessage: this.systemMessage,
+        //   messageId: this.conversationId,
+        //   parentMessageId: this.messageId,
+        //   abortSignal: this.abortController.signal,
+        //   onProgress: (partialResponse) => {
+        //     this.response = partialResponse.text;
+        //     this.sendMessageToWebview({
+        //       type: 'add-answer',
+        //       value: this.response,
+        //       id: this.currentMessageId,
+        //       autoScroll: this.autoScroll,
+        //       responseInMarkdown,
+        //     });
+        //   },
+        // }));
+        const requst = await this.chatgpt35Model.sendMessage(question, {
           systemMessage: this.systemMessage,
           messageId: this.conversationId,
           parentMessageId: this.messageId,
@@ -397,7 +412,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
               responseInMarkdown,
             });
           },
-        }));
+        });
+        this.response = requst.text;
+        this.conversationId = requst.id;
+        this.messageId = requst.parentMessageId;
       } else if (!this.isGpt35Model && this.chatgpt3Model) {
         ({
           text: this.response,
@@ -457,7 +475,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         autoScroll: this.autoScroll,
         responseInMarkdown,
       });
-      console.log('xxxxxxx', this.subscribeToResponse);
 
       // 如果打开了订阅对话的配置
       if (this.subscribeToResponse) {
@@ -655,7 +672,7 @@ you can reset it with “ChatGPT: Reset session” command.
 								<h2>${features}</h2>
 								<ul class="flex flex-col gap-3.5 text-xs">
                   <!-- 访问您的ChatGPT会话记录 -->
-									<li class="features-li w-full border border-zinc-700 p-3 rounded-md">${feature1}</li>
+								  <!-- <li class="features-li w-full border border-zinc-700 p-3 rounded-md">${feature1}</li> -->
                   <!-- 改进您的代码，添加测试并找到错误 -->
 									<li class="features-li w-full border border-zinc-700 p-3 rounded-md">${feature2}</li>
                   <!-- 自动复制或创建新文件 -->

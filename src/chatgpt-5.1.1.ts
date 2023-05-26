@@ -9,7 +9,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { streamAsyncIterable } from './utils';
 
 /**
- * @desc Fetches a URL and returns the response as a ReadableStream.
+ * @desc 获取 URL 并将响应作为 ReadableStream 返回
  * @param {String} url
  * @param  {FetchSSERequest} options
  * @param {Fetch} fetch
@@ -57,25 +57,26 @@ export async function fetchSSE(url: string, options: FetchSSERequest, fetch: Fet
   }
 }
 export type Fetch = typeof fetch;
-export type Role = 'user' | 'assistant' | 'system';
 
 export interface FetchSSERequest extends RequestInit {
   onMessage: (message: string) => void;
 }
-export type ChatGPTAPIOptions = {
+export interface ChatgptApiOptions {
   apiKey: string;
   apiBaseUrl?: string;
   debug?: boolean;
-  completionParams?: Partial<Omit<openai.CreateChatCompletionRequest, 'messages' | 'n' | 'stream'>>;
+  completionParams?: Partial<Omit<openai.ChatCompletionRequest, 'messages' | 'n' | 'stream'>>;
   systemMessage?: string;
-  maxModelTokens?: number /** @defaultValue `4096` **/;
-  maxResponseTokens?: number /** @defaultValue `1000` **/;
+  /** @defaultValue `4096` **/
+  maxModelTokens?: number;
+  /** @defaultValue `1000` **/
+  maxResponseTokens?: number;
   organization?: string;
   messageStore?: Keyv;
   getMessageById?: GetMessageById;
   upsertMessage?: UpsertMessage;
   fetch?: Fetch;
-};
+}
 
 export class ChatGPTError extends Error {
   statusCode?: number;
@@ -93,21 +94,8 @@ export class ChatGPTError extends Error {
 }
 
 export declare namespace openai {
-  interface CreateChatCompletionDeltaResponse {
-    id: string;
-    object: 'chat.completion.chunk';
-    created: number;
-    model: string;
-    choices: [
-      {
-        delta: {
-          role: Role;
-          content?: string;
-        };
-        index: number;
-        finish_reason: string | null;
-      },
-    ];
+  interface ChatCompletionResponseDetail {
+    message?: string;
   }
 
   interface ChatCompletionRequestMessage {
@@ -115,34 +103,36 @@ export declare namespace openai {
     content: string;
     name?: string;
   }
+
   const ChatCompletionRequestMessageRoleEnum: {
+    readonly System: 'system';
+    readonly User: 'user';
+    readonly Assistant: 'assistant';
+  };
+  const ChatCompletionResponseMessageRoleEnum: {
     readonly System: 'system';
     readonly User: 'user';
     readonly Assistant: 'assistant';
   };
   type ChatCompletionRequestMessageRoleEnum =
     (typeof ChatCompletionRequestMessageRoleEnum)[keyof typeof ChatCompletionRequestMessageRoleEnum];
-  interface ChatCompletionResponseMessage {
-    role: ChatCompletionResponseMessageRoleEnum;
 
-    content: string;
-  }
-  const ChatCompletionResponseMessageRoleEnum: {
-    readonly System: 'system';
-    readonly User: 'user';
-    readonly Assistant: 'assistant';
-  };
   type ChatCompletionResponseMessageRoleEnum =
     (typeof ChatCompletionResponseMessageRoleEnum)[keyof typeof ChatCompletionResponseMessageRoleEnum];
 
-  interface CreateChatCompletionRequest {
+  interface ChatCompletionResponseMessage {
+    role: ChatCompletionResponseMessageRoleEnum;
+    content: string;
+  }
+
+  interface ChatCompletionRequest {
     model: string;
     messages: Array<ChatCompletionRequestMessage>;
     temperature?: number | null;
     top_p?: number | null;
     n?: number | null;
     stream?: boolean | null;
-    stop?: CreateChatCompletionRequestStop;
+    stop?: ChatCompletionRequestStop;
     max_tokens?: number;
     presence_penalty?: number | null;
     frequency_penalty?: number | null;
@@ -150,57 +140,73 @@ export declare namespace openai {
     user?: string;
   }
 
-  type CreateChatCompletionRequestStop = Array<string> | string;
-  interface CreateChatCompletionResponse {
+  type ChatCompletionRequestStop = Array<string> | string;
+
+  interface CompletionResponseUsage {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  }
+
+  interface ChatCompletionResponseDelta {
+    content?: string;
+    role?: ChatCompletionResponseMessageRoleEnum;
+  }
+
+  interface ChatCompletionResponseChoice {
+    index?: number;
+    message?: ChatCompletionResponseMessage;
+    finish_reason?: string | null;
+    delta: ChatCompletionResponseDelta;
+  }
+  interface ChatCompletionResponse {
     id: string;
     object: string;
     created: number;
     model: string;
-    choices: Array<CreateChatCompletionResponseChoicesInner>;
-    usage?: CreateCompletionResponseUsage;
+    choices: Array<ChatCompletionResponseChoice>;
+    detail?: ChatCompletionResponseDetail;
+    usage?: CompletionResponseUsage;
   }
-  interface CreateChatCompletionResponseChoicesInner {
-    index?: number;
-    message?: ChatCompletionResponseMessage;
-    finish_reason?: string;
+
+  interface ChatResponse {
+    id: string;
+    text: string;
+    role: openai.ChatCompletionResponseMessageRoleEnum;
+    detail?: openai.ChatCompletionResponse | null;
+    parentMessageId?: string;
+    delta?: string;
   }
-  interface CreateCompletionResponseUsage {
-    prompt_tokens: number;
 
-    completion_tokens: number;
+  interface ChatSendMessageOptions {
+    name?: string;
+    parentMessageId?: string;
+    messageId?: string;
+    stream?: boolean;
+    systemMessage?: string;
+    timeoutMs?: number;
+    onProgress?: (partialResponse: openai.ChatResponse) => void;
+    abortSignal?: AbortSignal;
+    completionParams?: Partial<Omit<openai.ChatCompletionRequest, 'messages' | 'n' | 'stream'>>;
+  }
 
-    total_tokens: number;
+  interface UserMessage {
+    id: string;
+    role: openai.ChatCompletionResponseMessageRoleEnum;
+    text: string;
+    messaeId?: string;
+    parentMessageId?: string;
   }
 }
 
-export type GetMessageById = (id: string) => Promise<ChatMessage | undefined>;
-export type UpsertMessage = (message: ChatMessage) => Promise<void>;
+export type GetMessageById = (id: string) => Promise<openai.ChatResponse | undefined>;
 
-export interface ChatMessage {
-  id: string;
-  text: string;
-  role: Role;
-  name?: string;
-  delta?: string;
-  detail?: any;
-  parentMessageId?: string;
-  conversationId?: string;
-}
+export type UpsertMessage = (message: openai.ChatResponse) => Promise<void>;
 
-export type SendMessageOptions = {
-  name?: string;
-  parentMessageId?: string;
-  messageId?: string;
-  stream?: boolean;
-  systemMessage?: string;
-  timeoutMs?: number;
-  onProgress?: (partialResponse: ChatMessage) => void;
-  abortSignal?: AbortSignal;
-  completionParams?: Partial<Omit<openai.CreateChatCompletionRequest, 'messages' | 'n' | 'stream'>>;
-};
 const CHATGPT_MODEL = 'gpt-3.5-turbo';
 const USER_LABEL_DEFAULT = 'User';
 const ASSISTANT_LABEL_DEFAULT = 'ChatGPT';
+
 export class ChatGPTAPI {
   private _apiKey: string;
   private _apiBaseUrl: string;
@@ -208,15 +214,15 @@ export class ChatGPTAPI {
   private _debug: boolean;
   private _fetch: typeof fetch;
   private _completionParams: Partial<
-    Omit<openai.CreateChatCompletionRequest, 'messages' | 'n' | 'stream'>
+    Omit<openai.ChatCompletionRequest, 'messages' | 'n' | 'stream'>
   >;
   private _systemMessage: string;
   private _maxModelTokens: number;
   private _maxResponseTokens: number;
   private _getMessageById: GetMessageById;
   private _upsertMessage: UpsertMessage;
-  private _messageStore: Keyv<ChatMessage>;
-  constructor(options: ChatGPTAPIOptions) {
+  private _messageStore: Keyv<openai.ChatResponse>;
+  constructor(options: ChatgptApiOptions) {
     const {
       apiKey,
       apiBaseUrl = 'https://api.openai.com',
@@ -273,9 +279,12 @@ export class ChatGPTAPI {
    * @desc 发送消息
    * @param {string} text
    * @param {SendMessageOptions} options
-   * @returns {Promise<ChatMessage>}
+   * @returns {Promise<ChatResponse>}
    */
-  public async sendMessage(text: string, options: SendMessageOptions): Promise<ChatMessage> {
+  public async sendMessage(
+    text: string,
+    options: openai.ChatSendMessageOptions,
+  ): Promise<openai.ChatResponse> {
     const {
       parentMessageId,
       messageId = uuidv4(),
@@ -291,24 +300,26 @@ export class ChatGPTAPI {
       abortController = new AbortController();
       abortSignal = abortController.signal;
     }
-    const message: ChatMessage = {
+    // 构建用户消息
+    const userMessage: openai.UserMessage = {
       role: 'user',
       id: messageId,
       parentMessageId,
       text,
     };
-    await this._upsertMessage(message);
+    // 保存用户消息
+    await this._upsertMessage(userMessage);
+    // 构建消息
     const { messages } = await this._buildMessages(text, options);
     // 给用户返回的数据
-    const result: ChatMessage = {
+    const chatResponse: openai.ChatResponse = {
       role: 'assistant',
       id: uuidv4(),
       parentMessageId: messageId,
       text: '',
       detail: null,
-      delta: '',
     };
-    const responseP = new Promise<ChatMessage>(async (resolve, reject) => {
+    const responseP = new Promise<openai.ChatResponse>(async (resolve, reject) => {
       const url = `${this._apiBaseUrl}/v1/chat/completions`;
       const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -333,26 +344,26 @@ export class ChatGPTAPI {
             signal: abortSignal,
             onMessage: (data: string) => {
               if (data === '[DONE]') {
-                result.text = result.text.trim();
-                resolve(result);
+                chatResponse.text = chatResponse.text.trim();
+                resolve(chatResponse);
                 return;
               }
               try {
-                const response: any = JSON.parse(data);
+                const response: openai.ChatCompletionResponse = JSON.parse(data);
                 if (response.id) {
-                  result.id = response.id;
+                  chatResponse.id = response.id;
                 }
                 if (response?.choices?.length) {
                   const delta = response.choices[0].delta;
-                  result.delta = delta.content;
+                  chatResponse.delta = delta.content;
                   if (delta?.content) {
-                    result.text += delta.content;
+                    chatResponse.text += delta.content;
                   }
-                  result.detail = response;
+                  chatResponse.detail = response;
                   if (delta?.role) {
-                    result.role = delta.role;
+                    chatResponse.role = delta.role;
                   }
-                  onProgress?.(result);
+                  onProgress?.(chatResponse);
                 }
               } catch (error) {
                 console.error('OpenAI stream SEE event unexpected error', error);
@@ -376,42 +387,45 @@ export class ChatGPTAPI {
             const error = new ChatGPTError(msg, { cause: res });
             error.statusCode = res.status;
             error.statusText = res.statusText;
-            return reject(error);
+            reject(error);
+            return;
           }
-          const response = await res.json();
+          const response: openai.ChatCompletionResponse = await res.json();
           if (this._debug) {
             console.log(response);
           }
           if (response?.id) {
-            result.id = response.id;
+            chatResponse.id = response.id;
           }
           if (response?.choices?.length) {
             const message = response.choices[0].message;
-            result.text = message.content;
-            if (message.role) {
-              result.role = message.role;
+            chatResponse.text = message?.content || '';
+            if (message?.role) {
+              chatResponse.role = message.role;
             }
           } else {
-            const res2 = response;
             return reject(
-              new Error(`OpenAI error: ${res2?.detail?.message || res2?.detail || 'unknown'}`),
+              new Error(
+                `OpenAI error: ${response?.detail?.message || response?.detail || 'unknown'}`,
+              ),
             );
           }
-          result.detail = response;
-          resolve(result);
+          chatResponse.detail = response;
+          resolve(chatResponse);
           return;
-        } catch (err) {
-          return reject(err);
+        } catch (error) {
+          reject(error);
+          return;
         }
       }
-    }).then((message2) => {
-      return this._upsertMessage(message2).then(() => message2);
+    }).then((messageResult) => {
+      return this._upsertMessage(messageResult).then(() => messageResult);
     });
     // 如果设置了超时时间，那么就使用 AbortController
     if (timeoutMs) {
       if (abortController) {
         //  cancel
-        (responseP as ClearablePromise<ChatMessage>).clear = () => {
+        (responseP as ClearablePromise<openai.ChatResponse>).clear = () => {
           abortController?.abort();
         };
       }
@@ -431,7 +445,7 @@ export class ChatGPTAPI {
    */
   private async _buildMessages(
     text: string,
-    options: SendMessageOptions,
+    options: openai.ChatSendMessageOptions,
   ): Promise<{ messages: openai.ChatCompletionRequestMessage[] }> {
     const { systemMessage = this._systemMessage } = options;
     let { parentMessageId } = options;
@@ -487,7 +501,7 @@ export class ChatGPTAPI {
         {
           role: parentMessageRole,
           content: parentMessage.text,
-          name: parentMessage.name,
+          // name: parentMessage.name,
         },
         ...nextMessages.slice(systemMessageOffset),
       ]);
@@ -500,13 +514,17 @@ export class ChatGPTAPI {
   /**
    * @desc 获取消息
    * @param {string} id
-   * @returns {Promise<ChatMessage | undefined>}
+   * @returns {Promise<ChatResponse | undefined>}
    */
-  private _defaultGetMessageById(id: string): Promise<ChatMessage | undefined> {
+  private _defaultGetMessageById(id: string): Promise<openai.ChatResponse | undefined> {
     return this._messageStore.get(id);
   }
-
-  private async _defaultUpsertMessage(message: ChatMessage): Promise<void> {
+  /**
+   * @desc 默认更新消息的方法
+   * @param {ChatResponse} message
+   * @returns {Promise<void>}
+   */
+  private async _defaultUpsertMessage(message: openai.ChatResponse): Promise<void> {
     await this._messageStore.set(message.id, message);
   }
 }
