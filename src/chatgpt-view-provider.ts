@@ -1,4 +1,3 @@
-/* eslint-disable eqeqeq */
 /* eslint-disable @typescript-eslint/naming-convention */
 import delay from 'delay';
 import fetch from 'isomorphic-fetch';
@@ -17,14 +16,15 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private abortController?: AbortController;
   private currentMessageId: string = '';
   private response: string = '';
-  private chatGptConfig: vscode.WorkspaceConfiguration =
-    vscode.workspace.getConfiguration('chatgpt');
   /**
    * 如果消息没有被渲染，则延迟渲染
    * 在调用 resolveWebviewView 之前的时间。
    */
   constructor(private context: vscode.ExtensionContext) {
     // this.clearSession();
+  }
+  private get chatGptConfig(): vscode.WorkspaceConfiguration {
+    return vscode.workspace.getConfiguration('chatgpt');
   }
   /**
    * @desc chatgpt模型是否是 "code-davinci-002","code-cushman-001"
@@ -50,7 +50,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   }
 
   private get model(): string {
-    return this.chatGptConfig.get<string>('gpt3.model') || '';
+    const model = this.chatGptConfig.get<string>('gpt3.model') || '';
+    return model;
   }
   private get organization(): string {
     return this.chatGptConfig.get<string>('gpt3.organization') || '';
@@ -74,11 +75,18 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
   private get apiKey(): string {
     const globalState = this.context.globalState;
-    return (
+    const apiKey =
       this.chatGptConfig.get<string>('gpt3.apiKey') ||
       globalState.get<string>('chatgpt-gpt3-apiKey') ||
-      ''
-    );
+      '';
+    return apiKey;
+  }
+  /**
+   * @desc 给chatgpt的系统信息
+   * @returns {string}
+   */
+  private get systemMessage(): string {
+    return this.chatGptConfig.get<string>('gpt3.systemMessage') || '';
   }
 
   /**
@@ -302,13 +310,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       return false;
     }
   }
-  /**
-   * @desc 给chatgpt的系统信息
-   * @returns {string}
-   */
-  private get systemMessage(): string {
-    return this.chatGptConfig.get<string>('gpt3.systemMessage') || '';
-  }
+
   /**
    * @desc 处理问题并将其发送到 API
    * @param {String} question
@@ -350,7 +352,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     const responseInMarkdown = !this.isCodexModel;
 
-    if (this.webView == null) {
+    if (this.webView === null) {
       vscode.commands.executeCommand('vscode-chatgpt.view.focus');
     } else {
       this.webView?.show?.(true);
@@ -397,7 +399,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         //     });
         //   },
         // }));
-        const requst = await this.chatgpt35Model.sendMessage(question, {
+        const response = await this.chatgpt35Model.sendMessage(question, {
           systemMessage: this.systemMessage,
           messageId: this.conversationId,
           parentMessageId: this.messageId,
@@ -413,9 +415,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             });
           },
         });
-        this.response = requst.text;
-        this.conversationId = requst.id;
-        this.messageId = requst.parentMessageId;
+        this.response = response.text;
+        this.conversationId = response.id;
+        this.messageId = response.parentMessageId;
       } else if (!this.isGpt35Model && this.chatgpt3Model) {
         ({
           text: this.response,
@@ -536,7 +538,6 @@ you can reset it with “ChatGPT: Reset session” command.
         message =
           'The server had an error while processing your request, please try again. (HTTP 500 Internal Server Error)\r\n See https://platform.openai.com/docs/guides/error-codes for more details.';
       }
-
       if (apiMessage) {
         message = `${message ? message + ' ' : ''}${apiMessage}`;
       }
