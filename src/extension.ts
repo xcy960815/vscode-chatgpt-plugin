@@ -186,6 +186,7 @@ export async function activate(context: vscode.ExtensionContext) {
     generateCodeCommand,
     ...registeredCommands,
   );
+
   // 更新右键菜单
   const setRightMenu = () => {
     menuCommands.forEach((command) => {
