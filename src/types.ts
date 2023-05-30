@@ -1,16 +1,9 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import fetch from 'isomorphic-fetch';
 export type Fetch = typeof fetch;
-export type LoginMethod = 'GPT3 OpenAI API Key' | undefined;
 
 export interface FetchSSEOptions extends RequestInit {
   onMessage?: (message: string) => void;
 }
-
-export type AuthType =
-  | 'OpenAI Authentication'
-  | 'Google Authentication'
-  | 'Microsoft Authentication';
 
 export interface WebviewMessageOption {
   type:

@@ -33,18 +33,14 @@ export async function fetchSSE(url: string, options: FetchSSEOptions, fetch: Fet
   const { onMessage, ...fetchOptions } = options;
   const response = await fetch(url, fetchOptions);
   if (!response.ok) {
-    let reason;
-    try {
-      reason = await response.text();
-    } catch (error) {
-      reason = response.statusText;
-    }
+    // 错误原因
+    const reason = (await response.text()) || response.statusText;
     const errormsg = `ChatGPT error ${response.status}: ${reason}`;
-    const error = new ChatGPTError(errormsg, { cause: response });
-    error.statusCode = response.status;
-    error.statusText = response.statusText;
-    error.reason = reason;
-    throw error;
+    const chatgptError = new ChatgptError(errormsg, { response });
+    chatgptError.statusCode = response.status;
+    chatgptError.statusText = response.statusText;
+    chatgptError.reason = reason;
+    throw chatgptError;
   }
   const parser = createParser((event) => {
     if (event.type === 'event') {
@@ -56,7 +52,7 @@ export async function fetchSSE(url: string, options: FetchSSEOptions, fetch: Fet
   if (!getReader) {
     const body = response.body as unknown as PassThrough;
     if (!body?.on || !body?.read) {
-      throw new ChatGPTError('unsupported "fetch" implementation');
+      throw new ChatgptError('unsupported "fetch" implementation');
     }
     body.on('readable', () => {
       let chunk;
@@ -66,23 +62,21 @@ export async function fetchSSE(url: string, options: FetchSSEOptions, fetch: Fet
     });
   } else {
     for await (const chunk of streamAsyncIterable(body)) {
-      const str = new TextDecoder().decode(chunk);
-      parser.feed(str);
+      const chunkString = new TextDecoder().decode(chunk);
+      parser.feed(chunkString);
     }
   }
 }
 
-export class ChatGPTError extends Error {
+export class ChatgptError extends Error {
   statusCode?: number;
   statusText?: string;
-  isFinal?: boolean;
-  accountId?: string;
   reason?: string;
-  cause?: Response;
-  constructor(msg: string, options?: { cause: Response }) {
-    super(msg);
-    if (options?.cause) {
-      this.cause = options.cause;
+  response?: Response;
+  constructor(errorMessage: string, options?: { response: Response }) {
+    super(errorMessage);
+    if (options?.response) {
+      this.response = options.response;
     }
   }
 }

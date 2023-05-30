@@ -2,13 +2,12 @@
 import GPT3NodeTokenizer from 'gpt3-tokenizer';
 import fetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
-import { default as pTimeout } from 'p-timeout';
+import pTimeout, { ClearablePromise } from 'p-timeout';
 import QuickLRU from 'quick-lru';
 import { v4 as uuidv4 } from 'uuid';
 import type { Fetch } from './types';
 import { FetchSSEOptions } from './types';
-import { ChatGPTError, fetchSSE } from './utils';
-
+import { ChatgptError, fetchSSE } from './utils';
 type GetMessageById = (id: string) => Promise<openai.ChatResponse | undefined>;
 
 type UpsertMessage = (message: openai.ChatResponse) => Promise<void>;
@@ -58,17 +57,12 @@ declare namespace openai {
     user?: string;
   }
 
-  // interface ReverseProxyCompletionParams extends CompletionParams {
-  //   paid?: boolean;
-  // }
-
   interface CompletionResponse {
     id: string;
     object: string;
     created: number;
     model: string;
     choices: Array<CompletionResponseChoice>;
-    // usage?: CompletionResponseUsage;
   }
 
   interface CompletionResponseChoice {
@@ -82,12 +76,6 @@ declare namespace openai {
     } | null;
     finish_reason?: string;
   }
-
-  // interface CompletionResponseUsage {
-  //   prompt_tokens: number;
-  //   completion_tokens: number;
-  //   total_tokens: number;
-  // }
 
   interface UserMessage {
     id: string;
@@ -237,6 +225,18 @@ export class ChatGPTAPI {
     text: string,
     options: openai.SendMessageOptions,
   ): Promise<openai.ChatResponse> {
+    //   "text-davinci-002-render",
+    //   "gpt-4",
+    //   "text-davinci-002-render-paid",
+    //   "text-davinci-002-render-sha",
+    //   "gpt-3.5-turbo",
+    //   "gpt-3.5-turbo-0301",
+    //   "text-davinci-003",
+    //   "text-curie-001",
+    //   "text-babbage-001",
+    //   "text-ada-001",
+    //   "code-davinci-002",
+    //   "code-cushman-001"
     const {
       conversationId = uuidv4(),
       parentMessageId,
@@ -305,8 +305,6 @@ export class ChatGPTAPI {
           }
           try {
             const response: openai.CompletionResponse = JSON.parse(data);
-            console.log('response', response);
-
             if (response.id) {
               chatResponse.id = response.id;
             }
@@ -336,7 +334,7 @@ export class ChatGPTAPI {
           if (!res.ok) {
             const reason = await res.text();
             const msg = `ChatGPT error ${res.status || res.statusText}: ${reason}`;
-            const error = new ChatGPTError(msg, { cause: res });
+            const error = new ChatgptError(msg, { response: res });
             error.statusCode = res.status;
             error.statusText = res.statusText;
             reject(error);
@@ -352,11 +350,12 @@ export class ChatGPTAPI {
           if (response?.choices?.length) {
             chatResponse.text = response.choices[0].text.trim();
           } else {
-            return reject(
+            reject(
               new Error(
                 `OpenAI error: ${response?.detail?.message || response?.detail || 'unknown'}`,
               ),
             );
+            return;
           }
           chatResponse.detail = response;
           resolve(chatResponse);
@@ -365,13 +364,13 @@ export class ChatGPTAPI {
           return reject(error);
         }
       }
-    }).then((message2) => {
-      return this._upsertMessage(message2).then(() => message2);
+    }).then((messageResult) => {
+      return this._upsertMessage(messageResult).then(() => messageResult);
     });
     if (timeoutMs) {
       if (abortController) {
-        // @ts-ignore
-        responseP.cancel = () => {
+        //  cancel
+        (responseP as ClearablePromise<openai.ChatResponse>).clear = () => {
           abortController?.abort();
         };
       }
@@ -408,16 +407,10 @@ export class ChatGPTAPI {
       `Instructions:
 You are ${this._assistantLabel}, a large language model trained by OpenAI.
 Current date: ${currentDate}${this._sepToken}`;
-    const promptSuffix =
-      options.promptSuffix ||
-      `
-${this._assistantLabel}:
-`;
+    const promptSuffix = options.promptSuffix || `${this._assistantLabel}:`;
     const maxNumTokens = this._maxModelTokens - this._maxResponseTokens;
     let { parentMessageId } = options;
-    let nextPromptBody = `${this._userLabel}:
-
-${message}${this._endToken}`;
+    let nextPromptBody = `${this._userLabel}:${message}${this._endToken}`;
     let promptBody = '';
     let prompt;
     let numTokens = 0;
@@ -444,11 +437,7 @@ ${message}${this._endToken}`;
       const parentMessageRole = parentMessage.role || 'user';
       const parentMessageRoleDesc =
         parentMessageRole === 'user' ? this._userLabel : this._assistantLabel;
-      const parentMessageString = `${parentMessageRoleDesc}:
-
-${parentMessage.text}${this._endToken}
-
-`;
+      const parentMessageString = `${parentMessageRoleDesc}:${parentMessage.text}${this._endToken}`;
       nextPromptBody = `${parentMessageString}${promptBody}`;
       parentMessageId = parentMessage.parentMessageId;
     } while (true);
@@ -458,6 +447,13 @@ ${parentMessage.text}${this._endToken}
     );
     return { prompt, maxTokens };
   }
+  /**
+   * @desc 获取令牌数
+   * @param {string} text
+   * @returns {Promise<number>}
+   * @private
+   * @memberof ChatGPT
+   */
   async _getTokenCount(text: string): Promise<number> {
     if (this._isChatGPTModel) {
       text = text.replace(/<\|im_end\|>/g, '<|endoftext|>');
