@@ -298,43 +298,30 @@
         "chatgpt.gpt3.model": {
           "type": "string",
           "enum": [
-            "text-davinci-002-render",
             "gpt-4",
-            "text-davinci-002-render-paid",
-            "text-davinci-002-render-sha",
             "gpt-3.5-turbo",
             "gpt-3.5-turbo-0301",
             "text-davinci-003",
             "text-curie-001",
             "text-babbage-001",
-            "text-ada-001",
-            "code-davinci-002",
-            "code-cushman-001"
+            "text-ada-001"
           ],
           "default": "gpt-3.5-turbo",
           "markdownDescription": "%chatgpt.gpt3.model.markdownDescription%",
           "order": 33,
           "enumItemLabels": [
-            "%chatgpt.gpt3.model.enumItemLabels1%",
-            "%chatgpt.gpt3.model.enumItemLabels2%",
-            "%chatgpt.gpt3.model.enumItemLabels3%",
-            "%chatgpt.gpt3.model.enumItemLabels4%",
-            "%chatgpt.gpt3.model.enumItemLabels5%",
-            "%chatgpt.gpt3.model.enumItemLabels6%",
-            "%chatgpt.gpt3.model.enumItemLabels7%",
-            "%chatgpt.gpt3.model.enumItemLabels8%",
-            "%chatgpt.gpt3.model.enumItemLabels9%",
-            "%chatgpt.gpt3.model.enumItemLabels10%",
-            "%chatgpt.gpt3.model.enumItemLabels11%",
-            "%chatgpt.gpt3.model.enumItemLabels12%"
+            "%chatgpt.gpt3.model.gpt4Label%",
+            "%chatgpt.gpt3.model.gpt35turboLabel%",
+            "%chatgpt.gpt3.model.gpt35turbo0301Label%",
+            "%chatgpt.gpt3.model.textdavinci003Label%",
+            "%chatgpt.gpt3.model.textcurie001Label%",
+            "%chatgpt.gpt3.model.textbabbage001Label%",
+            "%chatgpt.gpt3.model.textada001Label%"
           ],
           "markdownEnumDescriptions": [
-            "%chatgpt.gpt3.model.markdownEnumDescriptions1%",
-            "%chatgpt.gpt3.model.markdownEnumDescriptions2%",
-            "%chatgpt.gpt3.model.markdownEnumDescriptions3%",
-            "%chatgpt.gpt3.model.markdownEnumDescriptions4%",
-            "%chatgpt.gpt3.model.markdownEnumDescriptions5%",
-            "%chatgpt.gpt3.model.markdownEnumDescriptions6%"
+            "%chatgpt.gpt3.model.gpt4markdownEnumDescriptions%",
+            "%chatgpt.gpt3.model.gpt35turbomarkdownEnumDescriptions%",
+            "%chatgpt.gpt3.model.gpt35turbo0301markdownEnumDescriptions%"
           ]
         },
         "chatgpt.gpt3.maxTokens": {

@@ -5,7 +5,7 @@ import pTimeout, { ClearablePromise } from 'p-timeout';
 import QuickLRU from 'quick-lru';
 import { v4 as uuidv4 } from 'uuid';
 import { Fetch, FetchSSEOptions } from './types';
-import { ChatGPTError, fetchSSE } from './utils';
+import { ChatgptError, fetchSSE } from './utils';
 
 export declare namespace openai {
   interface CompletionResponseDetail {
@@ -310,7 +310,7 @@ export class ChatGPTAPI {
           if (!res.ok) {
             const reason = await res.text();
             const msg = `OpenAI error ${res.status || res.statusText}: ${reason}`;
-            const error = new ChatGPTError(msg, { cause: res });
+            const error = new ChatgptError(msg, { response: res });
             error.statusCode = res.status;
             error.statusText = res.statusText;
             reject(error);
@@ -330,11 +330,12 @@ export class ChatGPTAPI {
               chatResponse.role = message.role;
             }
           } else {
-            return reject(
+            reject(
               new Error(
                 `OpenAI error: ${response?.detail?.message || response?.detail || 'unknown'}`,
               ),
             );
+            return;
           }
           chatResponse.detail = response;
           resolve(chatResponse);
