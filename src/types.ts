@@ -1,4 +1,5 @@
 import fetch from 'isomorphic-fetch';
+import * as vscode from 'vscode';
 export type Fetch = typeof fetch;
 
 export interface FetchSSEOptions extends RequestInit {
@@ -16,14 +17,13 @@ export interface WebviewMessageOption {
     | 'set-chatgpt-config'
     | 'export-conversation';
   code?: string;
-  value?: any;
+  value?: string | vscode.WorkspaceConfiguration;
   showConversations?: boolean;
   inProgress?: boolean;
   done?: boolean;
   showStopButton?: boolean;
   id?: string;
   autoScroll?: boolean;
-  responseInMarkdown?: boolean;
 }
 
 export interface OnDidReceiveMessageOption {

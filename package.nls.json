@@ -13,7 +13,7 @@
   "vscode-chatgpt.customPrompt2.title": "ChatGPT: Custom prompt 2",
   "vscode-chatgpt.clearConversation.title": "ChatGPT: Clear conversation",
   "vscode-chatgpt.exportConversation.title": "ChatGPT: Export conversation",
-  "vscode-chatgpt-view-container.name": "Conversation window",
+  "vscode-chatgpt-plugin-view-container.name": "Conversation window",
   "chatgpt-config.title": "chatgpt-config",
   "chatgpt.method.markdownDescription": "Choose your integration preference.",
   "chatgpt.method.enumItemLabel1": "Use OpenAI API key integration",

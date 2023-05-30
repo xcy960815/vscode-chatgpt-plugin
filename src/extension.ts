@@ -18,7 +18,7 @@ export async function activate(context: vscode.ExtensionContext) {
   // 注册webview
   const chatGptViewProvider = new ChatgptViewProvider(context);
   const webviewViewProvider = vscode.window.registerWebviewViewProvider(
-    'vscode-chatgpt.view',
+    'vscode-chatgpt-plugin.view',
     chatGptViewProvider,
     {
       webviewOptions: {

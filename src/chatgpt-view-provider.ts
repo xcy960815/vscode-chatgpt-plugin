@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import delay from 'delay';
 import fetch from 'isomorphic-fetch';
 import * as vscode from 'vscode';
 import { ChatGPTAPI as ChatGPTAPI3 } from './chatgpt-4.7.2';
@@ -15,6 +16,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private abortController?: AbortController;
   private currentMessageId: string = '';
   private response: string = '';
+  private webviewMessageOption: WebviewMessageOption | null = null;
   /**
    * 如果消息没有被渲染，则延迟渲染
    * 在调用 resolveWebviewView 之前的时间。
@@ -24,13 +26,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   }
   private get chatGptConfig(): vscode.WorkspaceConfiguration {
     return vscode.workspace.getConfiguration('chatgpt');
-  }
-  /**
-   * @desc chatgpt模型是否是 "code-davinci-002","code-cushman-001"
-   * @returns {boolean}
-   */
-  private get isCodexModel(): boolean {
-    return !!this.model?.startsWith('code-');
   }
   /**
    * @desc chatgpt模型是否是 "gpt-3.5-turbo","gpt-3.5-turbo-0301","gpt-4"
@@ -139,7 +134,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         case 'login':
           const loginStatus = await this.prepareConversation();
           if (loginStatus) {
-            this.sendMessageToWebview({ type: 'login-successful', showConversations: false });
+            this.sendMessageToWebview({ type: 'login-successful', showConversations: false }, true);
           }
           break;
         case 'open-settings':
@@ -165,10 +160,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           this.stopGenerating();
           break;
         case 'get-chatgpt-config':
-          this.sendMessageToWebview({
-            type: 'set-chatgpt-config',
-            value: this.chatGptConfig,
-          });
+          this.sendMessageToWebview(
+            {
+              type: 'set-chatgpt-config',
+              value: this.chatGptConfig,
+            },
+            true,
+          );
           break;
         default:
           break;
@@ -183,14 +181,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.abortController?.abort?.();
     this.inProgress = false;
     this.sendMessageToWebview({ type: 'show-in-progress', inProgress: this.inProgress });
-    const responseInMarkdown = !this.isCodexModel;
+
     this.sendMessageToWebview({
       type: 'add-answer',
       value: this.response,
       done: true,
       id: this.currentMessageId,
       autoScroll: this.autoScroll,
-      responseInMarkdown,
     });
   }
   /**
@@ -259,7 +256,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       });
     }
     // 登录成功
-    this.sendMessageToWebview({ type: 'login-successful', showConversations: false });
+    this.sendMessageToWebview({ type: 'login-successful', showConversations: false }, true);
     return true;
   }
   /**
@@ -344,17 +341,19 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     if (!(await this.prepareConversation())) {
       return;
     }
-
     this.response = '';
-
     const question = this.buildQuestion(prompt, option.code, option.language);
 
-    const responseInMarkdown = !this.isCodexModel;
-
-    if (this.webView === null) {
-      vscode.commands.executeCommand('vscode-chatgpt.view.focus');
+    if (this.webView === undefined) {
+      // 触发resolveWebviewView事件
+      await vscode.commands.executeCommand('vscode-chatgpt-plugin.view.focus');
+      await delay(250);
+      if (this.webviewMessageOption !== null) {
+        this.sendMessageToWebview(this.webviewMessageOption);
+        this.webviewMessageOption = null;
+      }
     } else {
-      this.webView?.show?.(true);
+      await this.webView?.show?.(true);
     }
     // 记录正在进行的状态
     this.inProgress = true;
@@ -378,26 +377,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     try {
       if (this.isGpt35Model && this.chatgpt35Model) {
-        // ({
-        //   text: this.response,
-        //   id: this.conversationId,
-        //   parentMessageId: this.messageId,
-        // } = await this.chatgpt35Model.sendMessage(question, {
-        //   systemMessage: this.systemMessage,
-        //   messageId: this.conversationId,
-        //   parentMessageId: this.messageId,
-        //   abortSignal: this.abortController.signal,
-        //   onProgress: (partialResponse) => {
-        //     this.response = partialResponse.text;
-        //     this.sendMessageToWebview({
-        //       type: 'add-answer',
-        //       value: this.response,
-        //       id: this.currentMessageId,
-        //       autoScroll: this.autoScroll,
-        //       responseInMarkdown,
-        //     });
-        //   },
-        // }));
         const response = await this.chatgpt35Model.sendMessage(question, {
           systemMessage: this.systemMessage,
           messageId: this.conversationId,
@@ -410,10 +389,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
               value: this.response,
               id: this.currentMessageId,
               autoScroll: this.autoScroll,
-              responseInMarkdown,
             });
           },
         });
+
         this.response = response.text;
         this.conversationId = response.id;
         this.messageId = response.parentMessageId;
@@ -432,7 +411,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
               value: this.response,
               id: this.currentMessageId,
               autoScroll: this.autoScroll,
-              responseInMarkdown,
             });
           },
         }));
@@ -474,7 +452,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         done: true,
         id: this.currentMessageId,
         autoScroll: this.autoScroll,
-        responseInMarkdown,
       });
 
       // 如果打开了订阅对话的配置
@@ -488,7 +465,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           .showInformationMessage(subscribeToResponseMessage, subscribeToResponseChoose)
           .then(async () => {
             // 打开窗口
-            await vscode.commands.executeCommand('vscode-chatgpt.view.focus');
+            await vscode.commands.executeCommand('vscode-chatgpt-plugin.view.focus');
           });
       }
     } catch (error: any) {
@@ -560,7 +537,7 @@ you can reset it with “ChatGPT: Reset session” command.
     if (this.webView) {
       this.webView?.webview.postMessage(webviewMessageOption);
     } else if (!ignoreMessageIfNullWebView) {
-      console.log('webview is null');
+      this.webviewMessageOption = webviewMessageOption;
     }
   }
 
@@ -756,7 +733,7 @@ you can reset it with “ChatGPT: Reset session” command.
                 &nbsp;${updateSettingsButtonName}
               </button>
 							<!-- 导出对话为markdown -->
-              <button title=${exportConversationButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="export-conversation-2-markdown-button">
+              <button title=${exportConversationButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="export-conversation-button">
                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
                 </svg>

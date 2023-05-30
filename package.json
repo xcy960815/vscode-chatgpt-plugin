@@ -162,8 +162,8 @@
       "vscode-chatgpt-view-container": [
         {
           "type": "webview",
-          "id": "vscode-chatgpt.view",
-          "name": "%vscode-chatgpt-view-container.name%"
+          "id": "vscode-chatgpt-plugin.view",
+          "name": "%vscode-chatgpt-plugin-view-container.name%"
         }
       ]
     },

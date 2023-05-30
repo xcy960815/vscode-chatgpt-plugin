@@ -13,7 +13,7 @@
   "vscode-chatgpt.customPrompt2.title": "ChatGPT: 自定义提示 2",
   "vscode-chatgpt.clearConversation.title": "ChatGPT: 清除对话",
   "vscode-chatgpt.exportConversation.title": "ChatGPT: 导出对话",
-  "vscode-chatgpt-view-container.name": "对话窗口",
+  "vscode-chatgpt-plugin-view-container.name": "对话窗口",
   "chatgpt-config.title": "chatgpt 配置",
   "chatgpt.method.markdownDescription": "选择您的集成偏好.",
   "chatgpt.method.enumItemLabel1": "使用 OpenAI API 密钥集成",
