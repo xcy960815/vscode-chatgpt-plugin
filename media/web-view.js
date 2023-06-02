@@ -495,10 +495,6 @@
       elements.classList.add('hidden');
       resendElement.classList.remove('hidden');
       questionElement.lastElementChild?.setAttribute('contenteditable', false);
-      console.log(
-        'questionElement.lastElementChild.textContent',
-        questionElement.lastElementChild.textContent,
-      );
       if (questionElement.lastElementChild.textContent?.length > 0) {
         vscode.postMessage({
           type: 'add-question',

@@ -29,7 +29,11 @@ export async function* streamAsyncIterable(
  * @param  {FetchSSEOptions} options
  * @param {Fetch} fetch
  */
-export async function fetchSSE(url: string, options: FetchSSEOptions, fetch: Fetch): Promise<void> {
+export async function fetchSSE(
+  url: string,
+  options: FetchSSEOptions,
+  fetch: Fetch,
+): Promise<Response | void> {
   const { onMessage, ...fetchOptions } = options;
   const response = await fetch(url, fetchOptions);
   if (!response.ok) {
@@ -41,6 +45,10 @@ export async function fetchSSE(url: string, options: FetchSSEOptions, fetch: Fet
     chatgptError.statusText = response.statusText;
     chatgptError.reason = reason;
     throw chatgptError;
+  }
+  // 如果没有 onMessage 回调函数，直接返回 response
+  if (!onMessage) {
+    return response;
   }
   const parser = createParser((event) => {
     if (event.type === 'event') {

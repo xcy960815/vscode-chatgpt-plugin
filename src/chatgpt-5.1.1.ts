@@ -5,7 +5,7 @@ import pTimeout, { ClearablePromise } from 'p-timeout';
 import QuickLRU from 'quick-lru';
 import { v4 as uuidv4 } from 'uuid';
 import { Fetch, FetchSSEOptions } from './types';
-import { ChatgptError, fetchSSE } from './utils';
+import { fetchSSE } from './utils';
 
 export declare namespace openai {
   interface CompletionResponseDetail {
@@ -15,7 +15,7 @@ export declare namespace openai {
   interface CompletionRequestMessage {
     role: CompletionRequestMessageRoleEnum;
     content: string;
-    name?: string;
+    // name?: string;
   }
 
   const CompletionRequestMessageRoleEnum: {
@@ -56,12 +56,6 @@ export declare namespace openai {
 
   type CompletionRequestStop = Array<string> | string;
 
-  // interface CompletionResponseUsage {
-  //   prompt_tokens: number;
-  //   completion_tokens: number;
-  //   total_tokens: number;
-  // }
-
   interface CompletionResponseDelta {
     content?: string;
     role?: CompletionResponseMessageRoleEnum;
@@ -84,7 +78,7 @@ export declare namespace openai {
   }
 
   interface ChatResponse {
-    id: string;
+    messageId: string;
     text: string;
     role: CompletionResponseMessageRoleEnum;
     detail?: CompletionResponse | null;
@@ -93,7 +87,6 @@ export declare namespace openai {
   }
 
   interface SendMessageOptions {
-    name?: string;
     parentMessageId?: string;
     messageId?: string;
     stream?: boolean;
@@ -105,7 +98,7 @@ export declare namespace openai {
   }
 
   interface UserMessage {
-    id: string;
+    messageId: string;
     role: openai.CompletionResponseMessageRoleEnum;
     text: string;
     messaeId?: string;
@@ -132,11 +125,11 @@ export declare namespace openai {
 
 export type GetMessageById = (id: string) => Promise<openai.ChatResponse | undefined>;
 
-export type UpsertMessage = (message: openai.ChatResponse) => Promise<void>;
+export type UpsertMessage = (message: openai.ChatResponse) => Promise<boolean>;
 
 const CHATGPT_MODEL = 'gpt-3.5-turbo';
-const USER_LABEL_DEFAULT = 'User';
-const ASSISTANT_LABEL_DEFAULT = 'ChatGPT';
+// const USER_LABEL_DEFAULT = 'User';
+// const ASSISTANT_LABEL_DEFAULT = 'ChatGPT';
 
 export class ChatGPTAPI {
   private _apiKey: string;
@@ -148,7 +141,7 @@ export class ChatGPTAPI {
   private _systemMessage: string;
   private _maxModelTokens: number;
   private _maxResponseTokens: number;
-  private _getMessageById: GetMessageById;
+  public _getMessageById: GetMessageById;
   private _upsertMessage: UpsertMessage;
   private _messageStore: Keyv<openai.ChatResponse>;
   constructor(options: openai.ChatgptApiOptions) {
@@ -191,7 +184,7 @@ export class ChatGPTAPI {
       this._messageStore = messageStore;
     } else {
       this._messageStore = new Keyv({
-        store: new QuickLRU({ maxSize: 10000 }),
+        store: new QuickLRU({ maxSize: 1e4 }),
       });
     }
     if (!this._apiKey) {
@@ -203,6 +196,16 @@ export class ChatGPTAPI {
     if (typeof this._fetch !== 'function') {
       throw new Error('Invalid "fetch" is not a function');
     }
+  }
+  private get headers(): HeadersInit {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${this._apiKey}`,
+    };
+    if (this._organization) {
+      headers['OpenAI-Organization'] = this._organization;
+    }
+    return headers;
   }
   /**
    * @desc 发送消息
@@ -232,31 +235,29 @@ export class ChatGPTAPI {
     // 构建用户消息
     const userMessage: openai.UserMessage = {
       role: 'user',
-      id: messageId,
+      messageId,
       parentMessageId,
       text,
     };
+
     // 保存用户消息
     await this._upsertMessage(userMessage);
-    // 构建消息
+
+    // 获取用户和gpt历史对话记录
     const { messages } = await this._buildMessages(text, options);
+    console.log('messages', messages);
+
     // 给用户返回的数据
     const chatResponse: openai.ChatResponse = {
       role: 'assistant',
-      id: uuidv4(),
+      messageId: uuidv4(),
+      // 下次的消息的父消息就是这次的消息
       parentMessageId: messageId,
       text: '',
       detail: null,
     };
     const responseP = new Promise<openai.ChatResponse>(async (resolve, reject) => {
       const url = `${this._apiBaseUrl}/v1/chat/completions`;
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this._apiKey}`,
-      };
-      if (this._organization) {
-        headers['OpenAI-Organization'] = this._organization;
-      }
       const body = {
         ...this._completionParams,
         ...completionParams,
@@ -265,10 +266,12 @@ export class ChatGPTAPI {
       };
       const fetchSSEOptions: FetchSSEOptions = {
         method: 'POST',
-        headers,
+        headers: this.headers,
         body: JSON.stringify(body),
         signal: abortSignal,
-        onMessage: (data: string) => {
+      };
+      if (stream) {
+        fetchSSEOptions.onMessage = (data: string) => {
           if (data === '[DONE]') {
             chatResponse.text = chatResponse.text.trim();
             resolve(chatResponse);
@@ -277,7 +280,7 @@ export class ChatGPTAPI {
           try {
             const response: openai.CompletionResponse = JSON.parse(data);
             if (response.id) {
-              chatResponse.id = response.id;
+              chatResponse.messageId = response.id;
             }
             if (response?.choices?.length) {
               const delta = response.choices[0].delta;
@@ -295,63 +298,37 @@ export class ChatGPTAPI {
             console.error('OpenAI stream SEE event unexpected error', error);
             return reject(error);
           }
-        },
-      };
-      if (stream) {
+        };
         fetchSSE(url, fetchSSEOptions, this._fetch).catch(reject);
       } else {
-        try {
-          const res = await this._fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-            signal: abortSignal,
-          });
-          if (!res.ok) {
-            const reason = await res.text();
-            const msg = `OpenAI error ${res.status || res.statusText}: ${reason}`;
-            const error = new ChatgptError(msg, { response: res });
-            error.statusCode = res.status;
-            error.statusText = res.statusText;
-            reject(error);
-            return;
-          }
-          const response: openai.CompletionResponse = await res.json();
-          if (this._debug) {
-            console.log(response);
-          }
-          if (response?.id) {
-            chatResponse.id = response.id;
-          }
-          if (response?.choices?.length) {
-            const message = response.choices[0].message;
-            chatResponse.text = message?.content || '';
-            if (message?.role) {
-              chatResponse.role = message.role;
-            }
-          } else {
-            reject(
-              new Error(
-                `OpenAI error: ${response?.detail?.message || response?.detail || 'unknown'}`,
-              ),
-            );
-            return;
-          }
-          chatResponse.detail = response;
-          resolve(chatResponse);
-          return;
-        } catch (error) {
-          reject(error);
+        const response = await fetchSSE(url, fetchSSEOptions, this._fetch).catch(reject);
+        const responseJson: openai.CompletionResponse = await response?.json();
+        if (responseJson?.id) {
+          chatResponse.messageId = responseJson.id;
+        }
+        if (responseJson?.choices?.length) {
+          const message = responseJson.choices[0].message;
+          chatResponse.text = message?.content || '';
+          chatResponse.role = message?.role || 'assistant';
+        } else {
+          reject(
+            new Error(
+              `OpenAI error: ${responseJson?.detail?.message || responseJson?.detail || 'unknown'}`,
+            ),
+          );
           return;
         }
+        chatResponse.detail = responseJson;
+        resolve(chatResponse);
       }
     }).then((messageResult) => {
+      // chatResponse.parentMessageId = messageResult.messageId;
       return this._upsertMessage(messageResult).then(() => messageResult);
     });
+
     // 如果设置了超时时间，那么就使用 AbortController
     if (timeoutMs) {
       if (abortController) {
-        //  cancel
         (responseP as ClearablePromise<openai.ChatResponse>).clear = () => {
           abortController?.abort();
         };
@@ -376,82 +353,50 @@ export class ChatGPTAPI {
   ): Promise<{ messages: openai.CompletionRequestMessage[] }> {
     const { systemMessage = this._systemMessage } = options;
     let { parentMessageId } = options;
-    const userLabel = USER_LABEL_DEFAULT;
-    const assistantLabel = ASSISTANT_LABEL_DEFAULT;
-    let messages: openai.CompletionRequestMessage[] = [];
-    if (systemMessage) {
-      messages.push({
+    const messages: openai.CompletionRequestMessage[] = [
+      {
         role: 'system',
         content: systemMessage,
-      });
-    }
-    const systemMessageOffset = messages.length;
-    let nextMessages = text
-      ? messages.concat([
-          {
-            role: 'user',
-            content: text,
-            name: options.name,
-          },
-        ])
-      : messages;
+      },
+      {
+        role: 'user',
+        content: text,
+      },
+    ];
 
     do {
-      const prompt = nextMessages
-        .reduce<string[]>((prompt2, message) => {
-          switch (message.role) {
-            case 'system':
-              return prompt2.concat([`Instructions:\n${message.content}`]);
-            case 'user':
-              return prompt2.concat([`${userLabel}:\n${message.content}`]);
-            default:
-              return prompt2.concat([`${assistantLabel}:\n${message.content}`]);
-          }
-        }, [])
-        .join('\n\n');
-
-      messages = nextMessages;
-
       if (!parentMessageId) {
         break;
       }
-
       const parentMessage = await this._getMessageById(parentMessageId);
-
       if (!parentMessage) {
         break;
       }
-
-      const parentMessageRole = parentMessage.role || 'user';
-
-      nextMessages = nextMessages.slice(0, systemMessageOffset).concat([
-        {
-          role: parentMessageRole,
-          content: parentMessage.text,
-          // name: parentMessage.name,
-        },
-        ...nextMessages.slice(systemMessageOffset),
-      ]);
-
+      messages.splice(1, 0, {
+        role: parentMessage.role,
+        content: parentMessage.text,
+      });
       parentMessageId = parentMessage.parentMessageId;
     } while (true);
 
     return { messages };
   }
+
   /**
    * @desc 获取消息
    * @param {string} id
    * @returns {Promise<ChatResponse | undefined>}
    */
-  private _defaultGetMessageById(id: string): Promise<openai.ChatResponse | undefined> {
-    return this._messageStore.get(id);
+  private async _defaultGetMessageById(id: string): Promise<openai.ChatResponse | undefined> {
+    const messageOption = await this._messageStore.get(id);
+    return messageOption;
   }
   /**
    * @desc 默认更新消息的方法
-   * @param {ChatResponse} message
+   * @param {ChatResponse} messageOption
    * @returns {Promise<void>}
    */
-  private async _defaultUpsertMessage(message: openai.ChatResponse): Promise<void> {
-    await this._messageStore.set(message.id, message);
+  private async _defaultUpsertMessage(messageOption: openai.ChatResponse): Promise<boolean> {
+    return await this._messageStore.set(messageOption.messageId, messageOption);
   }
 }
