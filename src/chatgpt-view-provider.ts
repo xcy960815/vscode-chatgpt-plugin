@@ -2,13 +2,13 @@
 import delay from 'delay';
 import fetch from 'isomorphic-fetch';
 import * as vscode from 'vscode';
-import { ChatGPTAPI as ChatGPTAPI3 } from './chatgpt-4.7.2';
-import { ChatGPTAPI as ChatGPTAPI35 } from './chatgpt-5.1.1';
+import { ChatModelAPI } from './chat-model';
+import { TextModleAPI } from './text-model';
 import { OnDidReceiveMessageOption, SendApiRequestOption, WebviewMessageOption } from './types';
 export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
-  private chatgpt3Model?: ChatGPTAPI3;
-  private chatgpt35Model?: ChatGPTAPI35;
+  private textModel?: TextModleAPI;
+  private chatgptModel?: ChatModelAPI;
   private messageId?: string;
   private parentMessageId?: string;
   private questionCount: number = 0;
@@ -32,7 +32,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * @desc chatgpt模型是否是 "gpt-3.5-turbo","gpt-3.5-turbo-0301","gpt-4"
    * @returns {boolean}
    */
-  private get isGpt35Model(): boolean {
+  private get isGptModel(): boolean {
     return !!this.model?.startsWith('gpt-');
   }
 
@@ -130,7 +130,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           this.messageId = undefined;
           break;
         case 'clear-gpt3':
-          this.chatgpt3Model = undefined;
+          this.textModel = undefined;
           break;
         case 'login':
           const loginStatus = await this.prepareConversation();
@@ -197,7 +197,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   public clearSession(): void {
     this.stopGenerating();
-    this.chatgpt3Model = undefined;
+    this.textModel = undefined;
     this.parentMessageId = undefined;
     this.messageId = undefined;
   }
@@ -210,7 +210,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     if (!hasApiKey) {
       return false;
     }
-    if (!this.chatgpt3Model && !this.chatgpt35Model) {
+    if (!this.textModel || !this.chatgptModel) {
       return await this.initChatGPTModel();
     } else {
       return true;
@@ -233,33 +233,30 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   private async initChatGPTModel(): Promise<boolean> {
     // 初始化chatgpt模型
-    if (this.isGpt35Model) {
-      this.chatgpt35Model = new ChatGPTAPI35({
-        apiKey: this.apiKey,
-        fetch: fetch,
-        apiBaseUrl: this.apiBaseUrl,
-        organization: this.organization,
-        completionParams: {
-          model: this.model,
-          max_tokens: this.max_tokens,
-          temperature: this.temperature,
-          top_p: this.top_p,
-        },
-      });
-    } else {
-      this.chatgpt3Model = new ChatGPTAPI3({
-        apiKey: this.apiKey,
-        fetch: fetch,
-        apiBaseUrl: this.apiBaseUrl,
-        organization: this.organization,
-        completionParams: {
-          model: this.model,
-          max_tokens: this.max_tokens,
-          temperature: this.temperature,
-          top_p: this.top_p,
-        },
-      });
-    }
+    this.chatgptModel = new ChatModelAPI({
+      apiKey: this.apiKey,
+      fetch: fetch,
+      apiBaseUrl: this.apiBaseUrl,
+      organization: this.organization,
+      completionParams: {
+        model: this.model,
+        max_tokens: this.max_tokens,
+        temperature: this.temperature,
+        top_p: this.top_p,
+      },
+    });
+    this.textModel = new TextModleAPI({
+      apiKey: this.apiKey,
+      fetch: fetch,
+      apiBaseUrl: this.apiBaseUrl,
+      organization: this.organization,
+      completionParams: {
+        model: this.model,
+        max_tokens: this.max_tokens,
+        temperature: this.temperature,
+        top_p: this.top_p,
+      },
+    });
     // 登录成功
     this.sendMessageToWebview({ type: 'login-successful', showConversations: false }, true);
     return true;
@@ -372,22 +369,19 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     this.currentConversationId = this.getRandomId();
     // 要始终保持 messageId 的唯一性
-    // this.messageId = this.getRandomId();
+    this.messageId = this.getRandomId();
     this.sendMessageToWebview({
       type: 'add-question',
       value: prompt,
       code: option.code,
       autoScroll: this.autoScroll,
     });
-
     try {
-      if (this.isGpt35Model && this.chatgpt35Model) {
-        const response = await this.chatgpt35Model.sendMessage(question, {
+      if (this.isGptModel && this.chatgptModel) {
+        const response = await this.chatgptModel.sendMessage(question, {
           systemMessage: this.systemMessage,
-          // messageId: this.messageId,
-          messageId: this.getRandomId(),
-          // parentMessageId: this.parentMessageId,
-          parentMessageId: this.messageId,
+          messageId: this.messageId,
+          parentMessageId: this.parentMessageId,
           abortSignal: this.abortController.signal,
           onProgress: (partialResponse) => {
             this.response = partialResponse.text;
@@ -400,12 +394,15 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           },
         });
         this.response = response.text;
-        this.messageId = response.messageId;
+        // this.messageId = response.messageId;
         this.parentMessageId = response.parentMessageId;
-      } else if (!this.isGpt35Model && this.chatgpt3Model) {
-        const response = await this.chatgpt3Model.sendMessage(question, {
+      }
+      if (!this.isGptModel && this.textModel) {
+        const response = await this.textModel.sendMessage(question, {
           promptPrefix: this.systemMessage,
           abortSignal: this.abortController.signal,
+          messageId: this.messageId,
+          parentMessageId: this.parentMessageId,
           onProgress: (partialResponse) => {
             this.response = partialResponse.text;
             this.sendMessageToWebview({
@@ -417,7 +414,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           },
         });
         this.response = response.text;
-        this.messageId = response.id;
+        // this.messageId = response.messageId;
         this.parentMessageId = response.parentMessageId;
       }
       // 如果存在上一个回答

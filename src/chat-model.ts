@@ -131,7 +131,7 @@ const CHATGPT_MODEL = 'gpt-3.5-turbo';
 // const USER_LABEL_DEFAULT = 'User';
 // const ASSISTANT_LABEL_DEFAULT = 'ChatGPT';
 
-export class ChatGPTAPI {
+export class ChatModelAPI {
   private _apiKey: string;
   private _apiBaseUrl: string;
   private _organization?: string;
@@ -245,13 +245,11 @@ export class ChatGPTAPI {
 
     // 获取用户和gpt历史对话记录
     const { messages } = await this._buildMessages(text, options);
-    console.log('messages', messages);
 
     // 给用户返回的数据
     const chatResponse: openai.ChatResponse = {
       role: 'assistant',
-      messageId: uuidv4(),
-      // 下次的消息的父消息就是这次的消息
+      messageId: '',
       parentMessageId: messageId,
       text: '',
       detail: null,
@@ -301,38 +299,36 @@ export class ChatGPTAPI {
         };
         fetchSSE(url, fetchSSEOptions, this._fetch).catch(reject);
       } else {
-        const response = await fetchSSE(url, fetchSSEOptions, this._fetch).catch(reject);
-        const responseJson: openai.CompletionResponse = await response?.json();
-        if (responseJson?.id) {
-          chatResponse.messageId = responseJson.id;
+        try {
+          const response = await fetchSSE(url, fetchSSEOptions, this._fetch);
+          const responseJson: openai.CompletionResponse = await response?.json();
+          if (responseJson?.id) {
+            chatResponse.messageId = responseJson.id;
+          }
+          if (responseJson?.choices?.length) {
+            const message = responseJson.choices[0].message;
+            chatResponse.text = message?.content || '';
+            chatResponse.role = message?.role || 'assistant';
+          }
+          chatResponse.detail = responseJson;
+          resolve(chatResponse);
+        } catch (error) {
+          console.error('OpenAI stream SEE event unexpected error', error);
+          return reject(error);
         }
-        if (responseJson?.choices?.length) {
-          const message = responseJson.choices[0].message;
-          chatResponse.text = message?.content || '';
-          chatResponse.role = message?.role || 'assistant';
-        } else {
-          reject(
-            new Error(
-              `OpenAI error: ${responseJson?.detail?.message || responseJson?.detail || 'unknown'}`,
-            ),
-          );
-          return;
-        }
-        chatResponse.detail = responseJson;
-        resolve(chatResponse);
       }
     }).then((messageResult) => {
-      // chatResponse.parentMessageId = messageResult.messageId;
-      return this._upsertMessage(messageResult).then(() => messageResult);
+      return this._upsertMessage(messageResult).then(() => {
+        messageResult.parentMessageId = messageResult.messageId;
+        return messageResult;
+      });
     });
 
     // 如果设置了超时时间，那么就使用 AbortController
     if (timeoutMs) {
-      if (abortController) {
-        (responseP as ClearablePromise<openai.ChatResponse>).clear = () => {
-          abortController?.abort();
-        };
-      }
+      (responseP as ClearablePromise<openai.ChatResponse>).clear = () => {
+        abortController?.abort();
+      };
       return pTimeout(responseP, {
         milliseconds: timeoutMs,
         message: 'OpenAI timed out waiting for response',
