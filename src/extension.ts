@@ -58,9 +58,6 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // 注册 clearSession 命令
   const clearSessionCommand = vscode.commands.registerCommand('vscode-chatgpt.clearSession', () => {
-    // context.globalState.update('chatgpt-session-token', null);
-    // context.globalState.update('chatgpt-clearance-token', null);
-    // context.globalState.update('chatgpt-user-agent', null);
     // context.globalState.update('chatgpt-gpt3-apiKey', null);
     chatGptViewProvider?.clearSession();
   });
