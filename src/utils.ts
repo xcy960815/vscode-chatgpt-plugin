@@ -75,7 +75,9 @@ export async function fetchSSE(
     }
   }
 }
-
+/**
+ * @desc ChatGPT 错误类
+ */
 export class ChatgptError extends Error {
   statusCode?: number;
   statusText?: string;
