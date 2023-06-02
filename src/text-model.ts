@@ -7,10 +7,11 @@ import QuickLRU from 'quick-lru';
 import { v4 as uuidv4 } from 'uuid';
 import type { Fetch } from './types';
 import { FetchSSEOptions } from './types';
-import { ChatgptError, fetchSSE } from './utils';
+import { fetchSSE } from './utils';
 type GetMessageById = (id: string) => Promise<openai.ChatResponse | undefined>;
 
-type UpsertMessage = (message: openai.ChatResponse) => Promise<void>;
+type UpsertMessage = (message: openai.ChatResponse) => Promise<boolean>;
+
 declare namespace openai {
   const CompletionRequestMessageRoleEnum: {
     // readonly System: 'system';
@@ -30,7 +31,6 @@ declare namespace openai {
   type CompletionResponseMessageRoleEnum =
     (typeof CompletionResponseMessageRoleEnum)[keyof typeof CompletionResponseMessageRoleEnum];
   interface SendMessageOptions {
-    conversationId?: string;
     parentMessageId?: string;
     messageId?: string;
     stream?: boolean;
@@ -40,6 +40,7 @@ declare namespace openai {
     onProgress?: (partialResponse: ChatResponse) => void;
     abortSignal?: AbortSignal;
   }
+
   interface CompletionParams {
     model: string;
     prompt: string;
@@ -78,26 +79,24 @@ declare namespace openai {
   }
 
   interface UserMessage {
-    id: string;
+    messageId: string;
     role: CompletionRequestMessageRoleEnum;
     text: string;
     parentMessageId?: string;
-    conversationId?: string;
   }
 
   interface ChatResponse {
-    id: string;
+    messageId: string;
     text: string;
     role: CompletionResponseMessageRoleEnum;
     parentMessageId?: string;
-    conversationId?: string;
+
     detail?: CompletionResponse | null;
   }
 
   interface ChatgptApiOptions {
     apiKey: string;
     apiBaseUrl?: string;
-    apiReverseProxyUrl?: string;
     debug?: boolean;
     completionParams?: Partial<openai.CompletionParams>;
     maxModelTokens?: number;
@@ -126,10 +125,9 @@ function encode(input: string): number[] {
 const CHATGPT_MODEL = 'text-davinci-003';
 const USER_LABEL_DEFAULT = 'User';
 const ASSISTANT_LABEL_DEFAULT = 'ChatGPT';
-export class ChatGPTAPI {
+export class TextModleAPI {
   protected _apiKey: string;
   protected _apiBaseUrl: string;
-  protected _apiReverseProxyUrl: string;
   protected _debug: boolean;
   protected _completionParams: Omit<openai.CompletionParams, 'prompt'>;
   protected _maxModelTokens: number;
@@ -147,7 +145,6 @@ export class ChatGPTAPI {
     const {
       apiKey,
       apiBaseUrl,
-      apiReverseProxyUrl,
       organization,
       debug = false,
       messageStore,
@@ -163,7 +160,6 @@ export class ChatGPTAPI {
     this._apiKey = apiKey;
     this._apiBaseUrl = apiBaseUrl || 'https://api.openai.com';
     this._organization = organization || '';
-    this._apiReverseProxyUrl = apiReverseProxyUrl || '';
     this._debug = !!debug;
     this._fetch = fetch2;
     this._completionParams = {
@@ -173,24 +169,10 @@ export class ChatGPTAPI {
       presence_penalty: 1,
       ...completionParams,
     };
-    if (this._isChatGPTModel) {
-      this._endToken = '<|im_end|>';
-      this._sepToken = '<|im_sep|>';
-      if (!this._completionParams.stop) {
-        this._completionParams.stop = [this._endToken, this._sepToken];
-      }
-    } else if (this._isCodexModel) {
-      this._endToken = '</code>';
-      this._sepToken = this._endToken;
-      if (!this._completionParams.stop) {
-        this._completionParams.stop = [this._endToken];
-      }
-    } else {
-      this._endToken = '<|endoftext|>';
-      this._sepToken = this._endToken;
-      if (!this._completionParams.stop) {
-        this._completionParams.stop = [this._endToken];
-      }
+    this._endToken = '<|endoftext|>';
+    this._sepToken = this._endToken;
+    if (!this._completionParams.stop) {
+      this._completionParams.stop = [this._endToken];
     }
     this._maxModelTokens = maxModelTokens || 4096;
     this._maxResponseTokens = maxResponseTokens || 1000;
@@ -215,6 +197,16 @@ export class ChatGPTAPI {
       throw new Error('Invalid "fetch" is not a function');
     }
   }
+  private get headers(): HeadersInit {
+    const headers: HeadersInit = {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${this._apiKey}`,
+    };
+    if (this._organization) {
+      headers['OpenAI-Organization'] = this._organization;
+    }
+    return headers;
+  }
   /**
    * @desc 发送请求到openai
    * @param {string} text
@@ -225,20 +217,7 @@ export class ChatGPTAPI {
     text: string,
     options: openai.SendMessageOptions,
   ): Promise<openai.ChatResponse> {
-    //   "text-davinci-002-render",
-    //   "gpt-4",
-    //   "text-davinci-002-render-paid",
-    //   "text-davinci-002-render-sha",
-    //   "gpt-3.5-turbo",
-    //   "gpt-3.5-turbo-0301",
-    //   "text-davinci-003",
-    //   "text-curie-001",
-    //   "text-babbage-001",
-    //   "text-ada-001",
-    //   "code-davinci-002",
-    //   "code-cushman-001"
     const {
-      conversationId = uuidv4(),
       parentMessageId,
       messageId = uuidv4(),
       timeoutMs,
@@ -253,51 +232,38 @@ export class ChatGPTAPI {
     }
     const userMessage: openai.UserMessage = {
       role: 'user',
-      id: messageId,
+      messageId,
       parentMessageId,
-      conversationId,
       text,
     };
     await this._upsertMessage(userMessage);
-    let prompt = text;
-    let maxTokens = 0;
-    if (!this._isCodexModel) {
-      const builtPrompt = await this._buildPrompt(text, options);
-      prompt = builtPrompt.prompt;
-      maxTokens = builtPrompt.maxTokens;
-    }
+    const { prompt, maxTokens } = await this._buildPrompt(text, options);
+    console.log('prompt', prompt);
+    console.log('maxTokens', maxTokens);
+
     const chatResponse: openai.ChatResponse = {
       role: 'assistant',
-      id: uuidv4(),
+      messageId: uuidv4(),
       parentMessageId: messageId,
-      conversationId,
       text: '',
     };
     const responseP = new Promise<openai.ChatResponse>(async (resolve, reject) => {
-      const url = this._apiReverseProxyUrl || `${this._apiBaseUrl}/v1/completions`;
-      const headers: HeadersInit = {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${this._apiKey}`,
-      };
-      if (this._organization) {
-        headers['OpenAI-Organization'] = this._organization;
-      }
+      const url = `${this._apiBaseUrl}/v1/completions`;
       const body = {
         max_tokens: maxTokens,
         ...this._completionParams,
         prompt,
         stream,
       };
-      if (this._debug) {
-        const numTokens = await this._getTokenCount(body.prompt);
-        console.log(`sendMessage (${numTokens} tokens)`, body);
-      }
       const fetchSSEOptions: FetchSSEOptions = {
         method: 'POST',
-        headers,
+        headers: this.headers,
         body: JSON.stringify(body),
         signal: abortSignal,
-        onMessage: (data) => {
+      };
+
+      if (stream) {
+        fetchSSEOptions.onMessage = (data: string) => {
           if (data === '[DONE]') {
             chatResponse.text = chatResponse.text.trim();
             resolve(chatResponse);
@@ -306,7 +272,7 @@ export class ChatGPTAPI {
           try {
             const response: openai.CompletionResponse = JSON.parse(data);
             if (response.id) {
-              chatResponse.id = response.id;
+              chatResponse.messageId = response.id;
             }
             if (response?.choices?.length) {
               chatResponse.text += response.choices[0].text;
@@ -318,46 +284,23 @@ export class ChatGPTAPI {
             reject(error);
             return;
           }
-        },
-      };
-
-      if (stream) {
+        };
         fetchSSE(url, fetchSSEOptions, this._fetch).catch(reject);
       } else {
         try {
-          const res = await this._fetch(url, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-            signal: abortSignal,
-          });
-          if (!res.ok) {
-            const reason = await res.text();
-            const msg = `ChatGPT error ${res.status || res.statusText}: ${reason}`;
-            const error = new ChatgptError(msg, { response: res });
-            error.statusCode = res.status;
-            error.statusText = res.statusText;
-            reject(error);
-            return;
-          }
-          const response = await res.json();
+          const response = await fetchSSE(url, fetchSSEOptions, this._fetch);
+          const responseJson: openai.CompletionResponse = await response?.json();
           if (this._debug) {
-            console.log(response);
+            console.log(responseJson);
           }
-          if (response?.id) {
-            chatResponse.id = response.id;
+          if (responseJson?.id) {
+            chatResponse.messageId = responseJson.id;
           }
-          if (response?.choices?.length) {
-            chatResponse.text = response.choices[0].text.trim();
-          } else {
-            reject(
-              new Error(
-                `OpenAI error: ${response?.detail?.message || response?.detail || 'unknown'}`,
-              ),
-            );
-            return;
+          if (responseJson.choices?.length) {
+            // @ts-ignore
+            chatResponse.text = responseJson.choices[0].text.trim();
           }
-          chatResponse.detail = response;
+          chatResponse.detail = responseJson;
           resolve(chatResponse);
           return;
         } catch (error) {
@@ -365,15 +308,15 @@ export class ChatGPTAPI {
         }
       }
     }).then((messageResult) => {
-      return this._upsertMessage(messageResult).then(() => messageResult);
+      return this._upsertMessage(messageResult).then(() => {
+        messageResult.parentMessageId = messageResult.messageId;
+        return messageResult;
+      });
     });
     if (timeoutMs) {
-      if (abortController) {
-        //  cancel
-        (responseP as ClearablePromise<openai.ChatResponse>).clear = () => {
-          abortController?.abort();
-        };
-      }
+      (responseP as ClearablePromise<openai.ChatResponse>).clear = () => {
+        abortController?.abort();
+      };
       return pTimeout(responseP, {
         milliseconds: timeoutMs,
         message: 'ChatGPT timed out waiting for response',
@@ -382,18 +325,63 @@ export class ChatGPTAPI {
       return responseP;
     }
   }
-  get apiKey(): string {
-    return this._apiKey;
-  }
-  set apiKey(apiKey: string) {
-    this._apiKey = apiKey;
-  }
   /**
    * @desc 提示中允许的最大令牌数。
    * @param {string} message
    * @param {openai.SendMessageOptions} options
    * @returns {Promise<{prompt: string, maxTokens: number}>
    */
+  // async _buildPrompt(
+  //   message: string,
+  //   options: openai.SendMessageOptions,
+  // ): Promise<{
+  //   prompt: string;
+  //   maxTokens: number;
+  // }> {
+  //   const currentDate = new Date().toISOString().split('T')[0];
+  //   const promptPrefix =
+  //     options.promptPrefix ||
+  //     `Instructions:You are ${this._assistantLabel}, a large language model trained by OpenAI.Current date: ${currentDate}${this._sepToken}`;
+  //   const promptSuffix = options.promptSuffix || `${this._assistantLabel}:`;
+  //   const maxNumTokens = this._maxModelTokens - this._maxResponseTokens;
+  //   let { parentMessageId } = options;
+  //   let nextPromptBody = `${this._userLabel}:${message}${this._endToken}`;
+  //   let promptBody = '';
+  //   let prompt;
+  //   let numTokens = 0;
+  //   do {
+  //     const nextPrompt = `${promptPrefix}${nextPromptBody}${promptSuffix}`;
+  //     const nextNumTokens = await this._getTokenCount(nextPrompt);
+  //     const isValidPrompt = nextNumTokens <= maxNumTokens;
+  //     if (prompt && !isValidPrompt) {
+  //       break;
+  //     }
+  //     promptBody = nextPromptBody;
+  //     prompt = nextPrompt;
+  //     numTokens = nextNumTokens;
+  //     if (!isValidPrompt) {
+  //       break;
+  //     }
+  //     if (!parentMessageId) {
+  //       break;
+  //     }
+  //     const parentMessage = await this._getMessageById(parentMessageId);
+  //     if (!parentMessage) {
+  //       break;
+  //     }
+  //     const parentMessageRole = parentMessage.role || 'user';
+  //     const parentMessageRoleDesc =
+  //       parentMessageRole === 'user' ? this._userLabel : this._assistantLabel;
+  //     const parentMessageString = `${parentMessageRoleDesc}:${parentMessage.text}${this._endToken}`;
+  //     nextPromptBody = `${parentMessageString}${promptBody}`;
+  //     parentMessageId = parentMessage.parentMessageId;
+  //   } while (true);
+  //   const maxTokens = Math.max(
+  //     1,
+  //     Math.min(this._maxModelTokens - numTokens, this._maxResponseTokens),
+  //   );
+  //   return { prompt, maxTokens };
+  // }
   async _buildPrompt(
     message: string,
     options: openai.SendMessageOptions,
@@ -404,9 +392,7 @@ export class ChatGPTAPI {
     const currentDate = new Date().toISOString().split('T')[0];
     const promptPrefix =
       options.promptPrefix ||
-      `Instructions:
-You are ${this._assistantLabel}, a large language model trained by OpenAI.
-Current date: ${currentDate}${this._sepToken}`;
+      `Instructions:You are ${this._assistantLabel}, a large language model trained by OpenAI.Current date: ${currentDate}${this._sepToken}`;
     const promptSuffix = options.promptSuffix || `${this._assistantLabel}:`;
     const maxNumTokens = this._maxModelTokens - this._maxResponseTokens;
     let { parentMessageId } = options;
@@ -414,39 +400,44 @@ Current date: ${currentDate}${this._sepToken}`;
     let promptBody = '';
     let prompt;
     let numTokens = 0;
-    do {
+
+    while (true) {
       const nextPrompt = `${promptPrefix}${nextPromptBody}${promptSuffix}`;
       const nextNumTokens = await this._getTokenCount(nextPrompt);
-      const isValidPrompt = nextNumTokens <= maxNumTokens;
-      if (prompt && !isValidPrompt) {
+
+      if (prompt && nextNumTokens > maxNumTokens) {
         break;
       }
+
       promptBody = nextPromptBody;
       prompt = nextPrompt;
       numTokens = nextNumTokens;
-      if (!isValidPrompt) {
-        break;
-      }
+
       if (!parentMessageId) {
         break;
       }
+
       const parentMessage = await this._getMessageById(parentMessageId);
       if (!parentMessage) {
         break;
       }
+
       const parentMessageRole = parentMessage.role || 'user';
       const parentMessageRoleDesc =
         parentMessageRole === 'user' ? this._userLabel : this._assistantLabel;
       const parentMessageString = `${parentMessageRoleDesc}:${parentMessage.text}${this._endToken}`;
+
       nextPromptBody = `${parentMessageString}${promptBody}`;
       parentMessageId = parentMessage.parentMessageId;
-    } while (true);
+    }
+
     const maxTokens = Math.max(
       1,
       Math.min(this._maxModelTokens - numTokens, this._maxResponseTokens),
     );
     return { prompt, maxTokens };
   }
+
   /**
    * @desc 获取令牌数
    * @param {string} text
@@ -455,28 +446,7 @@ Current date: ${currentDate}${this._sepToken}`;
    * @memberof ChatGPT
    */
   async _getTokenCount(text: string): Promise<number> {
-    if (this._isChatGPTModel) {
-      text = text.replace(/<\|im_end\|>/g, '<|endoftext|>');
-      text = text.replace(/<\|im_sep\|>/g, '<|endoftext|>');
-    }
     return encode(text).length;
-  }
-  /**
-   * @desc 是否是聊天模型
-   * @returns {boolean}
-   */
-  get _isChatGPTModel(): boolean {
-    return (
-      this._completionParams.model.startsWith('text-chat') ||
-      this._completionParams.model.startsWith('text-davinci-002-render')
-    );
-  }
-  /**
-   * @desc 是否是codex模型
-   * @returns {boolean}
-   */
-  get _isCodexModel(): boolean {
-    return this._completionParams.model.startsWith('code-');
   }
   /**
    * @desc 获取消息
@@ -495,10 +465,7 @@ Current date: ${currentDate}${this._sepToken}`;
    * @param {ChatResponse} message
    * @returns {Promise<void>}
    */
-  async _defaultUpsertMessage(message: openai.ChatResponse): Promise<void> {
-    if (this._debug) {
-      console.log('upsertMessage', message.id, message);
-    }
-    await this._messageStore.set(message.id, message);
+  async _defaultUpsertMessage(message: openai.ChatResponse): Promise<boolean> {
+    return await this._messageStore.set(message.messageId, message);
   }
 }

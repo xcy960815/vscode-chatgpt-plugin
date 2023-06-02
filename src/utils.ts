@@ -39,8 +39,7 @@ export async function fetchSSE(
   if (!response.ok) {
     // 错误原因
     const reason = (await response.text()) || response.statusText;
-    const errormsg = `ChatGPT error ${response.status}: ${reason}`;
-    const chatgptError = new ChatgptError(errormsg, { response });
+    const chatgptError = new ChatgptError(reason, { response });
     chatgptError.statusCode = response.status;
     chatgptError.statusText = response.statusText;
     chatgptError.reason = reason;
@@ -63,8 +62,8 @@ export async function fetchSSE(
       throw new ChatgptError('unsupported "fetch" implementation');
     }
     body.on('readable', () => {
-      let chunk;
-      while (null !== (chunk = body.read())) {
+      const chunk = body.read();
+      while (null !== chunk) {
         parser.feed(chunk.toString());
       }
     });
