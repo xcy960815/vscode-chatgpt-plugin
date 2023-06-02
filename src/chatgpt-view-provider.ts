@@ -9,12 +9,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
   private chatgpt3Model?: ChatGPTAPI3;
   private chatgpt35Model?: ChatGPTAPI35;
-  private conversationId?: string;
   private messageId?: string;
+  private parentMessageId?: string;
   private questionCount: number = 0;
   private inProgress: boolean = false;
   private abortController?: AbortController;
-  private currentMessageId: string = '';
+  // 当前会话的id
+  private currentConversationId: string = '';
   private response: string = '';
   private webviewMessageOption: WebviewMessageOption | null = null;
   /**
@@ -125,8 +126,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           break;
         case 'clear-conversation':
           // 清空会话
+          this.parentMessageId = undefined;
           this.messageId = undefined;
-          this.conversationId = undefined;
           break;
         case 'clear-gpt3':
           this.chatgpt3Model = undefined;
@@ -186,7 +187,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       type: 'add-answer',
       value: this.response,
       done: true,
-      id: this.currentMessageId,
+      id: this.currentConversationId,
       autoScroll: this.autoScroll,
     });
   }
@@ -197,8 +198,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   public clearSession(): void {
     this.stopGenerating();
     this.chatgpt3Model = undefined;
+    this.parentMessageId = undefined;
     this.messageId = undefined;
-    this.conversationId = undefined;
   }
   /**
    * @desc 会话前准备
@@ -209,7 +210,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     if (!hasApiKey) {
       return false;
     }
-    return await this.initChatGPTModel();
+    if (!this.chatgpt3Model && !this.chatgpt35Model) {
+      return await this.initChatGPTModel();
+    } else {
+      return true;
+    }
   }
   /**
    * @desc 检查api是否存在
@@ -316,9 +321,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   private buildQuestion(question: string, code?: string, language?: string): string {
     if (!!code) {
-      question = `${question}${
-        language ? ` (The following code is in ${language} programming language)` : ''
-      }: ${code}`;
+      // question = `${question}${language ? ` (The following code is in ${language} programming language)` : ''}: ${code}`;
+      question = `${question}: ${code}`;
     }
     return question + '\r\n';
   }
@@ -366,8 +370,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       showStopButton: true,
     });
 
-    this.currentMessageId = this.getRandomId();
-
+    this.currentConversationId = this.getRandomId();
+    // 要始终保持 messageId 的唯一性
+    // this.messageId = this.getRandomId();
     this.sendMessageToWebview({
       type: 'add-question',
       value: prompt,
@@ -379,7 +384,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       if (this.isGpt35Model && this.chatgpt35Model) {
         const response = await this.chatgpt35Model.sendMessage(question, {
           systemMessage: this.systemMessage,
-          messageId: this.conversationId,
+          // messageId: this.messageId,
+          messageId: this.getRandomId(),
+          // parentMessageId: this.parentMessageId,
           parentMessageId: this.messageId,
           abortSignal: this.abortController.signal,
           onProgress: (partialResponse) => {
@@ -387,21 +394,16 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             this.sendMessageToWebview({
               type: 'add-answer',
               value: this.response,
-              id: this.currentMessageId,
+              id: this.currentConversationId,
               autoScroll: this.autoScroll,
             });
           },
         });
-
         this.response = response.text;
-        this.conversationId = response.id;
-        this.messageId = response.parentMessageId;
+        this.messageId = response.messageId;
+        this.parentMessageId = response.parentMessageId;
       } else if (!this.isGpt35Model && this.chatgpt3Model) {
-        ({
-          text: this.response,
-          conversationId: this.conversationId,
-          parentMessageId: this.messageId,
-        } = await this.chatgpt3Model.sendMessage(question, {
+        const response = await this.chatgpt3Model.sendMessage(question, {
           promptPrefix: this.systemMessage,
           abortSignal: this.abortController.signal,
           onProgress: (partialResponse) => {
@@ -409,13 +411,15 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             this.sendMessageToWebview({
               type: 'add-answer',
               value: this.response,
-              id: this.currentMessageId,
+              id: this.currentConversationId,
               autoScroll: this.autoScroll,
             });
           },
-        }));
+        });
+        this.response = response.text;
+        this.messageId = response.id;
+        this.parentMessageId = response.parentMessageId;
       }
-
       // 如果存在上一个回答
       if (!!option.previousAnswer) {
         this.response = option.previousAnswer + this.response;
@@ -445,12 +449,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           });
         }
       }
+
       // 回答完毕
       this.sendMessageToWebview({
         type: 'add-answer',
         value: this.response,
         done: true,
-        id: this.currentMessageId,
+        id: this.currentConversationId,
         autoScroll: this.autoScroll,
       });
 
@@ -649,7 +654,7 @@ you can reset it with “ChatGPT: Reset session” command.
 								<h2>${features}</h2>
 								<ul class="flex flex-col gap-3.5 text-xs">
                   <!-- 访问您的ChatGPT会话记录 -->
-								  <!-- <li class="features-li w-full border border-zinc-700 p-3 rounded-md">${feature1}</li> -->
+								  <li class="features-li w-full border border-zinc-700 p-3 rounded-md">${feature1}</li> 
                   <!-- 改进您的代码，添加测试并找到错误 -->
 									<li class="features-li w-full border border-zinc-700 p-3 rounded-md">${feature2}</li>
                   <!-- 自动复制或创建新文件 -->
