@@ -62,8 +62,8 @@ export async function fetchSSE(
       throw new ChatgptError('unsupported "fetch" implementation');
     }
     body.on('readable', () => {
-      const chunk = body.read();
-      while (null !== chunk) {
+      let chunk;
+      while (null !== (chunk = body.read())) {
         parser.feed(chunk.toString());
       }
     });
