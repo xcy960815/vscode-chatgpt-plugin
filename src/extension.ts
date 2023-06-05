@@ -9,7 +9,6 @@ const menuCommands = [
   'explain',
   'addComments',
   'completeCode',
-  'generateCode',
   'adhoc',
   'customPrompt1',
   'customPrompt2',
@@ -73,16 +72,12 @@ export async function activate(context: vscode.ExtensionContext) {
       event.affectsConfiguration('chatgpt.gpt3.temperature') ||
       event.affectsConfiguration('chatgpt.gpt3.top_p')
     ) {
-      chatGptViewProvider.prepareConversation();
+      chatGptViewProvider.prepareConversation(true);
     }
 
     if (
       // 监听 addTests,findBugs,optimize,explain,addComments,completeCode,adhoc,customPrompt1,customPrompt2 配置变更，重新设置右键菜单
-      event.affectsConfiguration('chatgpt.promptPrefix') ||
-      // 监听 generateCode 配置变更，重新设置右键菜单
-      event.affectsConfiguration('chatgpt.gpt3.generateCode-enabled') ||
-      // 监听 generateCode 配置变更，重新设置右键菜单
-      event.affectsConfiguration('chatgpt.gpt3.model')
+      event.affectsConfiguration('chatgpt.promptPrefix')
     ) {
       setRightMenu();
     }
@@ -132,25 +127,9 @@ export async function activate(context: vscode.ExtensionContext) {
     });
   });
 
-  // 注册 generateCode 命令
-  const generateCodeCommand = vscode.commands.registerCommand(`vscode-chatgpt.generateCode`, () => {
-    const editor = vscode.window.activeTextEditor;
-    if (!editor) {
-      return;
-    }
-    const selectedCode = editor.document.getText(editor.selection).trim();
-    if (!selectedCode) {
-      return;
-    }
-    chatGptViewProvider?.sendApiRequest(selectedCode, {
-      command: 'generateCode',
-      language: editor.document.languageId,
-    });
-  });
-
   // 注册菜单命令
   const registeredCommands = menuCommands
-    .filter((command) => !['adhoc', 'generateCode'].includes(command))
+    .filter((command) => !['adhoc'].includes(command))
     .map((command) =>
       vscode.commands.registerCommand(`vscode-chatgpt.${command}`, () => {
         // 获取配置的 prompt
@@ -181,31 +160,17 @@ export async function activate(context: vscode.ExtensionContext) {
     clearSessionCommand,
     vscodeConfigChanged,
     adhocCommand,
-    generateCodeCommand,
     ...registeredCommands,
   );
 
   // 更新右键菜单
   const setRightMenu = () => {
     menuCommands.forEach((command) => {
-      if (command === 'generateCode') {
-        const generateCodeEnabled = vscode.workspace
-          .getConfiguration('chatgpt')
-          .get<boolean>('gpt3.generateCode-enabled');
-        const model = vscode.workspace.getConfiguration('chatgpt').get<string>('gpt3.model') || '';
-        const isCodexModel = model.startsWith('code-');
-        vscode.commands.executeCommand(
-          'setContext',
-          'generateCode-enabled',
-          generateCodeEnabled && isCodexModel,
-        );
-      } else {
-        const commandEnabled =
-          vscode.workspace
-            .getConfiguration('chatgpt.promptPrefix')
-            .get<boolean>(`${command}-enabled`) || false;
-        vscode.commands.executeCommand('setContext', `${command}-enabled`, commandEnabled);
-      }
+      const commandEnabled =
+        vscode.workspace
+          .getConfiguration('chatgpt.promptPrefix')
+          .get<boolean>(`${command}-enabled`) || false;
+      vscode.commands.executeCommand('setContext', `${command}-enabled`, commandEnabled);
     });
   };
 

@@ -30,11 +30,6 @@
     "menus": {
       "editor/context": [
         {
-          "command": "vscode-chatgpt.generateCode",
-          "group": "chatGpt@1",
-          "when": "editorHasSelection && generateCode-enabled"
-        },
-        {
           "command": "vscode-chatgpt.addTests",
           "group": "chatGpt@2",
           "when": "editorHasSelection && addTests-enabled"
@@ -89,11 +84,6 @@
       {
         "command": "vscode-chatgpt.clearSession",
         "title": "%vscode-chatgpt.clearSession.title%"
-      },
-      {
-        "command": "vscode-chatgpt.generateCode",
-        "title": "%vscode-chatgpt.generateCode.title%",
-        "enablement": "editorHasSelection"
       },
       {
         "command": "vscode-chatgpt.addTests",
@@ -171,12 +161,6 @@
       "title": "%chatgpt-config.title%",
       "type": "object",
       "properties": {
-        "chatgpt.gpt3.generateCode-enabled": {
-          "type": "boolean",
-          "default": true,
-          "description": "%chatgpt.gpt3.generateCode-enabled.description%",
-          "order": 7
-        },
         "chatgpt.promptPrefix.addTests": {
           "type": "string",
           "default": "%chatgpt.promptPrefix.addTests.default%",
