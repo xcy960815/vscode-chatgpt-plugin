@@ -70,7 +70,6 @@
   "chatgpt.gpt3.systemMessage": "你是 ChatGPT，帮助用户编写代码。你聪明、乐于助人，并且是一位专业的开发人员。你总是给出正确的答案，并仅按照指示执行。你始终如实回答，不撒谎。当回答下面的提示时，请确保使用 Github Flavored Markdown 来正确地对其进行格式化。使用 markdown 语法来添加标题、列表、颜色文本、代码块、高亮等效果等。请注意，在您回复实际内容时，请勿提及 markdown 或样式。",
   "chatgpt.response.subscribeToResponse.description": "是否允许 ChatGPT 机器人回答您的问题时接收通知。",
   "chatgpt.response.autoScroll.description": "每当对话窗口添加新问题或响应时，扩展程序将自动滚动到底部。您可以通过禁用此设置来更改该行为。",
-  "chatgpt.telemetry.disable.markdownDescription": "禁用扩展收集必要的信息。此扩展尊重您默认的 VS Code Telemetry 设置，我们将检查两个必要设置。**重要**：我们不跟踪用户数据，我们只使用 Telemetry 检查哪些功能被使用，哪些没有使用。这使我们能够做出关于扩展未来应该添加或增强哪些功能的准确决策。",
   "chatgpt.pageMessage.askAnything.inputBox.prompt": "随便提问...",
   "chatgpt.pageMessage.adhocCommand.inputBox.title": "为您的临时命令添加前缀",
   "chatgpt.pageMessage.adhocCommand.inputBox.prompt": "使用您的自定义提示为您的代码添加前缀",

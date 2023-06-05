@@ -24,6 +24,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   constructor(private context: vscode.ExtensionContext) {
     // this.clearSession();
+    this.prepareConversation();
   }
   private get chatGptConfig(): vscode.WorkspaceConfiguration {
     return vscode.workspace.getConfiguration('chatgpt');
@@ -111,9 +112,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           this.sendApiRequest(data.value as string, { command: 'freeText' });
           break;
         case 'insert-code':
-          const escapedString = (data.value as string).replace(/\$/g, '\\$');
+          // 插入代码
+          const code = data.value || '';
+          const escapedString = code.replace(/\$/g, '\\$');
           vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(escapedString));
-
           break;
         case 'open-new-tab':
           // 打开新的tab页
@@ -122,15 +124,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             language: data.language,
           });
           vscode.window.showTextDocument(document);
-
           break;
         case 'clear-conversation':
           // 清空会话
           this.parentMessageId = undefined;
           this.messageId = undefined;
-          break;
-        case 'clear-gpt3':
-          this.textModel = undefined;
           break;
         case 'login':
           const loginStatus = await this.prepareConversation();
@@ -473,10 +471,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     } catch (error: any) {
       let message;
       let apiMessage =
-        error?.response?.data?.error?.message ||
-        error?.tostring?.() ||
-        error?.message ||
-        error?.name;
+        error?.response?.data?.error?.message || error?.tostring?.() || error?.message;
 
       if (error?.response?.status || error?.response?.statusText) {
         message = `${error?.response?.status || ''} ${error?.response?.statusText || ''}`;
@@ -498,10 +493,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       } else if (error.statusCode === 400) {
         message = `your model: '${this.model}' may be incompatible or one of your parameters is unknown. Reset your settings to default. (HTTP 400 Bad Request)`;
       } else if (error.statusCode === 401) {
-        message = `Make sure you are properly signed in. 
-If you are using Browser Auto-login method, 
-make sure the browser is open (You could refresh the browser tab manually if you face any issues, too). 
-If you stored your API key in settings.json, make sure it is accurate. 
+        message = ` If you stored your API key in settings.json, make sure it is accurate. 
 If you stored API key in session, 
 you can reset it with “ChatGPT: Reset session” command.
 (HTTP 401 Unauthorized) Potential reasons: \r\n- 1.Invalid Authentication\r\n- 2.Incorrect API key provided.\r\n- 3.Incorrect Organization provided. \r\n See https://platform.openai.com/docs/guides/error-codes for more details.`;
@@ -542,7 +534,6 @@ you can reset it with “ChatGPT: Reset session” command.
       this.webviewMessageOption = webviewMessageOption;
     }
   }
-
   /**
    * @desc 获取webview的html
    * @param {vscode.Webview} webview
@@ -696,7 +687,7 @@ you can reset it with “ChatGPT: Reset session” command.
             </div>
 						
             <!-- gpt 停止回答的答案的按钮 -->
-						<button id="stop-asking-button" class="btn btn-primary flex items-center p-1 pr-2 rounded-md ml-5">
+						<button id="stop-generating-button" class="btn btn-primary flex items-center p-1 pr-2 rounded-md ml-5">
 							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Stop responding
 						</button>
             </div>

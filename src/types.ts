@@ -31,7 +31,6 @@ export interface OnDidReceiveMessageOption {
     | 'add-question'
     | 'insert-code'
     | 'open-new-tab'
-    | 'clear-gpt3'
     | 'clear-conversation'
     | 'login'
     | 'open-settings'
