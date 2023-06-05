@@ -1,7 +1,6 @@
 {
   "vscode-chatgpt.freeText.title": "ChatGPT: Ask anything",
   "vscode-chatgpt.clearSession.title": "ChatGPT: Reset session",
-  "vscode-chatgpt.generateCode.title": "ChatGPT-Codex: Generate code",
   "vscode-chatgpt.addTests.title": "ChatGPT: Add tests",
   "vscode-chatgpt.findBugs.title": "ChatGPT: Find bugs",
   "vscode-chatgpt.optimize.title": "ChatGPT: Optimize",
@@ -28,7 +27,6 @@
   "chatgpt.password.description": "[Optional] Your openai.com login password. Provide this if you want to auto-fill your password during autologin. You don't have to provide this if you want to fill it during login.",
   "chatgpt.proxyServer.markdownDescription": "[Optional] The proxy server you'd like to use. Supports HTTP proxies only, don't provide the protocol in the setting. Format example: \n\n `authenticated`:`myUsername:myPassword@my.proxy.com:3001` \n\n `anonymous`: `204.137.172.37:999` \n\n **Only available for `Browser Auto-login` method**",
   "chatgpt.chromiumPath.markdownDescription": "The executable path of your Chromium-based browser. i.e. `Chrome`, `Edge` etc. \n\n Unless you override, we use the default paths per Operating System for `Chrome`. \n\n **Windows**\n C:\\\\Program Files\\\\Google\\\\Chrome\\\\Application\\\\chrome.exe \n\n **MAC**\n /Applications/Google Chrome.app/Contents/MacOS/Google Chrome \n\n You can use Chromium based Edge as well. e.g. \n\n **Windows Edge**\n C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe \n\n **You can find the executable path for your preferred browser by going to these URLs: `chrome://version` or `edge://version`**",
-  "chatgpt.gpt3.generateCode-enabled.description": "Enable the code generation context menu item for the selected comment/code for Codex. Only available with code-* models",
   "chatgpt.promptPrefix.addTests.default": "Implement tests for the following code",
   "chatgpt.promptPrefix.addTests.description": "The prompt prefix used for adding tests for the selected code",
   "chatgpt.promptPrefix.addTests-enabled.description": "Enable the prompt prefix used for adding tests for the selected code in the context menu",

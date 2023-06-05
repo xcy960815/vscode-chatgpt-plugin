@@ -205,12 +205,12 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * @desc 会话前准备
    * @returns {Promise<boolean>}
    */
-  public async prepareConversation(): Promise<boolean> {
+  public async prepareConversation(gptConfigChanged?: boolean): Promise<boolean> {
     const hasApiKey = await this.checkAPIExistence();
     if (!hasApiKey) {
       return false;
     }
-    if (!this.textModel || !this.chatgptModel) {
+    if (!this.textModel || !this.chatgptModel || gptConfigChanged) {
       return await this.initChatGPTModel();
     } else {
       return true;
