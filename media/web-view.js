@@ -46,7 +46,7 @@
   // 拿到所有的 需要操作的 dom
   const questionInputElement = document.getElementById('question-input');
   const answerListElement = document.getElementById('answer-list');
-  const stopAskingButtonElement = document.getElementById('stop-asking-button');
+  const stopAskingButtonElement = document.getElementById('stop-generating-button');
   const inProgressElement = document.getElementById('in-progress');
   const questionInputButtons = document.getElementById('question-input-buttons');
   const introductionElement = document.getElementById('introduction');
@@ -109,8 +109,8 @@
                         <no-export class="mb-2 flex items-center">
                             <button title="${editButtonTitle}" class="resend-question-element p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editButtonSvg}</button>
                             <div class="hidden send-cancel-elements flex gap-2">
-                                <button title="${sendButtonTitle}" class="send-element-ext p-1 pr-2 flex items-center">${sendButtonSvg}&nbsp;${sendButtonName}</button>
-                                <button title="${cancelButtonTitle}" class="cancel-element-ext p-1 pr-2 flex items-center">${cancelButtonSvg}&nbsp;${cancelButtonName}</button>
+                                <button title="${sendButtonTitle}" class="send-element-ext p-1 pr-2 flex items-center rounded-md">${sendButtonSvg}&nbsp;${sendButtonName}</button>
+                                <button title="${cancelButtonTitle}" class="cancel-button p-1 pr-2 flex items-center rounded-md">${cancelButtonSvg}&nbsp;${cancelButtonName}</button>
                             </div>
                         </no-export>
                         <div class="overflow-y-auto pt-1 pb-1 pl-3 pr-3 rounded-md">${escapeHtml(
@@ -197,7 +197,7 @@
             copyButton.title = copyButtonTitle;
             copyButton.innerHTML = `${copyButtonSvg} ${copyButtonName}`;
             copyButton.classList.add(
-              'code-element-ext',
+              'copy-button',
               'p-1',
               'pr-2',
               'flex',
@@ -421,7 +421,7 @@
       clearConversation();
       return;
     }
-
+    // 点击导出对话按钮
     if (targetButton?.id === 'export-conversation-button') {
       exportConversation();
       return;
@@ -468,8 +468,8 @@
       }
       return;
     }
-
-    if (targetButton?.id === 'stop-asking-button') {
+    // 点击停止回答按钮
+    if (targetButton?.id === 'stop-generating-button') {
       vscode.postMessage({
         type: 'stop-generating',
       });
@@ -490,9 +490,9 @@
 
     if (targetButton?.classList?.contains('send-element-ext')) {
       const questionElement = targetButton.closest('.question-element');
-      const elements = targetButton.closest('.send-cancel-elements');
+      const sendAndCancelElements = targetButton.closest('.send-cancel-elements');
       const resendElement = targetButton.parentElement.parentElement.firstElementChild;
-      elements.classList.add('hidden');
+      sendAndCancelElements.classList.add('hidden');
       resendElement.classList.remove('hidden');
       questionElement.lastElementChild?.setAttribute('contenteditable', false);
       if (questionElement.lastElementChild.textContent?.length > 0) {
@@ -504,17 +504,18 @@
       return;
     }
 
-    if (targetButton?.classList?.contains('cancel-element-ext')) {
+    if (targetButton?.classList?.contains('cancel-button')) {
       const question = targetButton.closest('.question-element');
-      const elements = targetButton.closest('.send-cancel-elements');
+      const sendAndCancelElements = targetButton.closest('.send-cancel-elements');
       const resendElement = targetButton.parentElement.parentElement.firstElementChild;
-      elements.classList.add('hidden');
+      sendAndCancelElements.classList.add('hidden');
       resendElement.classList.remove('hidden');
       question.lastElementChild?.setAttribute('contenteditable', false);
       return;
     }
 
-    if (targetButton?.classList?.contains('code-element-ext')) {
+    // 点击复制按钮
+    if (targetButton?.classList?.contains('copy-button')) {
       navigator.clipboard
         .writeText(targetButton.parentElement?.nextElementSibling?.lastChild?.textContent)
         .then(() => {
@@ -533,7 +534,7 @@
 
       return;
     }
-
+    // 点击插入按钮
     if (targetButton?.classList?.contains('insert-button')) {
       vscode.postMessage({
         type: 'insert-code',
@@ -542,7 +543,7 @@
 
       return;
     }
-
+    // 点击新标签按钮
     if (targetButton?.classList?.contains('new-tab-button')) {
       vscode.postMessage({
         type: 'open-new-tab',

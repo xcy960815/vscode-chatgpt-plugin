@@ -269,7 +269,7 @@ textarea::placeholder {
 }
 
 .send-element-ext,
-.cancel-element-ext {
+.cancel-button {
   font-size: smaller;
 }
 
