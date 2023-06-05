@@ -56,6 +56,7 @@ export async function fetchSSE(
   });
   const body = response.body;
   const getReader = body?.getReader;
+  // 兼容不同版本的 node 环境
   if (!getReader) {
     const body = response.body as unknown as PassThrough;
     if (!body?.on || !body?.read) {

@@ -1,3 +1,4 @@
+/// <reference lib="dom" />
 import * as vscode from 'vscode';
 import ChatgptViewProvider from './chatgpt-view-provider';
 
