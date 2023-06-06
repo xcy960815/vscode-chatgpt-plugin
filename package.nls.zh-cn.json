@@ -86,7 +86,7 @@
   "chatgpt.pageMessage.dontComplete.prompt": "继续",
   "chatgpt.pageMessage.subscribeToResponse.message": "ChatGPT 已回复您的问题。",
   "chatgpt.pageMessage.subscribeToResponse.choose": "打开对话",
-  "chatgpt.pageMessage.maxToken.error.message": "发生错误。如果这是由于 max_token 造成的，您可以尝试“ChatGPT：clearConversation”命令并重试发送您的提示。",
+  "chatgpt.pageMessage.maxToken.error.message": "发生错误。如果这是由于 max_token 造成的，您可以尝试“ ChatGPT：Clear conversation ”命令并重试发送您的提示。",
   "chatgpt.pageMessage.maxToken.error.choose": "清除对话并重试",
   "chatgpt.webview.features.default": "现有功能",
   "chatgpt.webview.feature1.default": "访问您的ChatGPT会话记录",
