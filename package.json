@@ -1,13 +1,13 @@
 {
   "name": "vscode-chatgpt-plugin",
-  "publisher": "YOUR_PUBLISHER_NAME",
+  "publisher": "xcy960815",
   "displayName": "vscode-chatgpt-plugin",
   "icon": "images/ai-logo.jpg",
   "description": "vscode-chatgpt-plugin",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "license": "MIT",
   "repository": {
-    "url": "https://github.com/YOUR_PUBLISHER_NAME/vscode-chatgpt-plugin"
+    "url": "https://github.com/xcy960815/vscode-chatgpt-plugin"
   },
   "engines": {
     "vscode": "^1.73.0"
@@ -143,7 +143,7 @@
       "activitybar": [
         {
           "id": "vscode-chatgpt-view-container",
-          "title": "ChatGPT",
+          "title": "chat-gpt-plugin",
           "icon": "images/openai-logo.svg"
         }
       ]

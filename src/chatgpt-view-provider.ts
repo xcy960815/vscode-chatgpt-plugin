@@ -140,13 +140,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           // 打开设置
           vscode.commands.executeCommand(
             'workbench.action.openSettings',
-            '@ext:YOUR_PUBLISHER_NAME.vscode-chatgpt-plugin chatgpt.',
+            '@ext:xcy960815.vscode-chatgpt-plugin chatgpt.',
           );
           break;
         case 'open-prompt-settings':
           vscode.commands.executeCommand(
             'workbench.action.openSettings',
-            '@ext:YOUR_PUBLISHER_NAME.vscode-chatgpt-plugin promptPrefix',
+            '@ext:xcy960815.vscode-chatgpt-plugin promptPrefix',
           );
           break;
         case 'show-conversations':
@@ -475,21 +475,21 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
       if (error?.response?.status || error?.response?.statusText) {
         message = `${error?.response?.status || ''} ${error?.response?.statusText || ''}`;
-        // // 从配置中获取错误信息
-        // const errorMessage =
-        //   this.chatGptConfig.get<string>('pageMessage.maxToken.error.message') || '';
-        // // 从配置中获取错误选择
-        // const errorChoose =
-        //   this.chatGptConfig.get<string>('pageMessage.maxToken.error.choose') || '';
-        // vscode.window.showErrorMessage(errorMessage, errorChoose).then(async (choice) => {
-        //   if (choice === errorChoose) {
-        //     // 执行 清空会话 指令
-        //     await vscode.commands.executeCommand('vscode-chatgpt.clearConversation');
-        //     // 等待 250毫米
-        //     await delay(250);
-        //     this.sendApiRequest(prompt, { command: option.command, code: option.code });
-        //   }
-        // });
+        // 从配置中获取错误信息
+        const errorMessage =
+          this.chatGptConfig.get<string>('pageMessage.maxToken.error.message') || '';
+        // 从配置中获取错误选择
+        const errorChoose =
+          this.chatGptConfig.get<string>('pageMessage.maxToken.error.choose') || '';
+        vscode.window.showErrorMessage(errorMessage, errorChoose).then(async (choice) => {
+          if (choice === errorChoose) {
+            // 执行 清空会话 指令
+            await vscode.commands.executeCommand('vscode-chatgpt.clearConversation');
+            // 等待 250毫米
+            await delay(250);
+            this.sendApiRequest(prompt, { command: option.command, code: option.code });
+          }
+        });
       } else if (error.statusCode === 400) {
         message = `your model: '${this.model}' may be incompatible or one of your parameters is unknown. Reset your settings to default. (HTTP 400 Bad Request)`;
       } else if (error.statusCode === 401) {

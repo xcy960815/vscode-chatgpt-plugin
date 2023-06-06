@@ -108,15 +108,15 @@
                         <h3 class="mb-5 mt-0 flex">${userSvg} You</h3>
                         <no-export class="mb-2 flex items-center">
                             <button title="${editButtonTitle}" class="resend-question-element p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editButtonSvg}</button>
-                            <div class="hidden send-cancel-elements flex gap-2">
-                                <button title="${sendButtonTitle}" class="send-element-ext p-1 pr-2 flex items-center rounded-md">${sendButtonSvg}&nbsp;${sendButtonName}</button>
+                            <div class="hidden send-cancel-container flex gap-2">
+                                <button title="${sendButtonTitle}" class="send-button p-1 pr-2 flex items-center rounded-md">${sendButtonSvg}&nbsp;${sendButtonName}</button>
                                 <button title="${cancelButtonTitle}" class="cancel-button p-1 pr-2 flex items-center rounded-md">${cancelButtonSvg}&nbsp;${cancelButtonName}</button>
                             </div>
                         </no-export>
                         <div class="overflow-y-auto pt-1 pb-1 pl-3 pr-3 rounded-md">${escapeHtml(
                           messageOption.value,
                         )}</div>
-        </div>`;
+                    </div>`;
 
         if (messageOption.autoScroll) {
           answerListElement.lastChild?.scrollIntoView({
@@ -162,7 +162,7 @@
                         <div class="result-streaming" id="${messageOption.id}">${markedResponse}</div>
                     </div>`;
         }
-
+        // 回答完毕
         if (messageOption.done) {
           const preCodeList = answerListElement.lastChild.querySelectorAll('pre > code');
           preCodeList.forEach((preCode) => {
@@ -488,11 +488,11 @@
       return;
     }
 
-    if (targetButton?.classList?.contains('send-element-ext')) {
+    if (targetButton?.classList?.contains('send-button')) {
       const questionElement = targetButton.closest('.question-element');
-      const sendAndCancelElements = targetButton.closest('.send-cancel-elements');
+      const sendAndCancelContainer = targetButton.closest('.send-cancel-container');
       const resendElement = targetButton.parentElement.parentElement.firstElementChild;
-      sendAndCancelElements.classList.add('hidden');
+      sendAndCancelContainer.classList.add('hidden');
       resendElement.classList.remove('hidden');
       questionElement.lastElementChild?.setAttribute('contenteditable', false);
       if (questionElement.lastElementChild.textContent?.length > 0) {
@@ -506,9 +506,9 @@
 
     if (targetButton?.classList?.contains('cancel-button')) {
       const question = targetButton.closest('.question-element');
-      const sendAndCancelElements = targetButton.closest('.send-cancel-elements');
+      const sendAndCancelContainer = targetButton.closest('.send-cancel-container');
       const resendElement = targetButton.parentElement.parentElement.firstElementChild;
-      sendAndCancelElements.classList.add('hidden');
+      sendAndCancelContainer.classList.add('hidden');
       resendElement.classList.remove('hidden');
       question.lastElementChild?.setAttribute('contenteditable', false);
       return;
