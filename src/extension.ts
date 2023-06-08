@@ -58,19 +58,19 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // 注册 clearSession 命令
   const clearSessionCommand = vscode.commands.registerCommand('vscode-chatgpt.clearSession', () => {
-    // context.globalState.update('chatgpt-gpt3-apiKey', null);
+    // context.globalState.update('chatgpt-gpt-apiKey', null);
     chatGptViewProvider?.clearSession();
   });
 
   const vscodeConfigChanged = vscode.workspace.onDidChangeConfiguration((event) => {
     // 关于chatgpt的配置发生变更后重新 init 模型
     if (
-      event.affectsConfiguration('chatgpt.gpt3.apiBaseUrl') ||
-      event.affectsConfiguration('chatgpt.gpt3.model') ||
-      event.affectsConfiguration('chatgpt.gpt3.organization') ||
-      event.affectsConfiguration('chatgpt.gpt3.maxTokens') ||
-      event.affectsConfiguration('chatgpt.gpt3.temperature') ||
-      event.affectsConfiguration('chatgpt.gpt3.top_p')
+      event.affectsConfiguration('chatgpt.gpt.apiBaseUrl') ||
+      event.affectsConfiguration('chatgpt.gpt.model') ||
+      event.affectsConfiguration('chatgpt.gpt.organization') ||
+      event.affectsConfiguration('chatgpt.gpt.maxTokens') ||
+      event.affectsConfiguration('chatgpt.gpt.temperature') ||
+      event.affectsConfiguration('chatgpt.gpt.top_p')
     ) {
       chatGptViewProvider.prepareConversation(true);
     }

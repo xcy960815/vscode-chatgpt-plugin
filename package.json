@@ -161,23 +161,23 @@
       "title": "%chatgpt-config.title%",
       "type": "object",
       "properties": {
-        "chatgpt.gpt3.apiKey": {
+        "chatgpt.gpt.apiKey": {
           "type": "string",
-          "markdownDescription": "%chatgpt.gpt3.apiKey.markdownDescription%",
+          "markdownDescription": "%chatgpt.gpt.apiKey.markdownDescription%",
           "order": 1
         },
-        "chatgpt.gpt3.apiBaseUrl": {
+        "chatgpt.gpt.apiBaseUrl": {
           "type": "string",
           "default": "https://api.openai.com",
-          "markdownDescription": "%chatgpt.gpt3.apiBaseUrl.markdownDescription%",
+          "markdownDescription": "%chatgpt.gpt.apiBaseUrl.markdownDescription%",
           "order": 2
         },
-        "chatgpt.gpt3.organization": {
+        "chatgpt.gpt.organization": {
           "type": "string",
-          "markdownDescription": "%chatgpt.gpt3.organization.markdownDescription%",
+          "markdownDescription": "%chatgpt.gpt.organization.markdownDescription%",
           "order": 3
         },
-        "chatgpt.gpt3.model": {
+        "chatgpt.gpt.model": {
           "type": "string",
           "enum": [
             "gpt-4",
@@ -189,44 +189,44 @@
             "text-ada-001"
           ],
           "default": "gpt-3.5-turbo",
-          "markdownDescription": "%chatgpt.gpt3.model.markdownDescription%",
+          "markdownDescription": "%chatgpt.gpt.model.markdownDescription%",
           "order": 4,
           "enumItemLabels": [
-            "%chatgpt.gpt3.model.gpt4Label%",
-            "%chatgpt.gpt3.model.gpt35turboLabel%",
-            "%chatgpt.gpt3.model.gpt35turbo0301Label%",
-            "%chatgpt.gpt3.model.textdavinci003Label%",
-            "%chatgpt.gpt3.model.textcurie001Label%",
-            "%chatgpt.gpt3.model.textbabbage001Label%",
-            "%chatgpt.gpt3.model.textada001Label%"
+            "%chatgpt.gpt.model.gpt4Label%",
+            "%chatgpt.gpt.model.gpt35turboLabel%",
+            "%chatgpt.gpt.model.gpt35turbo0301Label%",
+            "%chatgpt.gpt.model.textdavinci003Label%",
+            "%chatgpt.gpt.model.textcurie001Label%",
+            "%chatgpt.gpt.model.textbabbage001Label%",
+            "%chatgpt.gpt.model.textada001Label%"
           ],
           "markdownEnumDescriptions": [
-            "%chatgpt.gpt3.model.gpt4markdownEnumDescriptions%",
-            "%chatgpt.gpt3.model.gpt35turbomarkdownEnumDescriptions%",
-            "%chatgpt.gpt3.model.gpt35turbo0301markdownEnumDescriptions%"
+            "%chatgpt.gpt.model.gpt4markdownEnumDescriptions%",
+            "%chatgpt.gpt.model.gpt35turbomarkdownEnumDescriptions%",
+            "%chatgpt.gpt.model.gpt35turbo0301markdownEnumDescriptions%"
           ]
         },
-        "chatgpt.gpt3.maxTokens": {
+        "chatgpt.gpt.maxTokens": {
           "type": "number",
           "default": 1024,
-          "markdownDescription": "%chatgpt.gpt3.maxTokens.markdownDescription%",
+          "markdownDescription": "%chatgpt.gpt.maxTokens.markdownDescription%",
           "order": 5
         },
-        "chatgpt.gpt3.temperature": {
+        "chatgpt.gpt.temperature": {
           "type": "number",
           "default": 1,
-          "markdownDescription": "%chatgpt.gpt3.temperature.markdownDescription%",
+          "markdownDescription": "%chatgpt.gpt.temperature.markdownDescription%",
           "order": 6
         },
-        "chatgpt.gpt3.top_p": {
+        "chatgpt.gpt.top_p": {
           "type": "number",
           "default": 1,
-          "markdownDescription": "%chatgpt.gpt3.top_p.markdownDescription%",
+          "markdownDescription": "%chatgpt.gpt.top_p.markdownDescription%",
           "order": 7
         },
-        "chatgpt.gpt3.systemMessage": {
+        "chatgpt.gpt.systemMessage": {
           "type": "string",
-          "default": "%chatgpt.gpt3.systemMessage%",
+          "default": "%chatgpt.gpt.systemMessage%",
           "order": 8
         },
         "chatgpt.response.subscribeToResponse": {
@@ -609,7 +609,7 @@
   "dependencies": {
     "delay": "^5.0.0",
     "eventsource-parser": "^0.1.0",
-    "gpt3-tokenizer": "^1.1.5",
+    "gpt-tokenizer": "^1.1.5",
     "isomorphic-fetch": "^3.0.0",
     "keyv": "^4.5.2",
     "openai": "^3.1.0",

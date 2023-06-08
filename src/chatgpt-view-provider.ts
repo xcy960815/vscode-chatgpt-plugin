@@ -22,7 +22,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * 在调用 resolveWebviewView 之前的时间。
    */
   constructor(private context: vscode.ExtensionContext) {
-    // this.clearSession();
     this.prepareConversation();
   }
   private get chatGptConfig(): vscode.WorkspaceConfiguration {
@@ -61,49 +60,49 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * @returns {string}
    */
   private get model(): string {
-    return this.chatGptConfig.get<string>('gpt3.model') || '';
+    return this.chatGptConfig.get<string>('gpt.model') || '';
   }
   /**
    * @desc gpt organization 参数
    * @returns {string}
    */
   private get organization(): string {
-    return this.chatGptConfig.get<string>('gpt3.organization') || '';
+    return this.chatGptConfig.get<string>('gpt.organization') || '';
   }
   /**
    * @desc gpt max_tokens 参数
    * @returns {number}
    */
   private get max_tokens(): number {
-    return this.chatGptConfig.get<number>('gpt3.maxTokens') || 2048;
+    return this.chatGptConfig.get<number>('gpt.maxTokens') || 2048;
   }
   /**
    * @desc gpt temperature 参数
    * @returns {number}
    */
   private get temperature(): number {
-    return this.chatGptConfig.get<number>('gpt3.temperature') || 0.9;
+    return this.chatGptConfig.get<number>('gpt.temperature') || 0.9;
   }
   /**
    * @desc gpt top_p 参数
    * @returns {number}
    */
   private get top_p(): number {
-    return this.chatGptConfig.get<number>('gpt3.top_p') || 1;
+    return this.chatGptConfig.get<number>('gpt.top_p') || 1;
   }
   /**
    * @desc gpt apiBaseUrl 参数
    * @returns {string}
    */
   private get apiBaseUrl(): string {
-    return this.chatGptConfig.get<string>('gpt3.apiBaseUrl')?.trim() || '';
+    return this.chatGptConfig.get<string>('gpt.apiBaseUrl')?.trim() || '';
   }
 
   private get apiKey(): string {
     const globalState = this.context.globalState;
     const apiKey =
-      this.chatGptConfig.get<string>('gpt3.apiKey') ||
-      globalState.get<string>('chatgpt-gpt3-apiKey') ||
+      this.chatGptConfig.get<string>('gpt.apiKey') ||
+      globalState.get<string>('chatgpt-gpt-apiKey') ||
       '';
     return apiKey;
   }
@@ -112,7 +111,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * @returns {string}
    */
   private get systemMessage(): string {
-    return this.chatGptConfig.get<string>('gpt3.systemMessage') || '';
+    return this.chatGptConfig.get<string>('gpt.systemMessage') || '';
   }
 
   /**
@@ -315,7 +314,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     // 如果用户选择了打开设置
     if (choice === noApiKeyChoose2) {
       // 打开关于openai apiKey的设置项
-      vscode.commands.executeCommand('workbench.action.openSettings', 'chatgpt.gpt3.apiKey');
+      vscode.commands.executeCommand('workbench.action.openSettings', 'chatgpt.gpt.apiKey');
       return false;
     } else if (choice === noApiKeyChoose1) {
       const apiKeyValue = await vscode.window.showInputBox({
@@ -328,7 +327,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         // 全局状态
         const globalState = this.context.globalState;
         // 存储在全局状态中
-        globalState.update('chatgpt-gpt3-apiKey', apiKeyValue?.trim());
+        globalState.update('chatgpt-gpt-apiKey', apiKeyValue?.trim());
         return true;
       } else {
         return false;
