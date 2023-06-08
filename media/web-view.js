@@ -136,7 +136,6 @@
             : messageOption.value + '\n\n```\n\n';
 
         const markedResponse = marked.parse(updatedValue);
-
         if (existingMessageElement) {
           // 更新现有消息
           existingMessageElement.innerHTML = markedResponse;
@@ -237,7 +236,7 @@
             existingMessageElement.classList.remove('result-streaming');
           }
         }
-
+        // 如果用户开启了自动滚动 或者 回答完毕 的时候 将页面滚动到底部
         if (messageOption.autoScroll && (messageOption.done || markedResponse.endsWith('\n'))) {
           answerListElement.lastChild?.scrollIntoView({
             behavior: 'smooth',
@@ -285,29 +284,29 @@
           showConversationsButton2?.classList?.remove('hidden');
         }
         break;
-      case 'show-conversations':
-        answerListElement.classList.add('hidden');
-        introductionElement?.classList?.add('hidden');
-        conversationElement.classList.remove('hidden');
-        const conversationList = messageOption.conversations.items.map((conversation) => {
-          const chatDate = new Date(conversation.create_time).toLocaleString();
-          return `<button id="show-conversation-button" data-id="${
-            conversation.id
-          }" data-title="${conversation.title.replace(
-            /"/g,
-            '',
-          )}" data-time="${chatDate}" class="flex py-3 px-3 items-center gap-3 relative rounded-lg input-background cursor-pointer break-all group">${textSvg}<div class="flex flex-col items-start gap-2 truncate"><span class="text-left font-bold">${
-            conversation.title
-          }</span><div class="text-xs text-left">${chatDate}</div></div></button>`;
-        });
-        conversationElement.innerHTML = `<div class="flex flex-col gap-4 text-sm relative overflow-y-auto p-8">
-                    <div class="flex justify-center gap-4">
-                        <button id="refresh-conversations-button" title="Reload conversations" class="p-1 pr-2 flex items-center rounded-lg">${refreshButtonSvg}&nbsp;Reload</button>
-                        <button id="close-conversations-button" title="Close conversations panel" class="p-1 pr-2 flex items-center rounded-lg">${closeButtonSvg}&nbsp;Close</button>
-                    </div>
-                    <div class="flex flex-col gap-4">${conversationList.join('')}</div>
-                </div>`;
-        break;
+      // case 'show-conversations':
+      //   answerListElement.classList.add('hidden');
+      //   introductionElement?.classList?.add('hidden');
+      //   conversationElement.classList.remove('hidden');
+      //   const conversationList = messageOption.conversations.items.map((conversation) => {
+      //     const chatDate = new Date(conversation.create_time).toLocaleString();
+      //     return `<button id="show-conversation-button" data-id="${
+      //       conversation.id
+      //     }" data-title="${conversation.title.replace(
+      //       /"/g,
+      //       '',
+      //     )}" data-time="${chatDate}" class="flex py-3 px-3 items-center gap-3 relative rounded-lg input-background cursor-pointer break-all group">${textSvg}<div class="flex flex-col items-start gap-2 truncate"><span class="text-left font-bold">${
+      //       conversation.title
+      //     }</span><div class="text-xs text-left">${chatDate}</div></div></button>`;
+      //   });
+      //   conversationElement.innerHTML = `<div class="flex flex-col gap-4 text-sm relative overflow-y-auto p-8">
+      //               <div class="flex justify-center gap-4">
+      //                   <button id="refresh-conversations-button" title="Reload conversations" class="p-1 pr-2 flex items-center rounded-lg">${refreshButtonSvg}&nbsp;Reload</button>
+      //                   <button id="close-conversations-button" title="Close conversations panel" class="p-1 pr-2 flex items-center rounded-lg">${closeButtonSvg}&nbsp;Close</button>
+      //               </div>
+      //               <div class="flex flex-col gap-4">${conversationList.join('')}</div>
+      //           </div>`;
+      //   break;
       // 接受vscode 配置
       case 'set-chatgpt-config':
         chatgptConfig = messageOption.value;
