@@ -35,39 +35,66 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private get isGptModel(): boolean {
     return !!this.model?.startsWith('gpt-');
   }
-
+  /**
+   * @desc chatgpt模型是否是 "text-davinci-003, text-babbage-001, text-ada-001"
+   * @returns {boolean}
+   */
   private get isTextModel(): boolean {
     return !!this.model?.startsWith('text-');
   }
-
+  /**
+   * @desc 回答问题是否自动滚动到底部
+   * @returns {boolean}
+   */
   private get autoScroll(): boolean {
     return this.chatGptConfig.get<boolean>('response.autoScroll') || false;
   }
-
+  /**
+   * @desc 是否订阅回答
+   * @returns {boolean}
+   */
   private get subscribeToResponse(): boolean {
     return this.chatGptConfig.get<boolean>('response.subscribeToResponse') || false;
   }
-
+  /**
+   * @desc gpt 模型
+   * @returns {string}
+   */
   private get model(): string {
-    const model = this.chatGptConfig.get<string>('gpt3.model') || '';
-    return model;
+    return this.chatGptConfig.get<string>('gpt3.model') || '';
   }
+  /**
+   * @desc gpt organization 参数
+   * @returns {string}
+   */
   private get organization(): string {
     return this.chatGptConfig.get<string>('gpt3.organization') || '';
   }
-
+  /**
+   * @desc gpt max_tokens 参数
+   * @returns {number}
+   */
   private get max_tokens(): number {
     return this.chatGptConfig.get<number>('gpt3.maxTokens') || 2048;
   }
-
+  /**
+   * @desc gpt temperature 参数
+   * @returns {number}
+   */
   private get temperature(): number {
     return this.chatGptConfig.get<number>('gpt3.temperature') || 0.9;
   }
-
+  /**
+   * @desc gpt top_p 参数
+   * @returns {number}
+   */
   private get top_p(): number {
     return this.chatGptConfig.get<number>('gpt3.top_p') || 1;
   }
-
+  /**
+   * @desc gpt apiBaseUrl 参数
+   * @returns {string}
+   */
   private get apiBaseUrl(): string {
     return this.chatGptConfig.get<string>('gpt3.apiBaseUrl')?.trim() || '';
   }
