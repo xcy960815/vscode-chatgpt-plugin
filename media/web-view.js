@@ -85,11 +85,13 @@
           questionInputButtons.classList.remove('hidden');
         }
         break;
+      // 添加用户消息
       case 'add-question':
         answerListElement.classList.remove('hidden');
+        // 整体介绍隐藏
         introductionElement?.classList?.add('hidden');
+        // 让对话列表隐藏
         conversationElement.classList.add('hidden');
-
         const escapeHtml = (unsafe) => {
           return unsafe
             .replaceAll('&', '&amp;')
@@ -98,7 +100,6 @@
             .replaceAll('"', '&quot;')
             .replaceAll("'", '&#039;');
         };
-
         const editButtonTitle = chatgptConfig.webview.editButtonTitle;
         const sendButtonName = chatgptConfig.webview.sendButtonName;
         const sendButtonTitle = chatgptConfig.webview.sendButtonTitle;
@@ -117,7 +118,6 @@
                           messageOption.value,
                         )}</div>
                     </div>`;
-
         if (messageOption.autoScroll) {
           answerListElement.lastChild?.scrollIntoView({
             behavior: 'smooth',
@@ -126,30 +126,15 @@
           });
         }
         break;
+      // 添加 gpt 回答
       case 'add-answer':
         // 如果存在现有消息
         let existingMessageElement = messageOption.id && document.getElementById(messageOption.id);
-        let updatedValue = '';
-
-        // const unEscapeHtml = (unsafe) => {
-        //   return unsafe
-        //     .replaceAll('&amp;', '&')
-        //     .replaceAll('&lt;', '<')
-        //     .replaceAll('&gt;', '>')
-        //     .replaceAll('&quot;', '"')
-        //     .replaceAll('&#039;', "'");
-        // };
-
-        // if (!messageOption.responseInMarkdown) {
-        //   updatedValue = '```\r\n' + unEscapeHtml(messageOption.value) + ' \r\n ```';
-        // } else {
-
-        updatedValue =
+        const updatedValue =
           messageOption.value.split('```').length % 2 === 1
             ? messageOption.value
             : messageOption.value + '\n\n```\n\n';
-        // }
-        //  将 markdown 转换为 html
+
         const markedResponse = marked.parse(updatedValue);
 
         if (existingMessageElement) {
@@ -262,11 +247,11 @@
         }
 
         break;
+      // 添加错误消息
       case 'add-error':
         if (!answerListElement.innerHTML) {
           return;
         }
-
         const messageValue =
           messageOption.value ||
           'An error occurred. If this issue persists please clear your session token with `ChatGPT: Reset session` command and/or restart your Visual Studio Code. If you still experience issues, it may be due to outage on https://openai.com services.';
@@ -284,9 +269,11 @@
           });
         }
         break;
+      // 清空会话
       case 'clear-conversation':
         clearConversation();
         break;
+      // 导出会话
       case 'export-conversation':
         exportConversation();
         break;
@@ -321,7 +308,7 @@
                     <div class="flex flex-col gap-4">${conversationList.join('')}</div>
                 </div>`;
         break;
-
+      // 接受vscode 配置
       case 'set-chatgpt-config':
         chatgptConfig = messageOption.value;
         break;
