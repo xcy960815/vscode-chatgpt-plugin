@@ -9,7 +9,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
   private textModel?: TextModleAPI;
   private chatgptModel?: ChatModelAPI;
-  private messageId?: string;
   private parentMessageId?: string;
   private questionCount: number = 0;
   private inProgress: boolean = false;
@@ -35,6 +34,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   private get isGptModel(): boolean {
     return !!this.model?.startsWith('gpt-');
+  }
+
+  private get isTextModel(): boolean {
+    return !!this.model?.startsWith('text-');
   }
 
   private get autoScroll(): boolean {
@@ -128,12 +131,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         case 'clear-conversation':
           // 清空会话
           this.parentMessageId = undefined;
-          this.messageId = undefined;
           break;
         case 'login':
           const loginStatus = await this.prepareConversation();
           if (loginStatus) {
-            this.sendMessageToWebview({ type: 'login-successful', showConversations: false }, true);
+            this.sendMessageToWebview({ type: 'login-successful', showConversations: true }, true);
           }
           break;
         case 'open-settings':
@@ -195,9 +197,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   public clearSession(): void {
     this.stopGenerating();
+    this.textModel?._clearMessage();
     this.textModel = undefined;
+    this.chatgptModel?._clearMessage();
+    this.chatgptModel = undefined;
     this.parentMessageId = undefined;
-    this.messageId = undefined;
   }
   /**
    * @desc 会话前准备
@@ -367,18 +371,19 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
 
     this.currentConversationId = this.getRandomId();
     // 要始终保持 messageId 的唯一性
-    this.messageId = this.getRandomId();
+    const messageId = this.getRandomId();
     this.sendMessageToWebview({
       type: 'add-question',
       value: prompt,
       code: option.code,
       autoScroll: this.autoScroll,
     });
+
     try {
       if (this.isGptModel && this.chatgptModel) {
         const response = await this.chatgptModel.sendMessage(question, {
           systemMessage: this.systemMessage,
-          messageId: this.messageId,
+          messageId,
           parentMessageId: this.parentMessageId,
           abortSignal: this.abortController.signal,
           onProgress: (partialResponse) => {
@@ -392,14 +397,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           },
         });
         this.response = response.text;
-        // this.messageId = response.messageId;
         this.parentMessageId = response.parentMessageId;
       }
-      if (!this.isGptModel && this.textModel) {
+      if (this.isTextModel && this.textModel) {
         const response = await this.textModel.sendMessage(question, {
           promptPrefix: this.systemMessage,
           abortSignal: this.abortController.signal,
-          messageId: this.messageId,
+          messageId,
           parentMessageId: this.parentMessageId,
           onProgress: (partialResponse) => {
             this.response = partialResponse.text;
@@ -412,7 +416,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           },
         });
         this.response = response.text;
-        // this.messageId = response.messageId;
         this.parentMessageId = response.parentMessageId;
       }
       // 如果存在上一个回答
@@ -481,11 +484,12 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         // 从配置中获取错误选择
         const errorChoose =
           this.chatGptConfig.get<string>('pageMessage.maxToken.error.choose') || '';
+
         vscode.window.showErrorMessage(errorMessage, errorChoose).then(async (choice) => {
           if (choice === errorChoose) {
             // 执行 清空会话 指令
             await vscode.commands.executeCommand('vscode-chatgpt.clearConversation');
-            // 等待 250毫米
+            // 等待 250 毫秒
             await delay(250);
             this.sendApiRequest(prompt, { command: option.command, code: option.code });
           }
@@ -511,6 +515,7 @@ you can reset it with “ChatGPT: Reset session” command.
       if (apiMessage) {
         message = `${message ? message + ' ' : ''}${apiMessage}`;
       }
+
       this.sendMessageToWebview({ type: 'add-error', value: message, autoScroll: this.autoScroll });
       return;
     } finally {
@@ -613,6 +618,34 @@ you can reset it with “ChatGPT: Reset session” command.
     const submitQuestionButtonTitle = this.chatGptConfig.get<string>(
       'webview.submitQuestionButtonTitle',
     );
+    const featuresSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" class="w-6 h-6 m-auto">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"></path>
+    </svg>`;
+    const stopGeneratingSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+    </svg>`;
+    const showConversationSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+    </svg>`;
+    const showConversationsSvg2 = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
+    </svg>`;
+    const clearConversationSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+    </svg>`;
+    const updateSettingsSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+    </svg>`;
+
+    const exportConversationSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+    </svg>`;
+    const moreActionsSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
+    </svg>`;
+    const submitQuestionSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+    </svg>`;
 
     const nonce = this.getRandomId();
 
@@ -635,9 +668,7 @@ you can reset it with “ChatGPT: Reset session” command.
 					<div id="introduction" class="flex flex-col justify-between h-full justify-center px-6 w-full relative login-screen overflow-auto">
 						<div class="flex items-start text-center features-block my-5">
 							<div class="flex flex-col gap-3.5 flex-1">
-								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" aria-hidden="true" class="w-6 h-6 m-auto">
-									<path stroke-linecap="round" stroke-linejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"></path>
-								</svg>
+								${featuresSvg}
                 <!-- 现有功能 -->
 								<h2>${features}</h2>
 								<ul class="flex flex-col gap-3.5 text-xs">
@@ -652,30 +683,24 @@ you can reset it with “ChatGPT: Reset session” command.
 								</ul>
 							</div>
 						</div>
-            
 						<div class="flex flex-col gap-4 h-full items-center justify-end text-center">
-            
               <!-- 登录按钮 -->
 							<button id="login-button" class="mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md text-xs" title=${loginButtonTitle}>${loginButtonName}</button>
-							
               <!-- 显示对话按钮 -->
-              <button id="show-conversations-button2" class="hidden mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md" title="You can access this feature via the kebab menu below. NOTE: Only available with Browser Auto-login method">
-								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-6 h-6"><path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" /></svg> &nbsp; Show conversations
-							</button>
-							
+              <!-- <button id="show-conversations-button2" class="hidden mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md text-xs" :title="${showConversationsButtonTitle}">
+								${showConversationSvg}&nbsp;${showConversationsButtonName}
+							</button> -->
               <p class="max-w-sm text-center text-xs text-slate-500">
                 <!-- 更新设置和更新提示按钮 -->
 								<a id="update-settings-button" title=${updateSettingsButtonTitle} href="#">${updateSettingsButtonName}</a> &nbsp; | &nbsp; <a id="settings-prompt-button" title=${updatePromptsButtonTitle} href="#">${updatePromptsButtonName}</a>
 							</p>
 						</div>
 					</div>
-
           <!-- gpt 回答的答案列表 -->
 					<div class="flex-1 overflow-y-auto text-sm" id="answer-list"></div>
           <!-- gpt 对话列表 -->
 					<div class="flex-1 overflow-y-auto hidden" id="conversation-list"></div>
-
-        <!-- gpt 回答的答案的动画  -->
+          <!-- gpt 回答的答案的动画  -->
 					<div id="in-progress" class="hidden pl-4 pr-4 pt-2 flex items-center justify-between text-xs ">
 						<div class="typing flex items-center">
               <span>Asking</span>
@@ -685,16 +710,15 @@ you can reset it with “ChatGPT: Reset session” command.
                 <div class="bounce3"></div>
               </div>
             </div>
-						
             <!-- gpt 停止回答的答案的按钮 -->
 						<button id="stop-generating-button" class="btn btn-primary flex items-center p-1 pr-2 rounded-md ml-5">
-							<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5 mr-2"><path stroke-linecap="round" stroke-linejoin="round" d="M9.75 9.75l4.5 4.5m0-4.5l-4.5 4.5M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>Stop responding
+						  ${stopGeneratingSvg} Stop responding
 						</button>
             </div>
 
 					<div class="p-4 flex items-center pt-2">
 						<div class="flex-1 textarea-wrapper">
-           <!-- 问题输入框 -->
+              <!-- 问题输入框 -->
 							<textarea
 								type="text"
 								rows="1"
@@ -704,46 +728,31 @@ you can reset it with “ChatGPT: Reset session” command.
 						</div>
             <!-- 更多 -->            
 						<div id="chat-button-wrapper" class="absolute bottom-14 items-center more-menu right-8 border border-gray-200 shadow-xl hidden text-xs">
-            <!-- 清除对话 -->
+              <!-- 清除对话 -->
 							<button title=${clearConversationButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="clear-conversation-button">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                &nbsp;${clearConversationButtonName}
+                ${clearConversationSvg}&nbsp;${clearConversationButtonName}
               </button>	
 							<!-- 显示对话按钮 -->
-              <!--<button title=${showConversationsButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="show-conversations-button">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" />
-                </svg>
-                &nbsp;${showConversationsButtonName}
-              </button>-->
+              <!-- <button title=${showConversationsButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="show-conversations-button">
+                ${showConversationsSvg2}&nbsp;${showConversationsButtonName}
+              </button> -->
 							<!-- 更新设置 -->
               <button title=${updateSettingsButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="update-settings-button">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M9.594 3.94c.09-.542.56-.94 1.11-.94h2.593c.55 0 1.02.398 1.11.94l.213 1.281c.063.374.313.686.645.87.074.04.147.083.22.127.324.196.72.257 1.075.124l1.217-.456a1.125 1.125 0 011.37.49l1.296 2.247a1.125 1.125 0 01-.26 1.431l-1.003.827c-.293.24-.438.613-.431.992a6.759 6.759 0 010 .255c-.007.378.138.75.43.99l1.005.828c.424.35.534.954.26 1.43l-1.298 2.247a1.125 1.125 0 01-1.369.491l-1.217-.456c-.355-.133-.75-.072-1.076.124a6.57 6.57 0 01-.22.128c-.331.183-.581.495-.644.869l-.213 1.28c-.09.543-.56.941-1.11.941h-2.594c-.55 0-1.02-.398-1.11-.94l-.213-1.281c-.062-.374-.312-.686-.644-.87a6.52 6.52 0 01-.22-.127c-.325-.196-.72-.257-1.076-.124l-1.217.456a1.125 1.125 0 01-1.369-.49l-1.297-2.247a1.125 1.125 0 01.26-1.431l1.004-.827c.292-.24.437-.613.43-.992a6.932 6.932 0 010-.255c.007-.378-.138-.75-.43-.99l-1.004-.828a1.125 1.125 0 01-.26-1.43l1.297-2.247a1.125 1.125 0 011.37-.491l1.216.456c.356.133.751.072 1.076-.124.072-.044.146-.087.22-.128.332-.183.582-.495.644-.869l.214-1.281z" /><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-                &nbsp;${updateSettingsButtonName}
+                ${updateSettingsSvg}&nbsp;${updateSettingsButtonName}
               </button>
 							<!-- 导出对话为markdown -->
               <button title=${exportConversationButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="export-conversation-button">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                </svg>
-                &nbsp;${exportConversationButtonName}
+                ${exportConversationSvg}&nbsp;${exportConversationButtonName}
               </button>
 						</div>
-
 						<div id="question-input-buttons" class="right-6 absolute p-0.5 ml-5 flex items-center gap-2">
 							<!-- 展示更多按钮 -->
               <button id="more-button" title=${moreActionsButtonTitle} class="rounded-lg p-0.5">
-								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" /></svg>
+								${moreActionsSvg}
 							</button>
               <!-- 提交问题按钮 -->
 							<button id="submit-question-button" title=${submitQuestionButtonTitle} class="submit-question-button rounded-lg p-0.5">
-								<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
-                  <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                </svg>
+								${submitQuestionSvg}
 							</button>
 						</div>
 					</div>

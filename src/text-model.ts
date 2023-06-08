@@ -5,111 +5,13 @@ import Keyv from 'keyv';
 import pTimeout, { ClearablePromise } from 'p-timeout';
 import QuickLRU from 'quick-lru';
 import { v4 as uuidv4 } from 'uuid';
-import type { Fetch } from './types';
+import type { Fetch, openai } from './types';
 import { FetchSSEOptions } from './types';
 import { fetchSSE } from './utils';
-type GetMessageById = (id: string) => Promise<openai.ChatResponse | undefined>;
 
-type UpsertMessage = (message: openai.ChatResponse) => Promise<boolean>;
+export type GetMessageById = (id: string) => Promise<openai.Text.ChatResponse | undefined>;
 
-declare namespace openai {
-  const CompletionRequestMessageRoleEnum: {
-    // readonly System: 'system';
-    readonly User: 'user';
-    readonly Assistant: 'assistant';
-  };
-
-  const CompletionResponseMessageRoleEnum: {
-    // readonly System: 'system';
-    readonly User: 'user';
-    readonly Assistant: 'assistant';
-  };
-
-  type CompletionRequestMessageRoleEnum =
-    (typeof CompletionRequestMessageRoleEnum)[keyof typeof CompletionRequestMessageRoleEnum];
-
-  type CompletionResponseMessageRoleEnum =
-    (typeof CompletionResponseMessageRoleEnum)[keyof typeof CompletionResponseMessageRoleEnum];
-  interface SendMessageOptions {
-    parentMessageId?: string;
-    messageId?: string;
-    stream?: boolean;
-    promptPrefix?: string;
-    promptSuffix?: string;
-    timeoutMs?: number;
-    onProgress?: (partialResponse: ChatResponse) => void;
-    abortSignal?: AbortSignal;
-  }
-
-  interface CompletionParams {
-    model: string;
-    prompt: string;
-    suffix?: string;
-    max_tokens?: number;
-    temperature?: number;
-    top_p?: number;
-    logprobs?: number;
-    echo?: boolean;
-    stop?: string[];
-    presence_penalty?: number;
-    frequency_penalty?: number;
-    best_of?: number;
-    logit_bias?: Record<string, number>;
-    user?: string;
-  }
-
-  interface CompletionResponse {
-    id: string;
-    object: string;
-    created: number;
-    model: string;
-    choices: Array<CompletionResponseChoice>;
-  }
-
-  interface CompletionResponseChoice {
-    text?: string;
-    index?: number;
-    logprobs?: {
-      tokens?: Array<string>;
-      token_logprobs?: Array<number>;
-      top_logprobs?: Array<object>;
-      text_offset?: Array<number>;
-    } | null;
-    finish_reason?: string;
-  }
-
-  interface UserMessage {
-    messageId: string;
-    role: CompletionRequestMessageRoleEnum;
-    text: string;
-    parentMessageId?: string;
-  }
-
-  interface ChatResponse {
-    messageId: string;
-    text: string;
-    role: CompletionResponseMessageRoleEnum;
-    parentMessageId?: string;
-
-    detail?: CompletionResponse | null;
-  }
-
-  interface ChatgptApiOptions {
-    apiKey: string;
-    apiBaseUrl?: string;
-    debug?: boolean;
-    completionParams?: Partial<openai.CompletionParams>;
-    maxModelTokens?: number;
-    maxResponseTokens?: number;
-    userLabel?: string;
-    assistantLabel?: string;
-    organization?: string;
-    messageStore?: Keyv;
-    getMessageById?: GetMessageById;
-    upsertMessage?: UpsertMessage;
-    fetch?: Fetch;
-  }
-}
+export type UpsertMessage = (message: openai.Text.ChatResponse) => Promise<boolean>;
 
 const tokenizer = new GPT3NodeTokenizer({ type: 'gpt3' });
 
@@ -129,7 +31,7 @@ export class TextModleAPI {
   protected _apiKey: string;
   protected _apiBaseUrl: string;
   protected _debug: boolean;
-  protected _completionParams: Omit<openai.CompletionParams, 'prompt'>;
+  protected _completionParams: Omit<openai.Text.CompletionParams, 'prompt'>;
   protected _maxModelTokens: number;
   protected _maxResponseTokens: number;
   protected _userLabel: string;
@@ -139,9 +41,9 @@ export class TextModleAPI {
   protected _fetch: Fetch;
   protected _getMessageById: GetMessageById;
   protected _upsertMessage: UpsertMessage;
-  protected _messageStore: Keyv<openai.ChatResponse>;
+  protected _messageStore: Keyv<openai.Text.ChatResponse>;
   protected _organization: string;
-  constructor(options: openai.ChatgptApiOptions) {
+  constructor(options: openai.Text.ChatgptApiOptions) {
     const {
       apiKey,
       apiBaseUrl,
@@ -158,7 +60,7 @@ export class TextModleAPI {
       fetch: fetch2 = fetch,
     } = options;
     this._apiKey = apiKey;
-    this._apiBaseUrl = apiBaseUrl || 'https://api.openai.com';
+    this._apiBaseUrl = apiBaseUrl || 'https://api.openai.Text.com';
     this._organization = organization || '';
     this._debug = !!debug;
     this._fetch = fetch2;
@@ -210,13 +112,13 @@ export class TextModleAPI {
   /**
    * @desc 发送请求到openai
    * @param {string} text
-   * @param {openai.SendMessageOptions} options
-   * @returns {Promise<openai.ChatResponse>}
+   * @param {openai.Text.SendMessageOptions} options
+   * @returns {Promise<openai.Text.ChatResponse>}
    */
-  async sendMessage(
+  public async sendMessage(
     text: string,
-    options: openai.SendMessageOptions,
-  ): Promise<openai.ChatResponse> {
+    options: openai.Text.SendMessageOptions,
+  ): Promise<openai.Text.ChatResponse> {
     const {
       parentMessageId,
       messageId = uuidv4(),
@@ -230,7 +132,7 @@ export class TextModleAPI {
       abortController = new AbortController();
       abortSignal = abortController.signal;
     }
-    const userMessage: openai.UserMessage = {
+    const userMessage: openai.Text.UserMessage = {
       role: 'user',
       messageId,
       parentMessageId,
@@ -241,13 +143,13 @@ export class TextModleAPI {
     console.log('prompt', prompt);
     console.log('maxTokens', maxTokens);
 
-    const chatResponse: openai.ChatResponse = {
+    const chatResponse: openai.Text.ChatResponse = {
       role: 'assistant',
       messageId: uuidv4(),
       parentMessageId: messageId,
       text: '',
     };
-    const responseP = new Promise<openai.ChatResponse>(async (resolve, reject) => {
+    const responseP = new Promise<openai.Text.ChatResponse>(async (resolve, reject) => {
       const url = `${this._apiBaseUrl}/v1/completions`;
       const body = {
         max_tokens: maxTokens,
@@ -270,7 +172,7 @@ export class TextModleAPI {
             return;
           }
           try {
-            const response: openai.CompletionResponse = JSON.parse(data);
+            const response: openai.Text.CompletionResponse = JSON.parse(data);
             if (response.id) {
               chatResponse.messageId = response.id;
             }
@@ -289,16 +191,12 @@ export class TextModleAPI {
       } else {
         try {
           const response = await fetchSSE(url, fetchSSEOptions, this._fetch);
-          const responseJson: openai.CompletionResponse = await response?.json();
-          if (this._debug) {
-            console.log(responseJson);
-          }
+          const responseJson: openai.Text.CompletionResponse = await response?.json();
           if (responseJson?.id) {
             chatResponse.messageId = responseJson.id;
           }
-          if (responseJson.choices?.length) {
-            // @ts-ignore
-            chatResponse.text = responseJson.choices[0].text.trim();
+          if (responseJson?.choices?.length) {
+            chatResponse.text = responseJson?.choices[0]?.text?.trim() || '';
           }
           chatResponse.detail = responseJson;
           resolve(chatResponse);
@@ -314,7 +212,7 @@ export class TextModleAPI {
       });
     });
     if (timeoutMs) {
-      (responseP as ClearablePromise<openai.ChatResponse>).clear = () => {
+      (responseP as ClearablePromise<openai.Text.ChatResponse>).clear = () => {
         abortController?.abort();
       };
       return pTimeout(responseP, {
@@ -328,63 +226,12 @@ export class TextModleAPI {
   /**
    * @desc 提示中允许的最大令牌数。
    * @param {string} message
-   * @param {openai.SendMessageOptions} options
+   * @param {openai.Text.SendMessageOptions} options
    * @returns {Promise<{prompt: string, maxTokens: number}>
    */
-  // async _buildPrompt(
-  //   message: string,
-  //   options: openai.SendMessageOptions,
-  // ): Promise<{
-  //   prompt: string;
-  //   maxTokens: number;
-  // }> {
-  //   const currentDate = new Date().toISOString().split('T')[0];
-  //   const promptPrefix =
-  //     options.promptPrefix ||
-  //     `Instructions:You are ${this._assistantLabel}, a large language model trained by OpenAI.Current date: ${currentDate}${this._sepToken}`;
-  //   const promptSuffix = options.promptSuffix || `${this._assistantLabel}:`;
-  //   const maxNumTokens = this._maxModelTokens - this._maxResponseTokens;
-  //   let { parentMessageId } = options;
-  //   let nextPromptBody = `${this._userLabel}:${message}${this._endToken}`;
-  //   let promptBody = '';
-  //   let prompt;
-  //   let numTokens = 0;
-  //   do {
-  //     const nextPrompt = `${promptPrefix}${nextPromptBody}${promptSuffix}`;
-  //     const nextNumTokens = await this._getTokenCount(nextPrompt);
-  //     const isValidPrompt = nextNumTokens <= maxNumTokens;
-  //     if (prompt && !isValidPrompt) {
-  //       break;
-  //     }
-  //     promptBody = nextPromptBody;
-  //     prompt = nextPrompt;
-  //     numTokens = nextNumTokens;
-  //     if (!isValidPrompt) {
-  //       break;
-  //     }
-  //     if (!parentMessageId) {
-  //       break;
-  //     }
-  //     const parentMessage = await this._getMessageById(parentMessageId);
-  //     if (!parentMessage) {
-  //       break;
-  //     }
-  //     const parentMessageRole = parentMessage.role || 'user';
-  //     const parentMessageRoleDesc =
-  //       parentMessageRole === 'user' ? this._userLabel : this._assistantLabel;
-  //     const parentMessageString = `${parentMessageRoleDesc}:${parentMessage.text}${this._endToken}`;
-  //     nextPromptBody = `${parentMessageString}${promptBody}`;
-  //     parentMessageId = parentMessage.parentMessageId;
-  //   } while (true);
-  //   const maxTokens = Math.max(
-  //     1,
-  //     Math.min(this._maxModelTokens - numTokens, this._maxResponseTokens),
-  //   );
-  //   return { prompt, maxTokens };
-  // }
-  async _buildPrompt(
+  private async _buildPrompt(
     message: string,
-    options: openai.SendMessageOptions,
+    options: openai.Text.SendMessageOptions,
   ): Promise<{
     prompt: string;
     maxTokens: number;
@@ -404,11 +251,9 @@ export class TextModleAPI {
     while (true) {
       const nextPrompt = `${promptPrefix}${nextPromptBody}${promptSuffix}`;
       const nextNumTokens = await this._getTokenCount(nextPrompt);
-
       if (prompt && nextNumTokens > maxNumTokens) {
         break;
       }
-
       promptBody = nextPromptBody;
       prompt = nextPrompt;
       numTokens = nextNumTokens;
@@ -445,7 +290,7 @@ export class TextModleAPI {
    * @private
    * @memberof ChatGPT
    */
-  async _getTokenCount(text: string): Promise<number> {
+  private async _getTokenCount(text: string): Promise<number> {
     return encode(text).length;
   }
   /**
@@ -453,19 +298,19 @@ export class TextModleAPI {
    * @param {string} id
    * @returns  {Promise<ChatResponse | undefined>}
    */
-  async _defaultGetMessageById(id: string): Promise<openai.ChatResponse | undefined> {
-    const res = await this._messageStore.get(id);
-    if (this._debug) {
-      console.log('getMessageById', id, res);
-    }
-    return res;
+  private async _defaultGetMessageById(id: string): Promise<openai.Text.ChatResponse | undefined> {
+    return await this._messageStore.get(id);
   }
   /**
    * @desc 更新消息
    * @param {ChatResponse} message
    * @returns {Promise<void>}
    */
-  async _defaultUpsertMessage(message: openai.ChatResponse): Promise<boolean> {
+  private async _defaultUpsertMessage(message: openai.Text.ChatResponse): Promise<boolean> {
     return await this._messageStore.set(message.messageId, message);
+  }
+
+  public async _clearMessage(): Promise<void> {
+    return this._messageStore.clear();
   }
 }
