@@ -19,7 +19,7 @@ export interface FetchSSEOptions extends RequestInit {
 export interface WebviewMessageOption {
   type:
     | 'show-in-progress'
-    | 'login-successful'
+    // | 'login-successful'
     | 'add-answer'
     | 'add-question'
     | 'add-error'
@@ -68,6 +68,7 @@ export declare namespace openai {
     interface CompletionRequestMessage {
       role: CompletionRoleEnum;
       content: string;
+      name?: string;
     }
 
     const CompletionRoleEnum: {
