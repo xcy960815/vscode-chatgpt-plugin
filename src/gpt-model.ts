@@ -43,7 +43,7 @@ export class ChatModelAPI {
       fetch: fetch2 = fetch,
     } = options;
     this._apiKey = apiKey;
-    this._apiBaseUrl = apiBaseUrl || 'https://api.openai.Chat.com';
+    this._apiBaseUrl = apiBaseUrl || 'https://api.openai.com';
     this._organization = organization;
     this._debug = !!debug;
     this._fetch = fetch2;
@@ -141,6 +141,8 @@ export class ChatModelAPI {
         messages,
         stream,
       };
+      console.log('body', body);
+
       const fetchSSEOptions: FetchSSEOptions = {
         method: 'POST',
         headers: this.headers,

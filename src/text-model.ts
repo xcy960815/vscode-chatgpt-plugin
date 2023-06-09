@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import GPT3NodeTokenizer from 'gpt3-tokenizer';
+import Gpt3Tokenizer from 'gpt3-tokenizer';
 import fetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
 import pTimeout, { ClearablePromise } from 'p-timeout';
@@ -12,8 +12,6 @@ import { fetchSSE } from './utils';
 export type GetMessageById = (id: string) => Promise<openai.Text.ChatResponse | undefined>;
 
 export type UpsertMessage = (message: openai.Text.ChatResponse) => Promise<boolean>;
-
-const tokenizer = new GPT3NodeTokenizer({ type: 'gpt3' });
 
 const CHATGPT_MODEL = 'text-davinci-003';
 const USER_PROMPT_PREFIX = 'User';
@@ -34,6 +32,7 @@ export class TextModleAPI {
   protected _upsertMessage: UpsertMessage;
   protected _messageStore: Keyv<openai.Text.ChatResponse>;
   protected _organization: string;
+  protected gpt3Tokenizer: Gpt3Tokenizer;
   constructor(options: openai.Text.ChatgptApiOptions) {
     const {
       apiKey,
@@ -50,8 +49,9 @@ export class TextModleAPI {
       upsertMessage,
       fetch: fetch2 = fetch,
     } = options;
+    this.gpt3Tokenizer = new Gpt3Tokenizer({ type: 'gpt3' });
     this._apiKey = apiKey;
-    this._apiBaseUrl = apiBaseUrl || 'https://api.openai.Text.com';
+    this._apiBaseUrl = apiBaseUrl || 'https://api.openai.com';
     this._organization = organization || '';
     this._debug = !!debug;
     this._fetch = fetch2;
@@ -262,14 +262,12 @@ export class TextModleAPI {
   }
 
   /**
-   * @desc 获取令牌数
+   * @desc 获取token数量
    * @param {string} text
    * @returns {Promise<number>}
-   * @private
-   * @memberof ChatGPT
    */
   private async _getTokenCount(text: string): Promise<number> {
-    return tokenizer.encode(text).bpe.length;
+    return this.gpt3Tokenizer.encode(text).bpe.length;
   }
   /**
    * @desc 获取消息

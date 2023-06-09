@@ -158,12 +158,12 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           // 清空会话
           this.parentMessageId = undefined;
           break;
-        case 'login':
-          const loginStatus = await this.initConversation();
-          if (loginStatus) {
-            this.sendMessageToWebview({ type: 'login-successful', showConversations: true }, true);
-          }
-          break;
+        // case 'login':
+        //   const loginStatus = await this.initConversation();
+        //   if (loginStatus) {
+        //     this.sendMessageToWebview({ type: 'login-successful', showConversations: true }, true);
+        //   }
+        //   break;
         case 'open-settings':
           // 打开设置
           vscode.commands.executeCommand(
@@ -286,7 +286,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       },
     });
     // 登录成功
-    this.sendMessageToWebview({ type: 'login-successful', showConversations: false }, true);
+    // this.sendMessageToWebview({ type: 'login-successful', showConversations: false }, true);
     return true;
   }
   /**
@@ -711,7 +711,7 @@ you can reset it with “ChatGPT: Reset session” command.
 						</div>
 						<div class="flex flex-col gap-4 h-full items-center justify-end text-center">
               <!-- 登录按钮 -->
-							<button id="login-button" class="mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md text-xs" title=${loginButtonTitle}>${loginButtonName}</button>
+							<!-- <button id="login-button" class="mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md text-xs" title=${loginButtonTitle}>${loginButtonName}</button> -->
               <!-- 显示对话按钮 -->
               <!-- <button id="show-conversations-button2" class="hidden mb-4 btn btn-primary flex gap-2 justify-center p-3 rounded-md text-xs" :title="${showConversationsButtonTitle}">
 								${showConversationSvg}&nbsp;${showConversationsButtonName}

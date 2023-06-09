@@ -276,14 +276,14 @@
       case 'export-conversation':
         exportConversation();
         break;
-      case 'login-successful':
-        // 登陆成功隐藏登录按钮
-        loginButtonElement?.classList?.add('hidden');
-        if (messageOption.showConversations) {
-          // 显示会话列表按钮
-          showConversationsButton2?.classList?.remove('hidden');
-        }
-        break;
+      // case 'login-successful':
+      //   // 登陆成功隐藏登录按钮
+      //   loginButtonElement?.classList?.add('hidden');
+      //   if (messageOption.showConversations) {
+      //     // 显示会话列表按钮
+      //     showConversationsButton2?.classList?.remove('hidden');
+      //   }
+      //   break;
       // case 'show-conversations':
       //   answerListElement.classList.add('hidden');
       //   introductionElement?.classList?.add('hidden');
@@ -391,12 +391,12 @@
       return;
     }
     // 点击登录按钮
-    if (targetButton?.id === 'login-button') {
-      vscode.postMessage({
-        type: 'login',
-      });
-      return;
-    }
+    // if (targetButton?.id === 'login-button') {
+    //   vscode.postMessage({
+    //     type: 'login',
+    //   });
+    //   return;
+    // }
     // 点击提交问题按钮
     if (targetButton?.id === 'submit-question-button') {
       addFreeTextQuestion();
