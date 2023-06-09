@@ -2,13 +2,13 @@
 import delay from 'delay';
 import fetch from 'isomorphic-fetch';
 import * as vscode from 'vscode';
-import { ChatModelAPI } from './chat-model';
+import { ChatModelAPI } from './gpt-model';
 import { TextModleAPI } from './text-model';
 import { OnDidReceiveMessageOption, SendApiRequestOption, WebviewMessageOption } from './types';
 export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
   private textModel?: TextModleAPI;
-  private chatgptModel?: ChatModelAPI;
+  private gptModel?: ChatModelAPI;
   private parentMessageId?: string;
   private questionCount: number = 0;
   private inProgress: boolean = false;
@@ -22,7 +22,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * 在调用 resolveWebviewView 之前的时间。
    */
   constructor(private context: vscode.ExtensionContext) {
-    this.prepareConversation();
+    this.initConversation();
   }
   private get chatGptConfig(): vscode.WorkspaceConfiguration {
     return vscode.workspace.getConfiguration('chatgpt');
@@ -159,7 +159,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           this.parentMessageId = undefined;
           break;
         case 'login':
-          const loginStatus = await this.prepareConversation();
+          const loginStatus = await this.initConversation();
           if (loginStatus) {
             this.sendMessageToWebview({ type: 'login-successful', showConversations: true }, true);
           }
@@ -225,20 +225,20 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.stopGenerating();
     this.textModel?._clearMessage();
     this.textModel = undefined;
-    this.chatgptModel?._clearMessage();
-    this.chatgptModel = undefined;
+    this.gptModel?._clearMessage();
+    this.gptModel = undefined;
     this.parentMessageId = undefined;
   }
   /**
-   * @desc 会话前准备
+   * @desc 初始化会话
    * @returns {Promise<boolean>}
    */
-  public async prepareConversation(gptConfigChanged?: boolean): Promise<boolean> {
+  public async initConversation(gptConfigChanged?: boolean): Promise<boolean> {
     const hasApiKey = await this.checkAPIExistence();
     if (!hasApiKey) {
       return false;
     }
-    if (!this.textModel || !this.chatgptModel || gptConfigChanged) {
+    if (!this.textModel || !this.gptModel || gptConfigChanged) {
       return await this.initChatGPTModel();
     } else {
       return true;
@@ -261,7 +261,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   private async initChatGPTModel(): Promise<boolean> {
     // 初始化chatgpt模型
-    this.chatgptModel = new ChatModelAPI({
+    this.gptModel = new ChatModelAPI({
       apiKey: this.apiKey,
       fetch: fetch,
       apiBaseUrl: this.apiBaseUrl,
@@ -349,7 +349,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       // question = `${question}${language ? ` (The following code is in ${language} programming language)` : ''}: ${code}`;
       question = `${question}: ${code}`;
     }
-    return question + '\r\n';
+    return question; //+ '\r\n';
   }
   /**
    * @desc 处理问题并将其发送到 API
@@ -367,7 +367,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.questionCount++;
 
     // 校验是否登录
-    if (!(await this.prepareConversation())) {
+    if (!(await this.initConversation())) {
       return;
     }
     this.response = '';
@@ -406,8 +406,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     });
 
     try {
-      if (this.isGptModel && this.chatgptModel) {
-        const response = await this.chatgptModel.sendMessage(question, {
+      if (this.isGptModel && this.gptModel) {
+        const response = await this.gptModel.sendMessage(question, {
           systemMessage: this.systemMessage,
           messageId,
           parentMessageId: this.parentMessageId,
@@ -427,7 +427,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       }
       if (this.isTextModel && this.textModel) {
         const response = await this.textModel.sendMessage(question, {
-          promptPrefix: this.systemMessage,
+          systemMessage: this.systemMessage,
           abortSignal: this.abortController.signal,
           messageId,
           parentMessageId: this.parentMessageId,
