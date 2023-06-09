@@ -15,18 +15,9 @@ export type UpsertMessage = (message: openai.Text.ChatResponse) => Promise<boole
 
 const tokenizer = new GPT3NodeTokenizer({ type: 'gpt3' });
 
-/**
- * @desc
- * @param {string} input
- * @returns {string[]}
- */
-function encode(input: string): number[] {
-  return tokenizer.encode(input).bpe;
-}
-
 const CHATGPT_MODEL = 'text-davinci-003';
-const USER_LABEL_DEFAULT = 'User';
-const ASSISTANT_LABEL_DEFAULT = 'ChatGPT';
+const USER_PROMPT_PREFIX = 'User';
+const SYSTEM_PROMPT_PREFIX_DEFAULT = 'ChatGPT';
 export class TextModleAPI {
   protected _apiKey: string;
   protected _apiBaseUrl: string;
@@ -34,8 +25,8 @@ export class TextModleAPI {
   protected _completionParams: Omit<openai.Text.CompletionParams, 'prompt'>;
   protected _maxModelTokens: number;
   protected _maxResponseTokens: number;
-  protected _userLabel: string;
-  protected _assistantLabel: string;
+  protected _userPromptPrefix: string;
+  protected _systemPromptPrefix: string;
   protected _endToken: string;
   protected _sepToken: string;
   protected _fetch: Fetch;
@@ -53,8 +44,8 @@ export class TextModleAPI {
       completionParams,
       maxModelTokens,
       maxResponseTokens,
-      userLabel,
-      assistantLabel,
+      userPromptPrefix,
+      systemPromptPrefix,
       getMessageById,
       upsertMessage,
       fetch: fetch2 = fetch,
@@ -78,8 +69,8 @@ export class TextModleAPI {
     }
     this._maxModelTokens = maxModelTokens || 4096;
     this._maxResponseTokens = maxResponseTokens || 1000;
-    this._userLabel = userLabel || USER_LABEL_DEFAULT;
-    this._assistantLabel = assistantLabel || ASSISTANT_LABEL_DEFAULT;
+    this._userPromptPrefix = userPromptPrefix || USER_PROMPT_PREFIX;
+    this._systemPromptPrefix = systemPromptPrefix || SYSTEM_PROMPT_PREFIX_DEFAULT;
     this._getMessageById = getMessageById || this._defaultGetMessageById;
     this._upsertMessage = upsertMessage || this._defaultUpsertMessage;
     if (messageStore) {
@@ -140,9 +131,6 @@ export class TextModleAPI {
     };
     await this._upsertMessage(userMessage);
     const { prompt, maxTokens } = await this._buildPrompt(text, options);
-    console.log('prompt', prompt);
-    console.log('maxTokens', maxTokens);
-
     const chatResponse: openai.Text.ChatResponse = {
       role: 'assistant',
       messageId: uuidv4(),
@@ -236,49 +224,39 @@ export class TextModleAPI {
     prompt: string;
     maxTokens: number;
   }> {
-    const currentDate = new Date().toISOString().split('T')[0];
-    const promptPrefix =
-      options.promptPrefix ||
-      `Instructions:You are ${this._assistantLabel}, a large language model trained by OpenAI.Current date: ${currentDate}${this._sepToken}`;
-    const promptSuffix = options.promptSuffix || `${this._assistantLabel}:`;
-    const maxNumTokens = this._maxModelTokens - this._maxResponseTokens;
+    // System:你是 ChatGPT，帮助用户编写代码。你聪明、乐于助人，并且是一位专业的开发人员。你总是给出正确的答案，并仅按照指示执行。你始终如实回答，不撒谎。当回答下面的提示时，请确保使用 Github Flavored Markdown 来正确地对其进行格式化。使用 markdown 语法来添加标题、列表、颜色文本、代码块、高亮等效果等。请注意，在您回复实际内容时，请勿使用 markdown 语法。
+    const systemMessage = `System:${options.systemMessage}${this._endToken}`;
+    const systemPromptPrefix = options.systemPromptPrefix || `${this._systemPromptPrefix}:`;
+    const maxTokensNum = this._maxModelTokens - this._maxResponseTokens;
     let { parentMessageId } = options;
-    let nextPromptBody = `${this._userLabel}:${message}${this._endToken}`;
-    let promptBody = '';
-    let prompt;
-    let numTokens = 0;
-
+    const currentUserPrompt = `${this._userPromptPrefix}:${message}${this._endToken}`;
+    let historyPrompt = '';
+    let promptNum = 0;
     while (true) {
-      const nextPrompt = `${promptPrefix}${nextPromptBody}${promptSuffix}`;
-      const nextNumTokens = await this._getTokenCount(nextPrompt);
-      if (prompt && nextNumTokens > maxNumTokens) {
+      const prompt = `${systemMessage}${historyPrompt}${currentUserPrompt}${systemPromptPrefix}`;
+      promptNum = await this._getTokenCount(prompt);
+      if (prompt && promptNum > maxTokensNum) {
         break;
       }
-      promptBody = nextPromptBody;
-      prompt = nextPrompt;
-      numTokens = nextNumTokens;
-
       if (!parentMessageId) {
         break;
       }
-
       const parentMessage = await this._getMessageById(parentMessageId);
       if (!parentMessage) {
         break;
       }
-
-      const parentMessageRole = parentMessage.role || 'user';
-      const parentMessageRoleDesc =
-        parentMessageRole === 'user' ? this._userLabel : this._assistantLabel;
-      const parentMessageString = `${parentMessageRoleDesc}:${parentMessage.text}${this._endToken}`;
-
-      nextPromptBody = `${parentMessageString}${promptBody}`;
+      const parentMessageRole = parentMessage.role;
+      const parentMessagePromptPrefix =
+        parentMessageRole === 'user' ? this._userPromptPrefix : this._systemPromptPrefix;
+      const parentMessagePrompt = `${parentMessagePromptPrefix}:${parentMessage.text}${this._endToken}`;
+      historyPrompt = `${parentMessagePrompt}${historyPrompt}`;
       parentMessageId = parentMessage.parentMessageId;
     }
+    const prompt = `${systemMessage}${historyPrompt}${currentUserPrompt}${systemPromptPrefix}`;
 
     const maxTokens = Math.max(
       1,
-      Math.min(this._maxModelTokens - numTokens, this._maxResponseTokens),
+      Math.min(this._maxModelTokens - promptNum, this._maxResponseTokens),
     );
     return { prompt, maxTokens };
   }
@@ -291,7 +269,7 @@ export class TextModleAPI {
    * @memberof ChatGPT
    */
   private async _getTokenCount(text: string): Promise<number> {
-    return encode(text).length;
+    return tokenizer.encode(text).bpe.length;
   }
   /**
    * @desc 获取消息

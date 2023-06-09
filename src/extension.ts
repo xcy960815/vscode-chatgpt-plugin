@@ -72,7 +72,7 @@ export async function activate(context: vscode.ExtensionContext) {
       event.affectsConfiguration('chatgpt.gpt.temperature') ||
       event.affectsConfiguration('chatgpt.gpt.top_p')
     ) {
-      chatGptViewProvider.prepareConversation(true);
+      chatGptViewProvider.initConversation(true);
     }
 
     if (

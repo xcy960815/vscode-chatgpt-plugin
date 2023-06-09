@@ -54,18 +54,11 @@ export class ChatModelAPI {
       presence_penalty: 1,
       ...completionParams,
     };
-    this._systemMessage =
-      systemMessage ||
-      `You are ChatGPT, a large language model trained by OpenAI.Answer as concisely as possible.Knowledge cutoff: 2021 - 09 - 01 Current date: ${
-        new Date().toISOString().split('T')[0]
-      }`;
+    this._systemMessage = systemMessage || '';
     this._maxModelTokens = maxModelTokens;
     this._maxResponseTokens = maxResponseTokens;
-    console.log('this._maxModelTokens', this._maxModelTokens);
-    console.log('this._maxResponseTokens', this._maxResponseTokens);
     this._getMessageById = getMessageById || this._defaultGetMessageById;
     this._upsertMessage = upsertMessage || this._defaultUpsertMessage;
-
     if (messageStore) {
       this._messageStore = messageStore;
     } else {

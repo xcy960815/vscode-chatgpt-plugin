@@ -5,7 +5,7 @@ import * as vscode from 'vscode';
 import {
   GetMessageById as ChatGetMessageById,
   UpsertMessage as ChatUpsertMessage,
-} from './chat-model';
+} from './gpt-model';
 import {
   GetMessageById as TextGetMessageById,
   UpsertMessage as TextUpsertMessage,
@@ -181,8 +181,8 @@ export declare namespace openai {
       parentMessageId?: string;
       messageId?: string;
       stream?: boolean;
-      promptPrefix?: string;
-      promptSuffix?: string;
+      systemMessage?: string;
+      systemPromptPrefix?: string;
       timeoutMs?: number;
       onProgress?: (partialResponse: ChatResponse) => void;
       abortSignal?: AbortSignal;
@@ -213,15 +213,17 @@ export declare namespace openai {
       choices: Array<CompletionResponseChoice>;
     }
 
+    interface CompletionResponseLogprobs {
+      tokens?: Array<string>;
+      token_logprobs?: Array<number>;
+      top_logprobs?: Array<object>;
+      text_offset?: Array<number>;
+    }
+
     interface CompletionResponseChoice {
       text?: string;
       index?: number;
-      logprobs?: {
-        tokens?: Array<string>;
-        token_logprobs?: Array<number>;
-        top_logprobs?: Array<object>;
-        text_offset?: Array<number>;
-      } | null;
+      logprobs: CompletionResponseLogprobs | null;
       finish_reason?: string;
     }
 
@@ -247,8 +249,8 @@ export declare namespace openai {
       completionParams?: Partial<CompletionParams>;
       maxModelTokens?: number;
       maxResponseTokens?: number;
-      userLabel?: string;
-      assistantLabel?: string;
+      userPromptPrefix?: string;
+      systemPromptPrefix?: string;
       organization?: string;
       messageStore?: Keyv;
       getMessageById?: TextGetMessageById;
