@@ -7,13 +7,13 @@
 
 #### 功能介绍：
 
-    1. 自然语言交互：提供 gpt4、gpt3.5-turbo等主流语言模型进行实时自然语言对话。
-    2. 右键选中代码，提供添加测试、查找错误、优化代码、解释代码、添加注释、补全代码、临时提示等功能。gpt回答的答案会在左侧的输出面板中显示。
-    3. 国际化（目前只支持中文和英文）
+- 自然语言交互：提供 gpt4、gpt3.5-turbo 等主流语言模型进行实时自然语言对话。
+- 右键选中代码，提供添加测试、查找错误、优化代码、解释代码、添加注释、补全代码、临时提示等功能。gpt 回答的答案会在左侧的输出面板中显示。
+- 国际化（目前只支持中文和英文）
 
 #### 前提条件在开始使用 VSCode ChatGPT 插件之前，请确保满足以下要求：
 
-    安装 Visual Studio Code（版本 1.60 或更高）。拥有 OpenAI 的 ChatGPT API 密钥。请参考 OpenAI 文档获取 API 密钥。安装打开 Visual Studio Code。在扩展面板中搜索 "vscode-chatgpt-plugin"。点击 "安装" 按钮，并等待安装完成。配置安装 ChatGPT 插件后，您需要配置 API 密钥以连接到 ChatGPT 服务。
+- 安装 Visual Studio Code（版本 1.60 或更高）。拥有 OpenAI 的 ChatGPT API 密钥。请参考 OpenAI 文档获取 API 密钥。安装打开 Visual Studio Code。在扩展面板中搜索 "vscode-chatgpt-plugin"。点击 "安装" 按钮，并等待安装完成。配置安装 ChatGPT 插件后，您需要配置 API 密钥以连接到 ChatGPT 服务。
 
 #### 请按照以下步骤进行 apikey 配置：
 

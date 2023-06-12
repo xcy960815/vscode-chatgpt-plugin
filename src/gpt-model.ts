@@ -1,33 +1,30 @@
 /* eslint-disable @typescript-eslint/naming-convention */
-import fetch from 'isomorphic-fetch';
+import isomorphicFetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
 import pTimeout, { ClearablePromise } from 'p-timeout';
 import QuickLRU from 'quick-lru';
 import { v4 as uuidv4 } from 'uuid';
-import { FetchSSEOptions, openai } from './types';
+import { Fetch, FetchSSEOptions, openai } from './types';
 import { fetchSSE } from './utils';
-export type GetMessageById = (id: string) => Promise<openai.Chat.ChatResponse | undefined>;
 
-export type UpsertMessage = (message: openai.Chat.ChatResponse) => Promise<boolean>;
+const MODEL = 'gpt-3.5-turbo';
 
-const CHATGPT_MODEL = 'gpt-3.5-turbo';
-
-export class ChatModelAPI {
+export class GptModelAPI {
   private _apiKey: string;
   private _apiBaseUrl: string;
   private _organization?: string;
   private _debug: boolean;
-  private _fetch: typeof fetch;
+  private _fetch: Fetch;
   private _completionParams: Partial<
-    Omit<openai.Chat.CompletionParams, 'messages' | 'n' | 'stream'>
+    Omit<openai.GptModelAPI.CompletionParams, 'messages' | 'n' | 'stream'>
   >;
   private _systemMessage: string;
   private _maxModelTokens: number;
   private _maxResponseTokens: number;
-  public _getMessageById: GetMessageById;
-  private _upsertMessage: UpsertMessage;
-  private _messageStore: Keyv<openai.Chat.ChatResponse>;
-  constructor(options: openai.Chat.ChatgptApiOptions) {
+  public _getMessageById: openai.GptModelAPI.GetMessageById;
+  private _upsertMessage: openai.GptModelAPI.UpsertMessage;
+  private _messageStore: Keyv<openai.GptModelAPI.ChatResponse>;
+  constructor(options: openai.GptModelAPI.ChatgptApiOptions) {
     const {
       apiKey,
       apiBaseUrl,
@@ -40,15 +37,15 @@ export class ChatModelAPI {
       maxResponseTokens = 1000,
       getMessageById,
       upsertMessage,
-      fetch: fetch2 = fetch,
+      fetch,
     } = options;
     this._apiKey = apiKey;
     this._apiBaseUrl = apiBaseUrl || 'https://api.openai.com';
     this._organization = organization;
     this._debug = !!debug;
-    this._fetch = fetch2;
+    this._fetch = fetch || isomorphicFetch;
     this._completionParams = {
-      model: CHATGPT_MODEL,
+      model: MODEL,
       temperature: 0.8,
       top_p: 1,
       presence_penalty: 1,
@@ -65,15 +62,6 @@ export class ChatModelAPI {
       this._messageStore = new Keyv({
         store: new QuickLRU({ maxSize: 1e4 }),
       });
-    }
-    if (!this._apiKey) {
-      throw new Error('OpenAI missing required apiKey');
-    }
-    if (!this._fetch) {
-      throw new Error('Invalid environment; fetch is not defined');
-    }
-    if (typeof this._fetch !== 'function') {
-      throw new Error('Invalid "fetch" is not a function');
     }
   }
   private get headers(): HeadersInit {
@@ -94,8 +82,8 @@ export class ChatModelAPI {
    */
   public async sendMessage(
     text: string,
-    options: openai.Chat.SendMessageOptions,
-  ): Promise<openai.Chat.ChatResponse> {
+    options: openai.GptModelAPI.SendMessageOptions,
+  ): Promise<openai.GptModelAPI.ChatResponse> {
     const {
       parentMessageId,
       messageId = uuidv4(),
@@ -112,13 +100,12 @@ export class ChatModelAPI {
       abortSignal = abortController.signal;
     }
     // 构建用户消息
-    const userMessage: openai.Chat.UserMessage = {
+    const userMessage: openai.GptModelAPI.UserMessage = {
       role: 'user',
       messageId,
       parentMessageId,
       text,
     };
-
     // 保存用户消息
     await this._upsertMessage(userMessage);
 
@@ -126,14 +113,14 @@ export class ChatModelAPI {
     const { messages } = await this._buildMessages(text, options);
 
     // 给用户返回的数据
-    const chatResponse: openai.Chat.ChatResponse = {
+    const chatResponse: openai.GptModelAPI.ChatResponse = {
       role: 'assistant',
       messageId: '',
       parentMessageId: messageId,
       text: '',
       detail: null,
     };
-    const responseP = new Promise<openai.Chat.ChatResponse>(async (resolve, reject) => {
+    const responseP = new Promise<openai.GptModelAPI.ChatResponse>(async (resolve, reject) => {
       const url = `${this._apiBaseUrl}/v1/chat/completions`;
       const body = {
         ...this._completionParams,
@@ -141,7 +128,6 @@ export class ChatModelAPI {
         messages,
         stream,
       };
-      console.log('body', body);
 
       const fetchSSEOptions: FetchSSEOptions = {
         method: 'POST',
@@ -157,7 +143,7 @@ export class ChatModelAPI {
             return;
           }
           try {
-            const response: openai.Chat.CompletionResponse = JSON.parse(data);
+            const response: openai.GptModelAPI.CompletionResponse = JSON.parse(data);
             if (response.id) {
               chatResponse.messageId = response.id;
             }
@@ -182,7 +168,7 @@ export class ChatModelAPI {
       } else {
         try {
           const response = await fetchSSE(url, fetchSSEOptions, this._fetch);
-          const responseJson: openai.Chat.CompletionResponse = await response?.json();
+          const responseJson: openai.GptModelAPI.CompletionResponse = await response?.json();
           if (responseJson?.id) {
             chatResponse.messageId = responseJson.id;
           }
@@ -207,7 +193,7 @@ export class ChatModelAPI {
 
     // 如果设置了超时时间，那么就使用 AbortController
     if (timeoutMs) {
-      (responseP as ClearablePromise<openai.Chat.ChatResponse>).clear = () => {
+      (responseP as ClearablePromise<openai.GptModelAPI.ChatResponse>).clear = () => {
         abortController?.abort();
       };
       return pTimeout(responseP, {
@@ -222,15 +208,15 @@ export class ChatModelAPI {
    * @desc 构建消息
    * @param {string} text
    * @param {SendMessageOptions} options
-   * @returns {Promise<{ messages: openai.Chat.CompletionRequestMessage[]; }>}
+   * @returns {Promise<{ messages: openai.GptModelAPI.CompletionRequestMessage[]; }>}
    */
   private async _buildMessages(
     text: string,
-    options: openai.Chat.SendMessageOptions,
-  ): Promise<{ messages: openai.Chat.CompletionRequestMessage[] }> {
+    options: openai.GptModelAPI.SendMessageOptions,
+  ): Promise<{ messages: openai.GptModelAPI.CompletionRequestMessage[] }> {
     const { systemMessage = this._systemMessage } = options;
     let { parentMessageId } = options;
-    const messages: openai.Chat.CompletionRequestMessage[] = [
+    const messages: openai.GptModelAPI.CompletionRequestMessage[] = [
       {
         role: 'system',
         content: systemMessage,
@@ -264,7 +250,9 @@ export class ChatModelAPI {
    * @param {string} id
    * @returns {Promise<ChatResponse | undefined>}
    */
-  private async _defaultGetMessageById(id: string): Promise<openai.Chat.ChatResponse | undefined> {
+  private async _defaultGetMessageById(
+    id: string,
+  ): Promise<openai.GptModelAPI.ChatResponse | undefined> {
     const messageOption = await this._messageStore.get(id);
     return messageOption;
   }
@@ -273,7 +261,9 @@ export class ChatModelAPI {
    * @param {ChatResponse} messageOption
    * @returns {Promise<void>}
    */
-  private async _defaultUpsertMessage(messageOption: openai.Chat.ChatResponse): Promise<boolean> {
+  private async _defaultUpsertMessage(
+    messageOption: openai.GptModelAPI.ChatResponse,
+  ): Promise<boolean> {
     return await this._messageStore.set(messageOption.messageId, messageOption);
   }
 

@@ -4,7 +4,7 @@
   "displayName": "vscode-chatgpt-plugin",
   "icon": "images/ai-logo.jpg",
   "description": "vscode-chatgpt-plugin",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "license": "MIT",
   "repository": {
     "url": "https://github.com/xcy960815/vscode-chatgpt-plugin"
@@ -184,9 +184,7 @@
             "gpt-3.5-turbo",
             "gpt-3.5-turbo-0301",
             "text-davinci-003",
-            "text-curie-001",
-            "text-babbage-001",
-            "text-ada-001"
+            "text-davinci-002"
           ],
           "default": "gpt-3.5-turbo",
           "markdownDescription": "%chatgpt.gpt.model.markdownDescription%",
@@ -196,9 +194,7 @@
             "%chatgpt.gpt.model.gpt35turboLabel%",
             "%chatgpt.gpt.model.gpt35turbo0301Label%",
             "%chatgpt.gpt.model.textdavinci003Label%",
-            "%chatgpt.gpt.model.textcurie001Label%",
-            "%chatgpt.gpt.model.textbabbage001Label%",
-            "%chatgpt.gpt.model.textada001Label%"
+            "%chatgpt.gpt.model.textdavinci002Label%"
           ],
           "markdownEnumDescriptions": [
             "%chatgpt.gpt.model.gpt4markdownEnumDescriptions%",
@@ -468,6 +464,14 @@
         "chatgpt.webview.updateSettingsButtonTitle": {
           "type": "string",
           "default": "%chatgpt.webview.updateSettingsButtonTitle.default%"
+        },
+        "chatgpt.webview.updateApiKeyButtonName": {
+          "type": "string",
+          "default": "%chatgpt.webview.updateApiKeyButtonName.default%"
+        },
+        "chatgpt.webview.updateApiKeyButtonTitle": {
+          "type": "string",
+          "default": "%chatgpt.webview.updateApiKeyButtonTitle.default%"
         },
         "chatgpt.webview.updatePromptsButtonName": {
           "type": "string",

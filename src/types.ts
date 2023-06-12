@@ -2,14 +2,14 @@
 import fetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
 import * as vscode from 'vscode';
-import {
-  GetMessageById as ChatGetMessageById,
-  UpsertMessage as ChatUpsertMessage,
-} from './gpt-model';
-import {
-  GetMessageById as TextGetMessageById,
-  UpsertMessage as TextUpsertMessage,
-} from './text-model';
+// import {
+//   GetMessageById as ChatGetMessageById,
+//   UpsertMessage as ChatUpsertMessage
+// } from './gpt-model';
+// import {
+//   GetMessageById as TextGetMessageById,
+//   UpsertMessage as TextUpsertMessage,
+// } from './text-model';
 export type Fetch = typeof fetch;
 
 export interface FetchSSEOptions extends RequestInit {
@@ -42,7 +42,7 @@ export interface OnDidReceiveMessageOption {
     | 'insert-code'
     | 'open-new-tab'
     | 'clear-conversation'
-    | 'login'
+    | 'update-apikey'
     | 'open-settings'
     | 'open-prompt-settings'
     | 'show-conversations'
@@ -61,7 +61,7 @@ export interface SendApiRequestOption {
 }
 
 export declare namespace openai {
-  module Chat {
+  module GptModelAPI {
     interface CompletionResponseDetail {
       message?: string;
     }
@@ -163,13 +163,17 @@ export declare namespace openai {
       maxResponseTokens?: number;
       organization?: string;
       messageStore?: Keyv;
-      getMessageById?: ChatGetMessageById;
-      upsertMessage?: ChatUpsertMessage;
+      getMessageById?: GetMessageById;
+      upsertMessage?: UpsertMessage;
       fetch?: Fetch;
     }
+
+    export type GetMessageById = (id: string) => Promise<ChatResponse | undefined>;
+
+    export type UpsertMessage = (message: ChatResponse) => Promise<boolean>;
   }
 
-  module Text {
+  module TextModelAPI {
     const CompletionRoleEnum: {
       // readonly System: 'system';
       readonly User: 'user';
@@ -254,9 +258,13 @@ export declare namespace openai {
       systemPromptPrefix?: string;
       organization?: string;
       messageStore?: Keyv;
-      getMessageById?: TextGetMessageById;
-      upsertMessage?: TextUpsertMessage;
+      getMessageById?: GetMessageById;
+      upsertMessage?: UpsertMessage;
       fetch?: Fetch;
     }
+
+    type GetMessageById = (id: string) => Promise<ChatResponse | undefined>;
+
+    type UpsertMessage = (message: ChatResponse) => Promise<boolean>;
   }
 }

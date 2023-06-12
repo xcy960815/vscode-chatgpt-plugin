@@ -383,6 +383,13 @@
       });
       return;
     }
+    // 点击更新apikey按钮
+    if (e.target?.id === 'update-apikey-button') {
+      vscode.postMessage({
+        type: 'update-apikey',
+      });
+      return;
+    }
     // 点击设置提示按钮
     if (e.target?.id === 'settings-prompt-button') {
       vscode.postMessage({
@@ -420,7 +427,7 @@
       vscode.postMessage({ type: 'show-conversations' });
       return;
     }
-
+    // 点击单个显示对话按钮
     if (targetButton?.id === 'show-conversation-button') {
       vscode.postMessage({
         type: 'show-conversation',

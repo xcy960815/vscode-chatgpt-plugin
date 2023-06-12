@@ -1,26 +1,21 @@
 /* eslint-disable @typescript-eslint/naming-convention */
 import Gpt3Tokenizer from 'gpt3-tokenizer';
-import fetch from 'isomorphic-fetch';
+import isomorphicFetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
 import pTimeout, { ClearablePromise } from 'p-timeout';
 import QuickLRU from 'quick-lru';
 import { v4 as uuidv4 } from 'uuid';
-import type { Fetch, openai } from './types';
-import { FetchSSEOptions } from './types';
+import type { Fetch, FetchSSEOptions, openai } from './types';
 import { fetchSSE } from './utils';
 
-export type GetMessageById = (id: string) => Promise<openai.Text.ChatResponse | undefined>;
-
-export type UpsertMessage = (message: openai.Text.ChatResponse) => Promise<boolean>;
-
-const CHATGPT_MODEL = 'text-davinci-003';
+const MODEL = 'text-davinci-003';
 const USER_PROMPT_PREFIX = 'User';
 const SYSTEM_PROMPT_PREFIX_DEFAULT = 'ChatGPT';
 export class TextModleAPI {
   protected _apiKey: string;
   protected _apiBaseUrl: string;
   protected _debug: boolean;
-  protected _completionParams: Omit<openai.Text.CompletionParams, 'prompt'>;
+  protected _completionParams: Omit<openai.TextModelAPI.CompletionParams, 'prompt'>;
   protected _maxModelTokens: number;
   protected _maxResponseTokens: number;
   protected _userPromptPrefix: string;
@@ -28,12 +23,12 @@ export class TextModleAPI {
   protected _endToken: string;
   protected _sepToken: string;
   protected _fetch: Fetch;
-  protected _getMessageById: GetMessageById;
-  protected _upsertMessage: UpsertMessage;
-  protected _messageStore: Keyv<openai.Text.ChatResponse>;
+  protected _getMessageById: openai.TextModelAPI.GetMessageById;
+  protected _upsertMessage: openai.TextModelAPI.UpsertMessage;
+  protected _messageStore: Keyv<openai.TextModelAPI.ChatResponse>;
   protected _organization: string;
   protected gpt3Tokenizer: Gpt3Tokenizer;
-  constructor(options: openai.Text.ChatgptApiOptions) {
+  constructor(options: openai.TextModelAPI.ChatgptApiOptions) {
     const {
       apiKey,
       apiBaseUrl,
@@ -47,16 +42,16 @@ export class TextModleAPI {
       systemPromptPrefix,
       getMessageById,
       upsertMessage,
-      fetch: fetch2 = fetch,
+      fetch,
     } = options;
     this.gpt3Tokenizer = new Gpt3Tokenizer({ type: 'gpt3' });
     this._apiKey = apiKey;
     this._apiBaseUrl = apiBaseUrl || 'https://api.openai.com';
     this._organization = organization || '';
     this._debug = !!debug;
-    this._fetch = fetch2;
+    this._fetch = fetch || isomorphicFetch;
     this._completionParams = {
-      model: CHATGPT_MODEL,
+      model: MODEL,
       temperature: 0.8,
       top_p: 1,
       presence_penalty: 1,
@@ -80,15 +75,6 @@ export class TextModleAPI {
         store: new QuickLRU({ maxSize: 10000 }),
       });
     }
-    if (!this._apiKey) {
-      throw new Error('ChatGPT invalid apiKey');
-    }
-    if (!this._fetch) {
-      throw new Error('Invalid environment; fetch is not defined');
-    }
-    if (typeof this._fetch !== 'function') {
-      throw new Error('Invalid "fetch" is not a function');
-    }
   }
   private get headers(): HeadersInit {
     const headers: HeadersInit = {
@@ -103,13 +89,13 @@ export class TextModleAPI {
   /**
    * @desc 发送请求到openai
    * @param {string} text
-   * @param {openai.Text.SendMessageOptions} options
-   * @returns {Promise<openai.Text.ChatResponse>}
+   * @param {openai.TextModelAPI.SendMessageOptions} options
+   * @returns {Promise<openai.TextModelAPI.ChatResponse>}
    */
   public async sendMessage(
     text: string,
-    options: openai.Text.SendMessageOptions,
-  ): Promise<openai.Text.ChatResponse> {
+    options: openai.TextModelAPI.SendMessageOptions,
+  ): Promise<openai.TextModelAPI.ChatResponse> {
     const {
       parentMessageId,
       messageId = uuidv4(),
@@ -123,7 +109,7 @@ export class TextModleAPI {
       abortController = new AbortController();
       abortSignal = abortController.signal;
     }
-    const userMessage: openai.Text.UserMessage = {
+    const userMessage: openai.TextModelAPI.UserMessage = {
       role: 'user',
       messageId,
       parentMessageId,
@@ -131,19 +117,19 @@ export class TextModleAPI {
     };
     await this._upsertMessage(userMessage);
     const { prompt, maxTokens } = await this._buildPrompt(text, options);
-    const chatResponse: openai.Text.ChatResponse = {
+    const chatResponse: openai.TextModelAPI.ChatResponse = {
       role: 'assistant',
       messageId: uuidv4(),
       parentMessageId: messageId,
       text: '',
     };
-    const responseP = new Promise<openai.Text.ChatResponse>(async (resolve, reject) => {
+    const responseP = new Promise<openai.TextModelAPI.ChatResponse>(async (resolve, reject) => {
       const url = `${this._apiBaseUrl}/v1/completions`;
       const body = {
-        max_tokens: maxTokens,
         ...this._completionParams,
         prompt,
         stream,
+        max_tokens: maxTokens,
       };
       const fetchSSEOptions: FetchSSEOptions = {
         method: 'POST',
@@ -160,7 +146,7 @@ export class TextModleAPI {
             return;
           }
           try {
-            const response: openai.Text.CompletionResponse = JSON.parse(data);
+            const response: openai.TextModelAPI.CompletionResponse = JSON.parse(data);
             if (response.id) {
               chatResponse.messageId = response.id;
             }
@@ -179,7 +165,7 @@ export class TextModleAPI {
       } else {
         try {
           const response = await fetchSSE(url, fetchSSEOptions, this._fetch);
-          const responseJson: openai.Text.CompletionResponse = await response?.json();
+          const responseJson: openai.TextModelAPI.CompletionResponse = await response?.json();
           if (responseJson?.id) {
             chatResponse.messageId = responseJson.id;
           }
@@ -200,7 +186,7 @@ export class TextModleAPI {
       });
     });
     if (timeoutMs) {
-      (responseP as ClearablePromise<openai.Text.ChatResponse>).clear = () => {
+      (responseP as ClearablePromise<openai.TextModelAPI.ChatResponse>).clear = () => {
         abortController?.abort();
       };
       return pTimeout(responseP, {
@@ -212,30 +198,30 @@ export class TextModleAPI {
     }
   }
   /**
-   * @desc 提示中允许的最大令牌数。
+   * @desc 构建 prompt 获取 maxTokens
    * @param {string} message
-   * @param {openai.Text.SendMessageOptions} options
+   * @param {openai.TextModelAPI.SendMessageOptions} options
    * @returns {Promise<{prompt: string, maxTokens: number}>
    */
   private async _buildPrompt(
     message: string,
-    options: openai.Text.SendMessageOptions,
+    options: openai.TextModelAPI.SendMessageOptions,
   ): Promise<{
     prompt: string;
     maxTokens: number;
   }> {
-    // System:你是 ChatGPT，帮助用户编写代码。你聪明、乐于助人，并且是一位专业的开发人员。你总是给出正确的答案，并仅按照指示执行。你始终如实回答，不撒谎。当回答下面的提示时，请确保使用 Github Flavored Markdown 来正确地对其进行格式化。使用 markdown 语法来添加标题、列表、颜色文本、代码块、高亮等效果等。请注意，在您回复实际内容时，请勿使用 markdown 语法。
     const systemMessage = `System:${options.systemMessage}${this._endToken}`;
     const systemPromptPrefix = options.systemPromptPrefix || `${this._systemPromptPrefix}:`;
-    const maxTokensNum = this._maxModelTokens - this._maxResponseTokens;
+    const maxTokenCount = this._maxModelTokens - this._maxResponseTokens;
     let { parentMessageId } = options;
     const currentUserPrompt = `${this._userPromptPrefix}:${message}${this._endToken}`;
     let historyPrompt = '';
-    let promptNum = 0;
+    let promptTokenCount = 0;
     while (true) {
       const prompt = `${systemMessage}${historyPrompt}${currentUserPrompt}${systemPromptPrefix}`;
-      promptNum = await this._getTokenCount(prompt);
-      if (prompt && promptNum > maxTokensNum) {
+      promptTokenCount = await this._getTokenCount(prompt);
+      // 当前 prompt token 数量大于最大 token 数量时，不再向上查找
+      if (prompt && promptTokenCount > maxTokenCount) {
         break;
       }
       if (!parentMessageId) {
@@ -256,7 +242,7 @@ export class TextModleAPI {
 
     const maxTokens = Math.max(
       1,
-      Math.min(this._maxModelTokens - promptNum, this._maxResponseTokens),
+      Math.min(this._maxModelTokens - promptTokenCount, this._maxResponseTokens),
     );
     return { prompt, maxTokens };
   }
@@ -274,7 +260,9 @@ export class TextModleAPI {
    * @param {string} id
    * @returns  {Promise<ChatResponse | undefined>}
    */
-  private async _defaultGetMessageById(id: string): Promise<openai.Text.ChatResponse | undefined> {
+  private async _defaultGetMessageById(
+    id: string,
+  ): Promise<openai.TextModelAPI.ChatResponse | undefined> {
     return await this._messageStore.get(id);
   }
   /**
@@ -282,7 +270,7 @@ export class TextModleAPI {
    * @param {ChatResponse} message
    * @returns {Promise<void>}
    */
-  private async _defaultUpsertMessage(message: openai.Text.ChatResponse): Promise<boolean> {
+  private async _defaultUpsertMessage(message: openai.TextModelAPI.ChatResponse): Promise<boolean> {
     return await this._messageStore.set(message.messageId, message);
   }
 
