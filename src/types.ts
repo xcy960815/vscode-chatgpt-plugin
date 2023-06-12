@@ -2,30 +2,24 @@
 import fetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
 import * as vscode from 'vscode';
-// import {
-//   GetMessageById as ChatGetMessageById,
-//   UpsertMessage as ChatUpsertMessage
-// } from './gpt-model';
-// import {
-//   GetMessageById as TextGetMessageById,
-//   UpsertMessage as TextUpsertMessage,
-// } from './text-model';
 export type Fetch = typeof fetch;
 
 export interface FetchSSEOptions extends RequestInit {
   onMessage?: (message: string) => void;
 }
 
-export interface WebviewMessageOption {
-  type:
-    | 'show-in-progress'
-    // | 'login-successful'
-    | 'add-answer'
-    | 'add-question'
-    | 'add-error'
-    | 'clear-conversation'
-    | 'set-chatgpt-config'
-    | 'export-conversation';
+const WebviewMessageOptionssTypeEnums = {
+  ShowInProgress: 'show-in-progress',
+  AddQuestion: 'add-question',
+  AddAnswer: 'add-answer',
+  AddError: 'add-error',
+  ClearConversation: 'clear-conversation',
+  SetChatgptConfig: 'set-chatgpt-config',
+  ExportConversation: 'export-conversation',
+} as const;
+
+export interface WebviewMessageOptions {
+  type: (typeof WebviewMessageOptionssTypeEnums)[keyof typeof WebviewMessageOptionssTypeEnums];
   code?: string;
   value?: string | vscode.WorkspaceConfiguration;
   showConversations?: boolean;
@@ -36,19 +30,22 @@ export interface WebviewMessageOption {
   autoScroll?: boolean;
 }
 
-export interface OnDidReceiveMessageOption {
-  type:
-    | 'add-question'
-    | 'insert-code'
-    | 'open-new-tab'
-    | 'clear-conversation'
-    | 'update-apikey'
-    | 'open-settings'
-    | 'open-prompt-settings'
-    | 'show-conversations'
-    | 'show-conversation'
-    | 'stop-generating'
-    | 'get-chatgpt-config';
+const OnDidReceiveMessageOptionsTypeEnums = {
+  AddQuestion: 'add-question',
+  InsertCode: 'insert-code',
+  OpenNewTab: 'open-new-tab',
+  ClearConversation: 'clear-conversation',
+  UpdateApiKey: 'update-apikey',
+  OpenSettings: 'open-settings',
+  OpenPromptSettings: 'open-prompt-settings',
+  ShowConversations: 'show-conversations',
+  ShowConversation: 'show-conversation',
+  StopGenerating: 'stop-generating',
+  GetChatgptConfig: 'get-chatgpt-config',
+} as const;
+
+export interface OnDidReceiveMessageOptions {
+  type: (typeof OnDidReceiveMessageOptionsTypeEnums)[keyof typeof OnDidReceiveMessageOptionsTypeEnums];
   value?: string;
   language?: string;
 }
@@ -61,160 +58,165 @@ export interface SendApiRequestOption {
 }
 
 export declare namespace openai {
+  // 公共参数
+  interface ModelApiOptions {
+    apiKey: string;
+    apiBaseUrl?: string;
+    organization?: string;
+    debug?: boolean;
+    fetch?: Fetch;
+    /** @defaultValue `4096` **/
+    maxModelTokens?: number;
+    /** @defaultValue `1000` **/
+    maxResponseTokens?: number;
+    messageStore?: Keyv;
+  }
+
+  // 公共返回usage
+  interface CompletionResponseUsage {
+    completion_tokens: number;
+    prompt_tokens: number;
+    total_tokens: number;
+  }
+
+  // 公共返回
+  interface CompletionResponse {
+    id: string;
+    object: string;
+    created: number;
+    model: string;
+    usage: CompletionResponseUsage;
+  }
+  // 公共参数
+  interface CompletionRequestParams {
+    model: string;
+    max_tokens?: number;
+    temperature?: number | null;
+    top_p?: number | null;
+    n?: number | null;
+    stream?: boolean | null;
+    stop?: Array<string> | string;
+    logit_bias?: Record<string, number>;
+    presence_penalty?: number | null;
+    frequency_penalty?: number | null;
+    user?: string;
+  }
+
+  interface CompletionResponseChoice {
+    index?: number;
+    finish_reason?: string | null;
+  }
+
+  interface UserMessage {
+    messageId: string;
+    text: string;
+    parentMessageId?: string;
+  }
+
+  interface SendMessageOptions {
+    parentMessageId?: string;
+    messageId?: string;
+    stream?: boolean;
+    systemMessage?: string;
+    timeoutMs?: number;
+    abortSignal?: AbortSignal;
+  }
+
+  interface ApiResponse {
+    messageId: string;
+    text: string;
+    parentMessageId?: string;
+  }
+
+  const CompletionRoleEnum: {
+    readonly System: 'system';
+    readonly User: 'user';
+    readonly Assistant: 'assistant';
+  };
+
   module GptModelAPI {
-    interface CompletionResponseDetail {
-      message?: string;
-    }
+    type CompletionRoleEnum =
+      (typeof openai.CompletionRoleEnum)[keyof typeof openai.CompletionRoleEnum];
+
     interface CompletionRequestMessage {
       role: CompletionRoleEnum;
       content: string;
       name?: string;
     }
 
-    const CompletionRoleEnum: {
-      readonly System: 'system';
-      readonly User: 'user';
-      readonly Assistant: 'assistant';
-    };
+    // 请求参数
+    interface CompletionRequestParams extends openai.CompletionRequestParams {
+      messages: Array<CompletionRequestMessage>;
+    }
 
-    type CompletionRoleEnum = (typeof CompletionRoleEnum)[keyof typeof CompletionRoleEnum];
-
-    interface ChatCompletionResponseMessage {
+    interface CompletionResponseMessage {
       role: CompletionRoleEnum;
       content: string;
     }
-
-    // 请求参数
-    interface CompletionParams {
-      model: string;
-      messages: Array<CompletionRequestMessage>;
-      temperature?: number | null;
-      top_p?: number | null;
-      n?: number | null;
-      stream?: boolean | null;
-      stop?: CompletionRequestStop;
-      max_tokens?: number;
-      presence_penalty?: number | null;
-      frequency_penalty?: number | null;
-      logit_bias?: object | null;
-      user?: string;
-    }
-
-    type CompletionRequestStop = Array<string> | string;
-
     interface CompletionResponseDelta {
       content?: string;
       role?: CompletionRoleEnum;
     }
 
-    interface CompletionResponseChoice {
-      index?: number;
-      message?: ChatCompletionResponseMessage;
-      finish_reason?: string | null;
-      delta: CompletionResponseDelta;
-    }
-    interface CompletionResponse {
-      id: string;
-      object: string;
-      created: number;
-      model: string;
-      choices: Array<CompletionResponseChoice>;
-      detail?: CompletionResponseDetail;
-      // usage?: CompletionResponseUsage;
+    interface CompletionResponseDetail {
+      message?: string;
     }
 
-    interface ChatResponse {
-      messageId: string;
-      text: string;
+    interface CompletionResponseChoice extends openai.CompletionResponseChoice {
+      message?: CompletionResponseMessage;
+      delta: CompletionResponseDelta;
+    }
+    interface CompletionResponse extends openai.CompletionResponse {
+      choices: Array<CompletionResponseChoice>;
+      detail?: CompletionResponseDetail;
+    }
+
+    interface ApiResponse extends openai.ApiResponse {
       role: CompletionRoleEnum;
       detail?: CompletionResponse | null;
-      parentMessageId?: string;
       delta?: string;
     }
 
-    interface SendMessageOptions {
-      parentMessageId?: string;
-      messageId?: string;
-      stream?: boolean;
-      systemMessage?: string;
-      timeoutMs?: number;
-      onProgress?: (partialResponse: ChatResponse) => void;
-      abortSignal?: AbortSignal;
-      completionParams?: Partial<Omit<CompletionParams, 'messages' | 'n' | 'stream'>>;
+    interface SendMessageOptions extends openai.SendMessageOptions {
+      onProgress?: (partialResponse: ApiResponse) => void;
+      CompletionRequestParams?: Partial<Omit<CompletionRequestParams, 'messages' | 'n' | 'stream'>>;
     }
 
-    interface UserMessage {
-      messageId: string;
+    interface UserMessage extends openai.UserMessage {
       role: CompletionRoleEnum;
-      text: string;
-      messaeId?: string;
-      parentMessageId?: string;
     }
 
-    interface ChatgptApiOptions {
-      apiKey: string;
-      apiBaseUrl?: string;
-      debug?: boolean;
-      completionParams?: Partial<Omit<CompletionParams, 'messages' | 'n' | 'stream'>>;
+    interface GptModelApiOptions extends ModelApiOptions {
+      CompletionRequestParams?: Partial<Omit<CompletionRequestParams, 'messages' | 'n' | 'stream'>>;
       systemMessage?: string;
-      /** @defaultValue `4096` **/
-      maxModelTokens?: number;
-      /** @defaultValue `1000` **/
-      maxResponseTokens?: number;
-      organization?: string;
-      messageStore?: Keyv;
       getMessageById?: GetMessageById;
       upsertMessage?: UpsertMessage;
-      fetch?: Fetch;
     }
 
-    export type GetMessageById = (id: string) => Promise<ChatResponse | undefined>;
+    export type GetMessageById = (id: string) => Promise<ApiResponse | undefined>;
 
-    export type UpsertMessage = (message: ChatResponse) => Promise<boolean>;
+    export type UpsertMessage = (message: ApiResponse) => Promise<boolean>;
   }
 
   module TextModelAPI {
-    const CompletionRoleEnum: {
-      // readonly System: 'system';
-      readonly User: 'user';
-      readonly Assistant: 'assistant';
-    };
+    type CompletionRoleEnum = Exclude<
+      typeof openai.CompletionRoleEnum,
+      'System'
+    >[keyof typeof openai.CompletionRoleEnum];
 
-    type CompletionRoleEnum = (typeof CompletionRoleEnum)[keyof typeof CompletionRoleEnum];
-
-    interface SendMessageOptions {
-      parentMessageId?: string;
-      messageId?: string;
-      stream?: boolean;
-      systemMessage?: string;
+    interface SendMessageOptions extends openai.SendMessageOptions {
       systemPromptPrefix?: string;
-      timeoutMs?: number;
-      onProgress?: (partialResponse: ChatResponse) => void;
-      abortSignal?: AbortSignal;
+      onProgress?: (partialResponse: ApiResponse) => void;
+      CompletionRequestParams?: Partial<Omit<CompletionRequestParams, 'messages' | 'n' | 'stream'>>;
     }
 
-    interface CompletionParams {
-      model: string;
+    interface CompletionRequestParams extends openai.CompletionRequestParams {
       prompt: string;
       suffix?: string;
-      max_tokens?: number;
-      temperature?: number;
-      top_p?: number;
-      logprobs?: number;
       echo?: boolean;
-      stop?: string[];
-      presence_penalty?: number;
-      frequency_penalty?: number;
       best_of?: number;
-      logit_bias?: Record<string, number>;
-      user?: string;
     }
-
-    interface CompletionResponse {
-      id: string;
-      object: string;
-      created: number;
-      model: string;
+    interface CompletionResponse extends openai.CompletionResponse {
       choices: Array<CompletionResponseChoice>;
     }
 
@@ -225,46 +227,30 @@ export declare namespace openai {
       text_offset?: Array<number>;
     }
 
-    interface CompletionResponseChoice {
+    interface CompletionResponseChoice extends openai.CompletionResponseChoice {
       text?: string;
-      index?: number;
       logprobs: CompletionResponseLogprobs | null;
-      finish_reason?: string;
     }
 
-    interface UserMessage {
-      messageId: string;
+    interface UserMessage extends openai.UserMessage {
       role: CompletionRoleEnum;
-      text: string;
-      parentMessageId?: string;
     }
 
-    interface ChatResponse {
-      messageId: string;
-      text: string;
+    interface ApiResponse extends openai.ApiResponse {
       role: CompletionRoleEnum;
-      parentMessageId?: string;
-      detail?: CompletionResponse | null;
+      detail?: CompletionResponse;
     }
 
-    interface ChatgptApiOptions {
-      apiKey: string;
-      apiBaseUrl?: string;
-      debug?: boolean;
-      completionParams?: Partial<CompletionParams>;
-      maxModelTokens?: number;
-      maxResponseTokens?: number;
+    interface TextModelApiOptions extends ModelApiOptions {
+      CompletionRequestParams?: Partial<CompletionRequestParams>;
       userPromptPrefix?: string;
       systemPromptPrefix?: string;
-      organization?: string;
-      messageStore?: Keyv;
       getMessageById?: GetMessageById;
       upsertMessage?: UpsertMessage;
-      fetch?: Fetch;
     }
 
-    type GetMessageById = (id: string) => Promise<ChatResponse | undefined>;
+    type GetMessageById = (id: string) => Promise<ApiResponse | undefined>;
 
-    type UpsertMessage = (message: ChatResponse) => Promise<boolean>;
+    type UpsertMessage = (message: ApiResponse) => Promise<boolean>;
   }
 }

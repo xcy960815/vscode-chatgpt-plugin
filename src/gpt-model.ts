@@ -15,26 +15,26 @@ export class GptModelAPI {
   private _organization?: string;
   private _debug: boolean;
   private _fetch: Fetch;
-  private _completionParams: Partial<
-    Omit<openai.GptModelAPI.CompletionParams, 'messages' | 'n' | 'stream'>
+  private _CompletionRequestParams: Partial<
+    Omit<openai.GptModelAPI.CompletionRequestParams, 'messages' | 'n' | 'stream'>
   >;
   private _systemMessage: string;
-  private _maxModelTokens: number;
-  private _maxResponseTokens: number;
+  // private _maxModelTokens: number;
+  // private _maxResponseTokens: number;
   public _getMessageById: openai.GptModelAPI.GetMessageById;
   private _upsertMessage: openai.GptModelAPI.UpsertMessage;
-  private _messageStore: Keyv<openai.GptModelAPI.ChatResponse>;
-  constructor(options: openai.GptModelAPI.ChatgptApiOptions) {
+  private _messageStore: Keyv<openai.GptModelAPI.ApiResponse>;
+  constructor(options: openai.GptModelAPI.GptModelApiOptions) {
     const {
       apiKey,
       apiBaseUrl,
       organization,
       debug = false,
       messageStore,
-      completionParams,
+      CompletionRequestParams,
       systemMessage,
-      maxModelTokens = 4000,
-      maxResponseTokens = 1000,
+      // maxModelTokens = 4000,
+      // maxResponseTokens = 1000,
       getMessageById,
       upsertMessage,
       fetch,
@@ -44,16 +44,16 @@ export class GptModelAPI {
     this._organization = organization;
     this._debug = !!debug;
     this._fetch = fetch || isomorphicFetch;
-    this._completionParams = {
+    this._CompletionRequestParams = {
       model: MODEL,
       temperature: 0.8,
       top_p: 1,
       presence_penalty: 1,
-      ...completionParams,
+      ...CompletionRequestParams,
     };
     this._systemMessage = systemMessage || '';
-    this._maxModelTokens = maxModelTokens;
-    this._maxResponseTokens = maxResponseTokens;
+    // this._maxModelTokens = maxModelTokens;
+    // this._maxResponseTokens = maxResponseTokens;
     this._getMessageById = getMessageById || this._defaultGetMessageById;
     this._upsertMessage = upsertMessage || this._defaultUpsertMessage;
     if (messageStore) {
@@ -78,19 +78,19 @@ export class GptModelAPI {
    * @desc 发送消息
    * @param {string} text
    * @param {SendMessageOptions} options
-   * @returns {Promise<ChatResponse>}
+   * @returns {Promise<ApiResponse>}
    */
   public async sendMessage(
     text: string,
     options: openai.GptModelAPI.SendMessageOptions,
-  ): Promise<openai.GptModelAPI.ChatResponse> {
+  ): Promise<openai.GptModelAPI.ApiResponse> {
     const {
       parentMessageId,
       messageId = uuidv4(),
       timeoutMs,
       onProgress,
       stream = onProgress ? true : false,
-      completionParams,
+      CompletionRequestParams,
     } = options;
     let { abortSignal } = options;
     let abortController: AbortController | null = null;
@@ -113,18 +113,18 @@ export class GptModelAPI {
     const { messages } = await this._buildMessages(text, options);
 
     // 给用户返回的数据
-    const chatResponse: openai.GptModelAPI.ChatResponse = {
+    const ApiResponse: openai.GptModelAPI.ApiResponse = {
       role: 'assistant',
       messageId: '',
       parentMessageId: messageId,
       text: '',
       detail: null,
     };
-    const responseP = new Promise<openai.GptModelAPI.ChatResponse>(async (resolve, reject) => {
+    const responseP = new Promise<openai.GptModelAPI.ApiResponse>(async (resolve, reject) => {
       const url = `${this._apiBaseUrl}/v1/chat/completions`;
       const body = {
-        ...this._completionParams,
-        ...completionParams,
+        ...this._CompletionRequestParams,
+        ...CompletionRequestParams,
         messages,
         stream,
       };
@@ -138,26 +138,28 @@ export class GptModelAPI {
       if (stream) {
         fetchSSEOptions.onMessage = (data: string) => {
           if (data === '[DONE]') {
-            chatResponse.text = chatResponse.text.trim();
-            resolve(chatResponse);
+            ApiResponse.text = ApiResponse.text.trim();
+            resolve(ApiResponse);
             return;
           }
           try {
             const response: openai.GptModelAPI.CompletionResponse = JSON.parse(data);
+            console.log('OpenAI stream SEE event', response);
+
             if (response.id) {
-              chatResponse.messageId = response.id;
+              ApiResponse.messageId = response.id;
             }
             if (response?.choices?.length) {
               const delta = response.choices[0].delta;
-              chatResponse.delta = delta.content;
+              ApiResponse.delta = delta.content;
               if (delta?.content) {
-                chatResponse.text += delta.content;
+                ApiResponse.text += delta.content;
               }
-              chatResponse.detail = response;
+              ApiResponse.detail = response;
               if (delta?.role) {
-                chatResponse.role = delta.role;
+                ApiResponse.role = delta.role;
               }
-              onProgress?.(chatResponse);
+              onProgress?.(ApiResponse);
             }
           } catch (error) {
             console.error('OpenAI stream SEE event unexpected error', error);
@@ -167,18 +169,20 @@ export class GptModelAPI {
         fetchSSE(url, fetchSSEOptions, this._fetch).catch(reject);
       } else {
         try {
-          const response = await fetchSSE(url, fetchSSEOptions, this._fetch);
-          const responseJson: openai.GptModelAPI.CompletionResponse = await response?.json();
-          if (responseJson?.id) {
-            chatResponse.messageId = responseJson.id;
+          const data = await fetchSSE(url, fetchSSEOptions, this._fetch);
+          const response: openai.GptModelAPI.CompletionResponse = await data?.json();
+          console.log('OpenAI stream SEE event', response);
+
+          if (response?.id) {
+            ApiResponse.messageId = response.id;
           }
-          if (responseJson?.choices?.length) {
-            const message = responseJson.choices[0].message;
-            chatResponse.text = message?.content || '';
-            chatResponse.role = message?.role || 'assistant';
+          if (response?.choices?.length) {
+            const message = response.choices[0].message;
+            ApiResponse.text = message?.content || '';
+            ApiResponse.role = message?.role || 'assistant';
           }
-          chatResponse.detail = responseJson;
-          resolve(chatResponse);
+          ApiResponse.detail = response;
+          resolve(ApiResponse);
         } catch (error) {
           console.error('OpenAI stream SEE event unexpected error', error);
           return reject(error);
@@ -193,7 +197,7 @@ export class GptModelAPI {
 
     // 如果设置了超时时间，那么就使用 AbortController
     if (timeoutMs) {
-      (responseP as ClearablePromise<openai.GptModelAPI.ChatResponse>).clear = () => {
+      (responseP as ClearablePromise<openai.GptModelAPI.ApiResponse>).clear = () => {
         abortController?.abort();
       };
       return pTimeout(responseP, {
@@ -213,10 +217,10 @@ export class GptModelAPI {
   private async _buildMessages(
     text: string,
     options: openai.GptModelAPI.SendMessageOptions,
-  ): Promise<{ messages: openai.GptModelAPI.CompletionRequestMessage[] }> {
+  ): Promise<{ messages: Array<openai.GptModelAPI.CompletionRequestMessage> }> {
     const { systemMessage = this._systemMessage } = options;
     let { parentMessageId } = options;
-    const messages: openai.GptModelAPI.CompletionRequestMessage[] = [
+    const messages: Array<openai.GptModelAPI.CompletionRequestMessage> = [
       {
         role: 'system',
         content: systemMessage,
@@ -248,25 +252,28 @@ export class GptModelAPI {
   /**
    * @desc 获取消息
    * @param {string} id
-   * @returns {Promise<ChatResponse | undefined>}
+   * @returns {Promise<ApiResponse | undefined>}
    */
   private async _defaultGetMessageById(
     id: string,
-  ): Promise<openai.GptModelAPI.ChatResponse | undefined> {
+  ): Promise<openai.GptModelAPI.ApiResponse | undefined> {
     const messageOption = await this._messageStore.get(id);
     return messageOption;
   }
   /**
    * @desc 默认更新消息的方法
-   * @param {ChatResponse} messageOption
+   * @param {ApiResponse} messageOption
    * @returns {Promise<void>}
    */
   private async _defaultUpsertMessage(
-    messageOption: openai.GptModelAPI.ChatResponse,
+    messageOption: openai.GptModelAPI.ApiResponse,
   ): Promise<boolean> {
     return await this._messageStore.set(messageOption.messageId, messageOption);
   }
-
+  /**
+   * @desc 清空消息
+   * @returns {Promise<void>}
+   */
   public async _clearMessage(): Promise<void> {
     return await this._messageStore.clear();
   }

@@ -4,7 +4,7 @@ import fetch from 'isomorphic-fetch';
 import * as vscode from 'vscode';
 import { GptModelAPI } from './gpt-model';
 import { TextModleAPI } from './text-model';
-import { OnDidReceiveMessageOption, SendApiRequestOption, WebviewMessageOption } from './types';
+import { OnDidReceiveMessageOptions, SendApiRequestOption, WebviewMessageOptions } from './types';
 export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
   private textModel?: TextModleAPI;
@@ -16,7 +16,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   // 当前会话的id
   private currentConversationId: string = '';
   private response: string = '';
-  private webviewMessageOption: WebviewMessageOption | null = null;
+  private WebviewMessageOptions: WebviewMessageOptions | null = null;
   /**
    * 如果消息没有被渲染，则延迟渲染
    * 在调用 resolveWebviewView 之前的时间。
@@ -135,7 +135,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.html = this.getWebviewHtml(webviewView.webview);
 
     // 在监听器内部根据消息命令类型执行不同的操作。
-    webviewView.webview.onDidReceiveMessage(async (data: OnDidReceiveMessageOption) => {
+    webviewView.webview.onDidReceiveMessage(async (data: OnDidReceiveMessageOptions) => {
       switch (data.type) {
         case 'add-question':
           this.sendApiRequest(data.value as string, { command: 'freeText' });
@@ -274,7 +274,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       fetch: fetch,
       apiBaseUrl: this.apiBaseUrl,
       organization: this.organization,
-      completionParams: {
+      CompletionRequestParams: {
         model: this.model,
         max_tokens: this.max_tokens,
         temperature: this.temperature,
@@ -286,15 +286,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       fetch: fetch,
       apiBaseUrl: this.apiBaseUrl,
       organization: this.organization,
-      completionParams: {
+      CompletionRequestParams: {
         model: this.model,
         max_tokens: this.max_tokens,
         temperature: this.temperature,
         top_p: this.top_p,
       },
     });
-    // 登录成功
-    // this.sendMessageToWebview({ type: 'login-successful', showConversations: false }, true);
     return true;
   }
   /**
@@ -391,9 +389,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       // 触发resolveWebviewView事件
       await vscode.commands.executeCommand('vscode-chatgpt-plugin.view.focus');
       await delay(250);
-      if (this.webviewMessageOption !== null) {
-        this.sendMessageToWebview(this.webviewMessageOption);
-        this.webviewMessageOption = null;
+      if (this.WebviewMessageOptions !== null) {
+        this.sendMessageToWebview(this.WebviewMessageOptions);
+        this.WebviewMessageOptions = null;
       }
     } else {
       await this.webView?.show?.(true);
@@ -565,18 +563,18 @@ you can reset it with “ChatGPT: Reset session” command.
   }
   /**
    * @desc 消息发送器 将消息发送到webview
-   * @param {WebviewMessageOption} webviewMessageOption
+   * @param {WebviewMessageOptions} WebviewMessageOptions
    * @param {boolean} ignoreMessageIfNullWebView
    * @returns {void}
    */
   public sendMessageToWebview(
-    webviewMessageOption: WebviewMessageOption,
+    WebviewMessageOptions: WebviewMessageOptions,
     ignoreMessageIfNullWebView?: boolean,
   ): void {
     if (this.webView) {
-      this.webView?.webview.postMessage(webviewMessageOption);
+      this.webView?.webview.postMessage(WebviewMessageOptions);
     } else if (!ignoreMessageIfNullWebView) {
-      this.webviewMessageOption = webviewMessageOption;
+      this.WebviewMessageOptions = WebviewMessageOptions;
     }
   }
   /**
