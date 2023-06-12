@@ -144,7 +144,6 @@ export class GptModelAPI {
           }
           try {
             const response: openai.GptModelAPI.CompletionResponse = JSON.parse(data);
-            console.log('OpenAI stream SEE event', response);
 
             if (response.id) {
               ApiResponse.messageId = response.id;
@@ -171,8 +170,6 @@ export class GptModelAPI {
         try {
           const data = await fetchSSE(url, fetchSSEOptions, this._fetch);
           const response: openai.GptModelAPI.CompletionResponse = await data?.json();
-          console.log('OpenAI stream SEE event', response);
-
           if (response?.id) {
             ApiResponse.messageId = response.id;
           }

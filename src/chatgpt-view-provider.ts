@@ -138,7 +138,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     webviewView.webview.onDidReceiveMessage(async (data: OnDidReceiveMessageOptions) => {
       switch (data.type) {
         case 'add-question':
-          this.sendApiRequest(data.value as string, { command: 'freeText' });
+          const question = data.value || '';
+          this.sendApiRequest(question, { command: 'freeText' });
           break;
         case 'insert-code':
           // 插入代码
@@ -146,7 +147,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           const escapedString = code.replace(/\$/g, '\\$');
           vscode.window.activeTextEditor?.insertSnippet(new vscode.SnippetString(escapedString));
           break;
-        case 'open-new-tab':
+        case 'open-newtab':
           // 打开新的tab页
           const document = await vscode.workspace.openTextDocument({
             content: data.value,
@@ -157,13 +158,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         case 'clear-conversation':
           // 清空会话
           this.parentMessageId = undefined;
+          this.gptModel?._clearMessage();
+          this.textModel?._clearMessage();
           break;
-        // case 'login':
-        //   const loginStatus = await this.initConversation();
-        //   if (loginStatus) {
-        //     this.sendMessageToWebview({ type: 'login-successful', showConversations: true }, true);
-        //   }
-        //   break;
         case 'open-settings':
           // 打开设置
           vscode.commands.executeCommand(
