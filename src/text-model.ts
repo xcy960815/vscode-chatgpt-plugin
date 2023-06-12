@@ -12,30 +12,30 @@ const MODEL = 'text-davinci-003';
 const USER_PROMPT_PREFIX = 'User';
 const SYSTEM_PROMPT_PREFIX_DEFAULT = 'ChatGPT';
 export class TextModleAPI {
-  protected _apiKey: string;
-  protected _apiBaseUrl: string;
-  protected _debug: boolean;
-  protected _completionParams: Omit<openai.TextModelAPI.CompletionParams, 'prompt'>;
-  protected _maxModelTokens: number;
-  protected _maxResponseTokens: number;
-  protected _userPromptPrefix: string;
-  protected _systemPromptPrefix: string;
-  protected _endToken: string;
-  protected _sepToken: string;
-  protected _fetch: Fetch;
-  protected _getMessageById: openai.TextModelAPI.GetMessageById;
-  protected _upsertMessage: openai.TextModelAPI.UpsertMessage;
-  protected _messageStore: Keyv<openai.TextModelAPI.ChatResponse>;
-  protected _organization: string;
-  protected gpt3Tokenizer: Gpt3Tokenizer;
-  constructor(options: openai.TextModelAPI.ChatgptApiOptions) {
+  private _apiKey: string;
+  private _apiBaseUrl: string;
+  private _debug: boolean;
+  private _CompletionRequestParams: Omit<openai.TextModelAPI.CompletionRequestParams, 'prompt'>;
+  private _maxModelTokens: number;
+  private _maxResponseTokens: number;
+  private _userPromptPrefix: string;
+  private _systemPromptPrefix: string;
+  private _endToken: string;
+  private _sepToken: string;
+  private _fetch: Fetch;
+  private _getMessageById: openai.TextModelAPI.GetMessageById;
+  private _upsertMessage: openai.TextModelAPI.UpsertMessage;
+  private _messageStore: Keyv<openai.TextModelAPI.ApiResponse>;
+  private _organization: string;
+  private gpt3Tokenizer: Gpt3Tokenizer;
+  constructor(options: openai.TextModelAPI.TextModelApiOptions) {
     const {
       apiKey,
       apiBaseUrl,
       organization,
       debug = false,
       messageStore,
-      completionParams,
+      CompletionRequestParams,
       maxModelTokens,
       maxResponseTokens,
       userPromptPrefix,
@@ -50,17 +50,17 @@ export class TextModleAPI {
     this._organization = organization || '';
     this._debug = !!debug;
     this._fetch = fetch || isomorphicFetch;
-    this._completionParams = {
+    this._CompletionRequestParams = {
       model: MODEL,
       temperature: 0.8,
       top_p: 1,
       presence_penalty: 1,
-      ...completionParams,
+      ...CompletionRequestParams,
     };
     this._endToken = '<|endoftext|>';
     this._sepToken = this._endToken;
-    if (!this._completionParams.stop) {
-      this._completionParams.stop = [this._endToken];
+    if (!this._CompletionRequestParams.stop) {
+      this._CompletionRequestParams.stop = [this._endToken];
     }
     this._maxModelTokens = maxModelTokens || 4096;
     this._maxResponseTokens = maxResponseTokens || 1000;
@@ -90,18 +90,19 @@ export class TextModleAPI {
    * @desc 发送请求到openai
    * @param {string} text
    * @param {openai.TextModelAPI.SendMessageOptions} options
-   * @returns {Promise<openai.TextModelAPI.ChatResponse>}
+   * @returns {Promise<openai.TextModelAPI.ApiResponse>}
    */
   public async sendMessage(
     text: string,
     options: openai.TextModelAPI.SendMessageOptions,
-  ): Promise<openai.TextModelAPI.ChatResponse> {
+  ): Promise<openai.TextModelAPI.ApiResponse> {
     const {
       parentMessageId,
       messageId = uuidv4(),
       timeoutMs,
       onProgress,
       stream = onProgress ? true : false,
+      CompletionRequestParams,
     } = options;
     let { abortSignal } = options;
     let abortController: AbortController | null = null;
@@ -117,16 +118,19 @@ export class TextModleAPI {
     };
     await this._upsertMessage(userMessage);
     const { prompt, maxTokens } = await this._buildPrompt(text, options);
-    const chatResponse: openai.TextModelAPI.ChatResponse = {
+
+    const ApiResponse: openai.TextModelAPI.ApiResponse = {
       role: 'assistant',
       messageId: uuidv4(),
       parentMessageId: messageId,
       text: '',
     };
-    const responseP = new Promise<openai.TextModelAPI.ChatResponse>(async (resolve, reject) => {
+
+    const responseP = new Promise<openai.TextModelAPI.ApiResponse>(async (resolve, reject) => {
       const url = `${this._apiBaseUrl}/v1/completions`;
       const body = {
-        ...this._completionParams,
+        ...this._CompletionRequestParams,
+        ...CompletionRequestParams,
         prompt,
         stream,
         max_tokens: maxTokens,
@@ -141,19 +145,19 @@ export class TextModleAPI {
       if (stream) {
         fetchSSEOptions.onMessage = (data: string) => {
           if (data === '[DONE]') {
-            chatResponse.text = chatResponse.text.trim();
-            resolve(chatResponse);
+            ApiResponse.text = ApiResponse.text.trim();
+            resolve(ApiResponse);
             return;
           }
           try {
             const response: openai.TextModelAPI.CompletionResponse = JSON.parse(data);
             if (response.id) {
-              chatResponse.messageId = response.id;
+              ApiResponse.messageId = response.id;
             }
             if (response?.choices?.length) {
-              chatResponse.text += response.choices[0].text;
-              chatResponse.detail = response;
-              onProgress?.(chatResponse);
+              ApiResponse.text += response.choices[0].text;
+              ApiResponse.detail = response;
+              onProgress?.(ApiResponse);
             }
           } catch (error) {
             console.warn('ChatGPT stream SEE event unexpected error', error);
@@ -164,16 +168,16 @@ export class TextModleAPI {
         fetchSSE(url, fetchSSEOptions, this._fetch).catch(reject);
       } else {
         try {
-          const response = await fetchSSE(url, fetchSSEOptions, this._fetch);
-          const responseJson: openai.TextModelAPI.CompletionResponse = await response?.json();
-          if (responseJson?.id) {
-            chatResponse.messageId = responseJson.id;
+          const data = await fetchSSE(url, fetchSSEOptions, this._fetch);
+          const response: openai.TextModelAPI.CompletionResponse = await data?.json();
+          if (response?.id) {
+            ApiResponse.messageId = response.id;
           }
-          if (responseJson?.choices?.length) {
-            chatResponse.text = responseJson?.choices[0]?.text?.trim() || '';
+          if (response?.choices?.length) {
+            ApiResponse.text = response?.choices[0]?.text?.trim() || '';
           }
-          chatResponse.detail = responseJson;
-          resolve(chatResponse);
+          ApiResponse.detail = response;
+          resolve(ApiResponse);
           return;
         } catch (error) {
           return reject(error);
@@ -186,7 +190,7 @@ export class TextModleAPI {
       });
     });
     if (timeoutMs) {
-      (responseP as ClearablePromise<openai.TextModelAPI.ChatResponse>).clear = () => {
+      (responseP as ClearablePromise<openai.TextModelAPI.ApiResponse>).clear = () => {
         abortController?.abort();
       };
       return pTimeout(responseP, {
@@ -258,22 +262,25 @@ export class TextModleAPI {
   /**
    * @desc 获取消息
    * @param {string} id
-   * @returns  {Promise<ChatResponse | undefined>}
+   * @returns  {Promise<ApiResponse | undefined>}
    */
   private async _defaultGetMessageById(
     id: string,
-  ): Promise<openai.TextModelAPI.ChatResponse | undefined> {
+  ): Promise<openai.TextModelAPI.ApiResponse | undefined> {
     return await this._messageStore.get(id);
   }
   /**
    * @desc 更新消息
-   * @param {ChatResponse} message
+   * @param {ApiResponse} message
    * @returns {Promise<void>}
    */
-  private async _defaultUpsertMessage(message: openai.TextModelAPI.ChatResponse): Promise<boolean> {
+  private async _defaultUpsertMessage(message: openai.TextModelAPI.ApiResponse): Promise<boolean> {
     return await this._messageStore.set(message.messageId, message);
   }
-
+  /**
+   * @desc 清空消息
+   * @returns {Promise<void>}
+   */
   public async _clearMessage(): Promise<void> {
     return this._messageStore.clear();
   }
