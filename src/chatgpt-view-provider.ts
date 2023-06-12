@@ -779,6 +779,7 @@ you can reset it with “ChatGPT: Reset session” command.
 						<div class="flex-1 textarea-wrapper">
               <!-- 问题输入框 -->
 							<textarea
+                class="w-full h-full text-sm rounded-md"
 								type="text"
 								rows="1"
 								id="question-input"
