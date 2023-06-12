@@ -2,13 +2,13 @@
 import delay from 'delay';
 import fetch from 'isomorphic-fetch';
 import * as vscode from 'vscode';
-import { ChatModelAPI } from './gpt-model';
+import { GptModelAPI } from './gpt-model';
 import { TextModleAPI } from './text-model';
 import { OnDidReceiveMessageOption, SendApiRequestOption, WebviewMessageOption } from './types';
 export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
   private textModel?: TextModleAPI;
-  private gptModel?: ChatModelAPI;
+  private gptModel?: GptModelAPI;
   private parentMessageId?: string;
   private questionCount: number = 0;
   private inProgress: boolean = false;
@@ -171,6 +171,15 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             '@ext:xcy960815.vscode-chatgpt-plugin chatgpt.',
           );
           break;
+        case 'update-apikey':
+          // 更新apikey
+          const apiKey = await this.showNoApiKeyInput(this.apiKey);
+          console.log('apiKey', apiKey);
+          if (apiKey) {
+            // const globalState = this.context.globalState;
+            // globalState.update('chatgpt-gpt-apiKey', apiKey);
+          }
+          break;
         case 'open-prompt-settings':
           vscode.commands.executeCommand(
             'workbench.action.openSettings',
@@ -208,7 +217,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.abortController?.abort?.();
     this.inProgress = false;
     this.sendMessageToWebview({ type: 'show-in-progress', inProgress: this.inProgress });
-
     this.sendMessageToWebview({
       type: 'add-answer',
       value: this.response,
@@ -261,7 +269,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   private async initChatGPTModel(): Promise<boolean> {
     // 初始化chatgpt模型
-    this.gptModel = new ChatModelAPI({
+    this.gptModel = new GptModelAPI({
       apiKey: this.apiKey,
       fetch: fetch,
       apiBaseUrl: this.apiBaseUrl,
@@ -297,32 +305,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     const noApiKeyMessage = this.chatGptConfig.get<string>('pageMessage.noApiKey.message')!;
     const noApiKeyChoose1 = this.chatGptConfig.get<string>('pageMessage.noApiKey.choose1')!;
     const noApiKeyChoose2 = this.chatGptConfig.get<string>('pageMessage.noApiKey.choose2')!;
-    const noApiKeyInputTitle = this.chatGptConfig.get<string>(
-      'pageMessage.noApiKey.inputBox.title',
-    )!;
-    const noApiKeyInputPrompt = this.chatGptConfig.get<string>(
-      'pageMessage.noApiKey.inputBox.prompt',
-    )!;
-    const noApiKeyInputPlaceHolder = this.chatGptConfig.get<string>(
-      'pageMessage.noApiKey.inputBox.placeHolder',
-    )!;
     const choice = await vscode.window.showErrorMessage(
       noApiKeyMessage,
       noApiKeyChoose1,
       noApiKeyChoose2,
     );
-    // 如果用户选择了打开设置
-    if (choice === noApiKeyChoose2) {
-      // 打开关于openai apiKey的设置项
-      vscode.commands.executeCommand('workbench.action.openSettings', 'chatgpt.gpt.apiKey');
-      return false;
-    } else if (choice === noApiKeyChoose1) {
-      const apiKeyValue = await vscode.window.showInputBox({
-        title: noApiKeyInputTitle,
-        prompt: noApiKeyInputPrompt,
-        ignoreFocusOut: true,
-        placeHolder: noApiKeyInputPlaceHolder,
-      });
+    if (choice === noApiKeyChoose1) {
+      const apiKeyValue = await this.showNoApiKeyInput();
       if (apiKeyValue?.trim()) {
         // 全局状态
         const globalState = this.context.globalState;
@@ -332,11 +321,36 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       } else {
         return false;
       }
+    } else if (choice === noApiKeyChoose2) {
+      // 打开关于openai apiKey的设置项
+      vscode.commands.executeCommand('workbench.action.openSettings', 'chatgpt.gpt.apiKey');
+      return false;
     } else {
       return false;
     }
   }
 
+  private async showNoApiKeyInput(apikey?: string): Promise<string> {
+    const noApiKeyInputTitle = this.chatGptConfig.get<string>(
+      'pageMessage.noApiKey.inputBox.title',
+    )!;
+    const noApiKeyInputPrompt = this.chatGptConfig.get<string>(
+      'pageMessage.noApiKey.inputBox.prompt',
+    )!;
+    const noApiKeyInputPlaceHolder = this.chatGptConfig.get<string>(
+      'pageMessage.noApiKey.inputBox.placeHolder',
+    )!;
+    apikey = apikey || '';
+
+    const newApiKey = await vscode.window.showInputBox({
+      title: noApiKeyInputTitle,
+      prompt: noApiKeyInputPrompt,
+      ignoreFocusOut: true,
+      value: apikey,
+      placeHolder: noApiKeyInputPlaceHolder,
+    });
+    return newApiKey || '';
+  }
   /**
    * @desc 处理问题并将其发送到 API
    * @param {String} question
@@ -510,7 +524,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         // 从配置中获取错误选择
         const errorChoose =
           this.chatGptConfig.get<string>('pageMessage.maxToken.error.choose') || '';
-
+        // 给用户提示 可能由于 max_token 的值过大导致的错误 并且给用户选择
         vscode.window.showErrorMessage(errorMessage, errorChoose).then(async (choice) => {
           if (choice === errorChoose) {
             // 执行 清空会话 指令
@@ -599,12 +613,19 @@ you can reset it with “ChatGPT: Reset session” command.
     const feature4 = this.chatGptConfig.get<string>('webview.feature4');
     const loginButtonName = this.chatGptConfig.get<string>('webview.loginButtonName');
     const loginButtonTitle = this.chatGptConfig.get<string>('webview.loginButtonTitle');
+
     const updateSettingsButtonName = this.chatGptConfig.get<string>(
       'webview.updateSettingsButtonName',
     );
     const updateSettingsButtonTitle = this.chatGptConfig.get<string>(
       'webview.updateSettingsButtonTitle',
     );
+
+    const updateApiKeyButtonTitle = this.chatGptConfig.get<string>(
+      'webview.updateApiKeyButtonTitle',
+    );
+    const updateApiKeyButtonName = this.chatGptConfig.get<string>('webview.updateApiKeyButtonName');
+
     const updatePromptsButtonName = this.chatGptConfig.get<string>(
       'webview.updatePromptsButtonName',
     );
@@ -672,6 +693,20 @@ you can reset it with “ChatGPT: Reset session” command.
     const submitQuestionSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
       <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
     </svg>`;
+
+    const updateApiKeySvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 5.25a3 3 0 013 3m3 0a6 6 0 01-7.029 5.912c-.563-.097-1.159.026-1.563.43L10.5 17.25H8.25v2.25H6v2.25H2.25v-2.818c0-.597.237-1.17.659-1.591l6.499-6.499c.404-.404.527-1 .43-1.563A6 6 0 1121.75 8.25z" />
+    </svg>`;
+
+    // <!--更新api key-- >
+    //   ${
+    //     this.apiKey
+    //     ? `
+    //           <button title=${updateApiKeyButtonTitle} class="flex gap-2 items-center justify-start p-2 w-full" id="update-apikey-button">
+    //             ${updateApiKeySvg}&nbsp;${updateApiKeyButtonName}
+    //           </button>`
+    //     : '';
+    // }
 
     const nonce = this.getRandomId();
 
