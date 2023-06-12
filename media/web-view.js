@@ -344,7 +344,7 @@
     turndownService.remove('no-export');
     const markdownContent = turndownService.turndown(answerListElement);
     vscode.postMessage({
-      type: 'open-new-tab',
+      type: 'open-newtab',
       value: markdownContent,
       language: 'markdown',
     });
@@ -469,18 +469,18 @@
 
       return;
     }
-
+    // 点击编辑按钮
     if (targetButton?.classList?.contains('resend-question-element')) {
-      const question = targetButton.closest('.question-element');
-      const elements = targetButton.nextElementSibling;
-      elements.classList.remove('hidden');
-      question.lastElementChild?.setAttribute('contenteditable', true);
-
+      // 获取到当前的问题元素
+      const questionEelemet = targetButton.closest('.question-element');
+      // 获取到当前的问题元素的父元素
+      const targetButtonParent = targetButton.nextElementSibling;
+      targetButtonParent.classList.remove('hidden');
+      questionEelemet.lastElementChild?.setAttribute('contenteditable', true);
       targetButton.classList.add('hidden');
-
       return;
     }
-
+    // 点击重发按钮
     if (targetButton?.classList?.contains('send-button')) {
       const questionElement = targetButton.closest('.question-element');
       const sendAndCancelContainer = targetButton.closest('.send-cancel-container');
@@ -496,14 +496,14 @@
       }
       return;
     }
-
+    // 点击取消按钮
     if (targetButton?.classList?.contains('cancel-button')) {
-      const question = targetButton.closest('.question-element');
+      const questionElement = targetButton.closest('.question-element');
       const sendAndCancelContainer = targetButton.closest('.send-cancel-container');
       const resendElement = targetButton.parentElement.parentElement.firstElementChild;
       sendAndCancelContainer.classList.add('hidden');
       resendElement.classList.remove('hidden');
-      question.lastElementChild?.setAttribute('contenteditable', false);
+      questionElement.lastElementChild?.setAttribute('contenteditable', false);
       return;
     }
 
@@ -539,7 +539,7 @@
     // 点击新标签按钮
     if (targetButton?.classList?.contains('new-tab-button')) {
       vscode.postMessage({
-        type: 'open-new-tab',
+        type: 'open-newtab',
         value: targetButton.parentElement?.nextElementSibling?.lastChild?.textContent,
       });
 

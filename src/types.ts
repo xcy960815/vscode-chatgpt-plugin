@@ -33,7 +33,7 @@ export interface WebviewMessageOptions {
 const OnDidReceiveMessageOptionsTypeEnums = {
   AddQuestion: 'add-question',
   InsertCode: 'insert-code',
-  OpenNewTab: 'open-new-tab',
+  OpenNewTab: 'open-newtab',
   ClearConversation: 'clear-conversation',
   UpdateApiKey: 'update-apikey',
   OpenSettings: 'open-settings',

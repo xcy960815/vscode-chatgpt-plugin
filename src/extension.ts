@@ -26,6 +26,17 @@ export async function activate(context: vscode.ExtensionContext) {
       },
     },
   );
+
+  // // 新开 tab 将注册的webview view 放入tab中
+  // const openChatGptViewCommand = vscode.commands.registerCommand(
+  //   'vscode-chatgpt.openChatGptView',
+  //   () => {
+  //     vscode.commands.executeCommand('workbench.view.extension.vscode-chatgpt-plugin.view');
+  //   },
+  // );
+  // setTimeout(() => {
+  //   vscode.commands.executeCommand('workbench.view.extension.vscode-chatgpt-plugin.view');
+  // }, 1000);
   // 注册 freeText 命令
   const freeTextCommand = vscode.commands.registerCommand('vscode-chatgpt.freeText', async () => {
     const inputBoxPrompt =
@@ -154,6 +165,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   context.subscriptions.push(
     webviewViewProvider,
+    // openChatGptViewCommand,
     freeTextCommand,
     clearConversationCommand,
     exportConversationCommand,
