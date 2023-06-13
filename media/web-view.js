@@ -384,9 +384,9 @@
       return;
     }
     // 点击更新apikey按钮
-    if (e.target?.id === 'update-apikey-button') {
+    if (e.target?.id === 'update-key-button') {
       vscode.postMessage({
-        type: 'update-apikey',
+        type: 'update-key',
       });
       return;
     }
@@ -419,48 +419,49 @@
       exportConversation();
       return;
     }
-
-    if (
-      targetButton?.id === 'show-conversations-button' ||
-      targetButton?.id === 'show-conversations-button2'
-    ) {
-      vscode.postMessage({ type: 'show-conversations' });
-      return;
-    }
+    // 点击显示对话按钮
+    // if (
+    //   targetButton?.id === 'show-conversations-button' ||
+    //   targetButton?.id === 'show-conversations-button2'
+    // ) {
+    //   vscode.postMessage({ type: 'show-conversations' });
+    //   return;
+    // }
     // 点击单个显示对话按钮
-    if (targetButton?.id === 'show-conversation-button') {
-      vscode.postMessage({
-        type: 'show-conversation',
-        value: targetButton.getAttribute('data-id'),
-      });
+    // if (targetButton?.id === 'show-conversation-button') {
+    //   vscode.postMessage({
+    //     type: 'show-conversation',
+    //     value: targetButton.getAttribute('data-id'),
+    //   });
 
-      answerListElement.innerHTML = `<div class="flex flex-col p-6 pt-2">
-                <h2 class="text-lg">${targetButton.getAttribute('data-title')}</h2>
-                <span class="text-xs">Started on: ${targetButton.getAttribute('data-time')}</span>
-            </div>`;
+    //   answerListElement.innerHTML = `<div class="flex flex-col p-6 pt-2">
+    //             <h2 class="text-lg">${targetButton.getAttribute('data-title')}</h2>
+    //             <span class="text-xs">Started on: ${targetButton.getAttribute('data-time')}</span>
+    //         </div>`;
 
-      answerListElement.classList.remove('hidden');
-      introductionElement.classList.add('hidden');
-      conversationElement.classList.add('hidden');
-      return;
-    }
+    //   answerListElement.classList.remove('hidden');
+    //   introductionElement.classList.add('hidden');
+    //   conversationElement.classList.add('hidden');
+    //   return;
+    // }
 
-    if (targetButton?.id === 'refresh-conversations-button') {
-      vscode.postMessage({ type: 'show-conversations' });
-      return;
-    }
+    // if (targetButton?.id === 'refresh-conversations-button') {
+    //   vscode.postMessage({ type: 'show-conversations' });
+    //   return;
+    // }
 
-    if (targetButton?.id === 'close-conversations-button') {
-      answerListElement.classList.add('hidden');
-      conversationElement.classList.add('hidden');
-      introductionElement.classList.add('hidden');
-      if (answerListElement.innerHTML?.length > 0) {
-        answerListElement.classList.remove('hidden');
-      } else {
-        introductionElement.classList.remove('hidden');
-      }
-      return;
-    }
+    // if (targetButton?.id === 'close-conversations-button') {
+    //   answerListElement.classList.add('hidden');
+    //   conversationElement.classList.add('hidden');
+    //   introductionElement.classList.add('hidden');
+    //   if (answerListElement.innerHTML?.length > 0) {
+    //     answerListElement.classList.remove('hidden');
+    //   } else {
+    //     introductionElement.classList.remove('hidden');
+    //   }
+    //   return;
+    // }
+
     // 点击停止回答按钮
     if (targetButton?.id === 'stop-generating-button') {
       vscode.postMessage({

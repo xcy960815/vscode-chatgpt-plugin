@@ -35,7 +35,7 @@ const OnDidReceiveMessageOptionsTypeEnums = {
   InsertCode: 'insert-code',
   OpenNewTab: 'open-newtab',
   ClearConversation: 'clear-conversation',
-  UpdateApiKey: 'update-apikey',
+  UpdateKey: 'update-key',
   OpenSettings: 'open-settings',
   OpenPromptSettings: 'open-prompt-settings',
   ShowConversations: 'show-conversations',
