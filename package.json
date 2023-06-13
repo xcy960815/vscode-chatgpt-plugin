@@ -429,6 +429,30 @@
           "default": "%chatgpt.pageMessage.maxToken.error.choose%",
           "order": 45
         },
+        "chatgpt.pageMessage.400.error.message": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.400.error.message%"
+        },
+        "chatgpt.pageMessage.401.error.message": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.401.error.message%"
+        },
+        "chatgpt.pageMessage.403.error.message": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.403.error.message%"
+        },
+        "chatgpt.pageMessage.404.error.message": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.404.error.message%"
+        },
+        "chatgpt.pageMessage.429.error.message": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.429.error.message%"
+        },
+        "chatgpt.pageMessage.500.error.message": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.500.error.message%"
+        },
         "chatgpt.webview.features": {
           "type": "string",
           "default": "%chatgpt.webview.features.default%"

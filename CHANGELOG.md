@@ -2,10 +2,6 @@
 
 “vscode-chatgpt-plugin”扩展的所有显着变化都将记录在此文件中。
 
-查看 [Keep a Changelog](http://keepachangelog.com/) 以获得有关如何构建此文件的建议。
-
-## [Unreleased]
-
 <br/>
 
 ### Fixed
@@ -26,3 +22,10 @@
 ### Feat
 
 - 整合声明，把重复的声明进行抽离，统一继承。
+
+<br/>
+
+### Feat
+
+- 拆分代码，增加可读性，方便后续维护。
+- 接口报错消息支持中文。
