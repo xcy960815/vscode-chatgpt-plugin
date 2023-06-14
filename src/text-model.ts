@@ -23,6 +23,7 @@ export class TextModleAPI {
   private _endToken: string;
   private _sepToken: string;
   private _fetch: Fetch;
+  private _withContent: boolean;
   private _getMessageById: openai.TextModelAPI.GetMessageById;
   private _upsertMessage: openai.TextModelAPI.UpsertMessage;
   private _messageStore: Keyv<openai.TextModelAPI.ApiResponse>;
@@ -43,6 +44,7 @@ export class TextModleAPI {
       getMessageById,
       upsertMessage,
       fetch,
+      withContent,
     } = options;
     this.gpt3Tokenizer = new Gpt3Tokenizer({ type: 'gpt3' });
     this._apiKey = apiKey;
@@ -50,6 +52,7 @@ export class TextModleAPI {
     this._organization = organization || '';
     this._debug = !!debug;
     this._fetch = fetch || isomorphicFetch;
+    this._withContent = withContent === undefined ? true : withContent;
     this._CompletionRequestParams = {
       model: MODEL,
       temperature: 0.8,
@@ -118,7 +121,6 @@ export class TextModleAPI {
     };
     await this._upsertMessage(userMessage);
     const { prompt, maxTokens } = await this._buildPrompt(text, options);
-
     const ApiResponse: openai.TextModelAPI.ApiResponse = {
       role: 'assistant',
       messageId: uuidv4(),
@@ -221,7 +223,7 @@ export class TextModleAPI {
     const currentUserPrompt = `${this._userPromptPrefix}:${message}${this._endToken}`;
     let historyPrompt = '';
     let promptTokenCount = 0;
-    while (true) {
+    while (true && this._withContent) {
       const prompt = `${systemMessage}${historyPrompt}${currentUserPrompt}${systemPromptPrefix}`;
       promptTokenCount = await this._getTokenCount(prompt);
       // 当前 prompt token 数量大于最大 token 数量时，不再向上查找
@@ -242,6 +244,7 @@ export class TextModleAPI {
       historyPrompt = `${parentMessagePrompt}${historyPrompt}`;
       parentMessageId = parentMessage.parentMessageId;
     }
+
     const prompt = `${systemMessage}${historyPrompt}${currentUserPrompt}${systemPromptPrefix}`;
 
     const maxTokens = Math.max(

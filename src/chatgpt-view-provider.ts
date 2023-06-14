@@ -22,7 +22,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * 在调用 resolveWebviewView 之前的时间。
    */
   constructor(private context: vscode.ExtensionContext) {
-    this.initConversation();
+    this.initConfig();
   }
   private get chatGptConfig(): vscode.WorkspaceConfiguration {
     return vscode.workspace.getConfiguration('chatgpt');
@@ -90,6 +90,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private get top_p(): number {
     return this.chatGptConfig.get<number>('gpt.top_p') || 1;
   }
+
+  private get withContent(): boolean {
+    return this.chatGptConfig.get<boolean>('gpt.withContent') || false;
+  }
   /**
    * @desc gpt apiBaseUrl 参数
    * @returns {string}
@@ -151,7 +155,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         case 'update-key':
           // 更新apikey
           const apiKey = await this.showNoApiKeyInput(this.apiKey);
-          // console.log('apiKey', apiKey);
           if (apiKey) {
             // const globalState = this.context.globalState;
             // globalState.update('chatgpt-gpt-apiKey', apiKey);
@@ -238,7 +241,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * @desc 初始化会话
    * @returns {Promise<boolean>}
    */
-  public async initConversation(gptConfigChanged?: boolean): Promise<boolean> {
+  public async initConfig(gptConfigChanged?: boolean): Promise<boolean> {
     const hasApiKey = await this.checkAPIExistence();
     if (!hasApiKey) {
       return false;
@@ -271,6 +274,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       fetch: fetch,
       apiBaseUrl: this.apiBaseUrl,
       organization: this.organization,
+      withContent: this.withContent,
       CompletionRequestParams: {
         model: this.model,
         max_tokens: this.max_tokens,
@@ -283,6 +287,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       fetch: fetch,
       apiBaseUrl: this.apiBaseUrl,
       organization: this.organization,
+      withContent: this.withContent,
       CompletionRequestParams: {
         model: this.model,
         max_tokens: this.max_tokens,
@@ -496,7 +501,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.questionCount++;
 
     // 校验是否登录
-    if (!(await this.initConversation())) {
+    if (!(await this.initConfig())) {
       return;
     }
     this.response = '';

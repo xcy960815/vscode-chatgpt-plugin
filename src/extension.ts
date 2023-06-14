@@ -71,9 +71,10 @@ export async function activate(context: vscode.ExtensionContext) {
       event.affectsConfiguration('chatgpt.gpt.organization') ||
       event.affectsConfiguration('chatgpt.gpt.maxTokens') ||
       event.affectsConfiguration('chatgpt.gpt.temperature') ||
-      event.affectsConfiguration('chatgpt.gpt.top_p')
+      event.affectsConfiguration('chatgpt.gpt.top_p') ||
+      event.affectsConfiguration('chatgpt.gpt.withContent')
     ) {
-      chatGptViewProvider.initConversation(true);
+      chatGptViewProvider.initConfig(true);
     }
 
     if (
@@ -84,8 +85,110 @@ export async function activate(context: vscode.ExtensionContext) {
     }
   });
 
+  // 自定义指令1 vscode-chatgpt.customPrompt1
+  const customPrompt1Command = vscode.commands.registerCommand(
+    'vscode-chatgpt.customPrompt1',
+    async () => {
+      const activeTextEditor = vscode.window.activeTextEditor;
+      if (!activeTextEditor) {
+        return;
+      }
+      // 添加trim 为了防止用户选择 空代码
+      const selectedCode = activeTextEditor.document.getText(activeTextEditor.selection).trim();
+      if (!selectedCode) {
+        return;
+      }
+      // 从配置文件中获取用户输入的临时指令的标题、提示、占位符
+      let customPrompt1 = vscode.workspace
+        .getConfiguration('chatgpt')
+        .get<string>(`promptPrefix.customPrompt1`);
+      if (!customPrompt1) {
+        const title = vscode.workspace
+          .getConfiguration('chatgpt')
+          .get<string>('pageMessage.customCommand1.inputBox.title');
+        const prompt = vscode.workspace
+          .getConfiguration('chatgpt')
+          .get<string>('pageMessage.customCommand1.inputBox.prompt');
+        const placeHolder = vscode.workspace
+          .getConfiguration('chatgpt')
+          .get<string>('pageMessage.customCommand1.inputBox.placeholder');
+        customPrompt1 = await vscode.window.showInputBox({
+          title,
+          prompt,
+          ignoreFocusOut: true,
+          placeHolder,
+          value: '',
+        });
+        customPrompt1 = customPrompt1?.trim();
+        if (!customPrompt1) {
+          return;
+        }
+        // 更新配置文件
+        vscode.workspace
+          .getConfiguration('chatgpt')
+          .update(`promptPrefix.customPrompt1`, customPrompt1, true);
+      }
+      chatGptViewProvider?.sendApiRequest(customPrompt1, {
+        command: 'customPrompt1',
+        code: selectedCode,
+        language: activeTextEditor.document.languageId,
+      });
+    },
+  );
+
+  // 自定义指令2 vscode-chatgpt.customPrompt2
+  const customPrompt2Command = vscode.commands.registerCommand(
+    'vscode-chatgpt.customPrompt2',
+    async () => {
+      const activeTextEditor = vscode.window.activeTextEditor;
+      if (!activeTextEditor) {
+        return;
+      }
+      // 添加trim 为了防止用户选择 空代码
+      const selectedCode = activeTextEditor.document.getText(activeTextEditor.selection).trim();
+      if (!selectedCode) {
+        return;
+      }
+      // 从配置文件中获取用户输入的临时指令的标题、提示、占位符
+      let customPrompt2 = vscode.workspace
+        .getConfiguration('chatgpt')
+        .get<string>(`promptPrefix.customPrompt2`);
+      if (!customPrompt2) {
+        const title = vscode.workspace
+          .getConfiguration('chatgpt')
+          .get<string>('pageMessage.customCommand2.inputBox.title');
+        const prompt = vscode.workspace
+          .getConfiguration('chatgpt')
+          .get<string>('pageMessage.customCommand2.inputBox.prompt');
+        const placeHolder = vscode.workspace
+          .getConfiguration('chatgpt')
+          .get<string>('pageMessage.customCommand2.inputBox.placeholder');
+        customPrompt2 = await vscode.window.showInputBox({
+          title,
+          prompt,
+          ignoreFocusOut: true,
+          placeHolder,
+          value: '',
+        });
+        customPrompt2 = customPrompt2?.trim();
+        if (!customPrompt2) {
+          return;
+        }
+        // 更新配置文件
+        vscode.workspace
+          .getConfiguration('chatgpt')
+          .update(`promptPrefix.customPrompt2`, customPrompt2, true);
+      }
+      chatGptViewProvider?.sendApiRequest(customPrompt2, {
+        command: 'customPrompt2',
+        code: selectedCode,
+        language: activeTextEditor.document.languageId,
+      });
+    },
+  );
+
   // 临时指令的内容
-  const originalChatgptAdhocPrompt: string = context.globalState.get('chatgpt-adhoc-prompt') || '';
+  const originalAdhocPrompt: string = context.globalState.get('chatgpt-adhoc-prompt') || '';
   // 注册 添加临时指令
   const adhocCommand = vscode.commands.registerCommand('vscode-chatgpt.adhoc', async () => {
     const editor = vscode.window.activeTextEditor;
@@ -97,32 +200,33 @@ export async function activate(context: vscode.ExtensionContext) {
     if (!selectedCode) {
       return;
     }
+
     // 从配置文件中获取用户输入的临时指令的标题、提示、占位符
     const title = vscode.workspace
       .getConfiguration('chatgpt')
-      .get<string>('pageMessage.adhocInputBox.title');
+      .get<string>('pageMessage.adhocCommand.inputBox.title');
     const prompt = vscode.workspace
       .getConfiguration('chatgpt')
-      .get<string>('pageMessage.adhocInputBox.prompt');
+      .get<string>('pageMessage.adhocCommand.inputBox.prompt');
     const placeHolder = vscode.workspace
       .getConfiguration('chatgpt')
-      .get<string>('pageMessage.adhocInputBox.placeHolder');
+      .get<string>('pageMessage.adhocCommand.inputBox.placeHolder');
     // 创建一个输入框，让用户输入临时指令
-    let chatgptAdhocPrompt = await vscode.window.showInputBox({
+    let adhocPrompt = await vscode.window.showInputBox({
       title,
       prompt,
       ignoreFocusOut: true,
       placeHolder,
-      value: originalChatgptAdhocPrompt,
+      value: originalAdhocPrompt,
     });
-    chatgptAdhocPrompt = chatgptAdhocPrompt?.trim();
+    adhocPrompt = adhocPrompt?.trim();
 
-    if (!chatgptAdhocPrompt) {
+    if (!adhocPrompt) {
       return;
     }
     // 保存用户输入的临时指令
-    context.globalState.update('chatgpt-adhoc-prompt', chatgptAdhocPrompt);
-    chatGptViewProvider?.sendApiRequest(chatgptAdhocPrompt, {
+    context.globalState.update('chatgpt-adhoc-prompt', adhocPrompt);
+    chatGptViewProvider?.sendApiRequest(adhocPrompt, {
       command: 'adhoc',
       code: selectedCode,
     });
@@ -130,7 +234,7 @@ export async function activate(context: vscode.ExtensionContext) {
 
   // 注册菜单命令
   const registeredCommands = menuCommands
-    .filter((command) => !['adhoc'].includes(command))
+    .filter((command) => !['adhoc', 'customPrompt1', 'customPrompt2'].includes(command))
     .map((command) =>
       vscode.commands.registerCommand(`vscode-chatgpt.${command}`, () => {
         // 获取配置的 prompt
@@ -162,6 +266,8 @@ export async function activate(context: vscode.ExtensionContext) {
     clearSessionCommand,
     vscodeConfigChanged,
     adhocCommand,
+    customPrompt1Command,
+    customPrompt2Command,
     ...registeredCommands,
   );
 

@@ -15,6 +15,7 @@ export class GptModelAPI {
   private _organization?: string;
   private _debug: boolean;
   private _fetch: Fetch;
+  private _withContent: boolean;
   private _CompletionRequestParams: Partial<
     Omit<openai.GptModelAPI.CompletionRequestParams, 'messages' | 'n' | 'stream'>
   >;
@@ -38,12 +39,14 @@ export class GptModelAPI {
       getMessageById,
       upsertMessage,
       fetch,
+      withContent,
     } = options;
     this._apiKey = apiKey;
     this._apiBaseUrl = apiBaseUrl || 'https://api.openai.com';
     this._organization = organization;
     this._debug = !!debug;
     this._fetch = fetch || isomorphicFetch;
+    this._withContent = withContent === undefined ? true : withContent;
     this._CompletionRequestParams = {
       model: MODEL,
       temperature: 0.8,
@@ -111,7 +114,6 @@ export class GptModelAPI {
 
     // 获取用户和gpt历史对话记录
     const { messages } = await this._buildMessages(text, options);
-
     // 给用户返回的数据
     const ApiResponse: openai.GptModelAPI.ApiResponse = {
       role: 'assistant',
@@ -217,6 +219,7 @@ export class GptModelAPI {
   ): Promise<{ messages: Array<openai.GptModelAPI.CompletionRequestMessage> }> {
     const { systemMessage = this._systemMessage } = options;
     let { parentMessageId } = options;
+    // 当前系统和用户消息
     const messages: Array<openai.GptModelAPI.CompletionRequestMessage> = [
       {
         role: 'system',
@@ -228,7 +231,7 @@ export class GptModelAPI {
       },
     ];
 
-    do {
+    while (true && this._withContent) {
       if (!parentMessageId) {
         break;
       }
@@ -241,7 +244,7 @@ export class GptModelAPI {
         content: parentMessage.text,
       });
       parentMessageId = parentMessage.parentMessageId;
-    } while (true);
+    }
 
     return { messages };
   }

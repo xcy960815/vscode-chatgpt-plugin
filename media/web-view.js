@@ -1,6 +1,8 @@
-(function () {
+window.onload = function () {
   const vscode = acquireVsCodeApi();
+
   let chatgptConfig = null;
+
   vscode.postMessage({
     type: 'get-chatgpt-config',
   });
@@ -37,12 +39,6 @@
 
   const insertButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" /></svg>`;
 
-  const textSvg = `<svg xmlns="http://www.w3.org/2000/svg" stroke="currentColor" fill="none" stroke-width="2" viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4" height="1em" width="1em" ><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>`;
-
-  const closeButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>`;
-
-  const refreshButtonSvg = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99" /></svg>`;
-
   // 拿到所有的 需要操作的 dom
   const questionInputElement = document.getElementById('question-input');
   const answerListElement = document.getElementById('answer-list');
@@ -51,61 +47,106 @@
   const questionInputButtons = document.getElementById('question-input-buttons');
   const introductionElement = document.getElementById('introduction');
   const conversationElement = document.getElementById('conversation-list');
-  const loginButtonElement = document.getElementById('login-button');
-  const showConversationsButton2 = document.getElementById('show-conversations-button2');
   const chatButtonWrapperElement = document.getElementById('chat-button-wrapper');
-  // const thinkingElement = document.getElementById('thinking');
-  // const askingElmenet = document.getElementById('asking');
+
   // 接收来自 webview 的消息
   window.addEventListener('message', (event) => {
     const messageOption = event.data;
     switch (messageOption.type) {
       case 'show-in-progress':
-        if (messageOption.showStopButton) {
-          // 让停止按钮显示
-          stopAskingButtonElement.classList.remove('hidden');
-        } else {
-          // 让停止按钮隐藏
-          stopAskingButtonElement.classList.add('hidden');
-        }
-
-        if (messageOption.inProgress) {
-          // 让正在进行中的提示显示
-          inProgressElement.classList.remove('hidden');
-          // 让输入框不可用
-          questionInputElement.setAttribute('disabled', true);
-          // 让输入框的按钮隐藏
-          questionInputButtons.classList.add('hidden');
-        } else {
-          // 让正在进行中的提示隐藏
-          inProgressElement.classList.add('hidden');
-          // 让输入框可用
-          questionInputElement.removeAttribute('disabled');
-          // 让输入框的按钮显示
-          questionInputButtons.classList.remove('hidden');
-        }
+        handleShowInProgress(messageOption);
         break;
       // 添加用户消息
       case 'add-question':
-        answerListElement.classList.remove('hidden');
-        // 整体介绍隐藏
-        introductionElement?.classList?.add('hidden');
-        // 让对话列表隐藏
-        conversationElement.classList.add('hidden');
-        const escapeHtml = (unsafe) => {
-          return unsafe
-            .replaceAll('&', '&amp;')
-            .replaceAll('<', '&lt;')
-            .replaceAll('>', '&gt;')
-            .replaceAll('"', '&quot;')
-            .replaceAll("'", '&#039;');
-        };
-        const editButtonTitle = chatgptConfig.webview.editButtonTitle;
-        const sendButtonName = chatgptConfig.webview.sendButtonName;
-        const sendButtonTitle = chatgptConfig.webview.sendButtonTitle;
-        const cancelButtonName = chatgptConfig.webview.cancelButtonName;
-        const cancelButtonTitle = chatgptConfig.webview.cancelButtonTitle;
-        answerListElement.innerHTML += `<div class="p-4 self-end mt-2 question-element relative input-background">
+        handleAddQuestion(messageOption);
+        break;
+      // 添加 gpt 回答
+      case 'add-answer':
+        handleAddAnswer(messageOption);
+        break;
+      // 添加错误消息
+      case 'add-error':
+        handleAddError(messageOption);
+        break;
+      // 清空会话
+      case 'clear-conversation':
+        handleClearConversation();
+        break;
+      // 导出会话
+      case 'export-conversation':
+        handleExportConversation();
+        break;
+      // 接受vscode 配置
+      case 'set-chatgpt-config':
+        chatgptConfig = messageOption.value;
+        break;
+      default:
+        break;
+    }
+  });
+
+  const postMessageToVscode = (messageOption) => {
+    vscode.postMessage(messageOption);
+  };
+
+  const handleSendQuestion = () => {
+    if (questionInputElement.value?.length > 0) {
+      postMessageToVscode({
+        type: 'add-question',
+        value: questionInputElement.value,
+      });
+      questionInputElement.value = '';
+      setTimeout(() => {
+        questionInputElement.rows = 1;
+      }, 0);
+    }
+  };
+
+  const handleShowInProgress = (messageOption) => {
+    if (messageOption.showStopButton) {
+      // 让停止按钮显示
+      stopAskingButtonElement.classList.remove('hidden');
+    } else {
+      // 让停止按钮隐藏
+      stopAskingButtonElement.classList.add('hidden');
+    }
+    if (messageOption.inProgress) {
+      // 让正在进行中的提示显示
+      inProgressElement.classList.remove('hidden');
+      // 让输入框不可用
+      questionInputElement.setAttribute('disabled', true);
+      // 让输入框的按钮隐藏
+      questionInputButtons.classList.add('hidden');
+    } else {
+      // 让正在进行中的提示隐藏
+      inProgressElement.classList.add('hidden');
+      // 让输入框可用
+      questionInputElement.removeAttribute('disabled');
+      // 让输入框的按钮显示
+      questionInputButtons.classList.remove('hidden');
+    }
+  };
+
+  const handleAddQuestion = (messageOption) => {
+    answerListElement.classList.remove('hidden');
+    // 整体介绍隐藏
+    introductionElement?.classList?.add('hidden');
+    // 让对话列表隐藏
+    conversationElement.classList.add('hidden');
+    const escapeHtml = (unsafe) => {
+      return unsafe
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    };
+    const editButtonTitle = chatgptConfig.webview.editButtonTitle;
+    const sendButtonName = chatgptConfig.webview.sendButtonName;
+    const sendButtonTitle = chatgptConfig.webview.sendButtonTitle;
+    const cancelButtonName = chatgptConfig.webview.cancelButtonName;
+    const cancelButtonTitle = chatgptConfig.webview.cancelButtonTitle;
+    answerListElement.innerHTML += `<div class="p-4 self-end mt-2 question-element relative input-background">
                         <h3 class="mb-5 mt-0 flex">${userSvg} You</h3>
                         <no-export class="mb-2 flex items-center">
                             <button title="${editButtonTitle}" class="resend-question-element p-1.5 flex items-center rounded-lg absolute right-6 top-6">${editButtonSvg}</button>
@@ -117,250 +158,182 @@
                         <div class="overflow-y-auto pt-1 pb-1 pl-3 pr-3 rounded-md">${escapeHtml(
                           messageOption.value,
                         )}</div>
-                    </div>`;
-        if (messageOption.autoScroll) {
-          answerListElement.lastChild?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'end',
-            inline: 'nearest',
-          });
-        }
-        break;
-      // 添加 gpt 回答
-      case 'add-answer':
-        // 如果存在现有消息
-        let existingMessageElement = messageOption.id && document.getElementById(messageOption.id);
-        const updatedValue =
-          messageOption.value.split('```').length % 2 === 1
-            ? messageOption.value
-            : messageOption.value + '\n\n```\n\n';
+        </div>`;
+    if (messageOption.autoScroll) {
+      answerListElement.lastChild?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'end',
+        inline: 'nearest',
+      });
+    }
+  };
 
-        const markedResponse = marked.parse(updatedValue);
-        if (existingMessageElement) {
-          // 更新现有消息
-          existingMessageElement.innerHTML = markedResponse;
-        } else {
-          // 第一次回答
-          answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 answer-element-ext">
+  const handleAddAnswer = (messageOption) => {
+    // 如果存在现有消息
+    let existingMessageElement = messageOption.id && document.getElementById(messageOption.id);
+    const updatedValue =
+      messageOption.value.split('```').length % 2 === 1
+        ? messageOption.value
+        : messageOption.value + '\n\n```\n\n';
+
+    const markedResponse = marked.parse(updatedValue);
+    if (existingMessageElement) {
+      // 更新现有消息
+      existingMessageElement.innerHTML = markedResponse;
+    } else {
+      // 第一次回答
+      answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 answer-element-ext">
                         <h3 class="mb-5 flex">${aiSvg}ChatGPT</h3>
                         <div class="result-streaming" id="${messageOption.id}">${markedResponse}</div>
                     </div>`;
+    }
+    // 回答完毕
+    if (messageOption.done) {
+      const preCodeList = answerListElement.lastChild.querySelectorAll('pre > code');
+      preCodeList.forEach((preCode) => {
+        preCode.classList.add(
+          'input-background',
+          'p-4',
+          'pb-2',
+          'block',
+          'whitespace-pre',
+          'overflow-x-scroll',
+        );
+        preCode.parentElement.classList.add('pre-code-element', 'relative');
+
+        const buttonWrapper = document.createElement('no-export');
+        buttonWrapper.classList.add(
+          'code-actions-wrapper',
+          'flex',
+          'gap-3',
+          'pr-2',
+          'pt-1',
+          'pb-1',
+          'flex-wrap',
+          'items-center',
+          'justify-end',
+          'rounded-t-lg',
+          'input-background',
+        );
+        // 复制按钮
+        const copyButton = document.createElement('button');
+        const copyButtonName = chatgptConfig.webview.copyButtonName;
+        const copyButtonTitle = chatgptConfig.webview.copyButtonTitle;
+        copyButton.title = copyButtonTitle;
+        copyButton.innerHTML = `${copyButtonSvg} ${copyButtonName}`;
+        copyButton.classList.add(
+          'copy-button',
+          'p-1',
+          'pr-2',
+          'flex',
+          'items-center',
+          'rounded-lg',
+        );
+        //  插入按钮
+        const insertButton = document.createElement('button');
+        const insertButtonName = chatgptConfig.webview.insertButtonName;
+        const insertButtonTitle = chatgptConfig.webview.insertButtonTitle;
+        insertButton.title = insertButtonTitle;
+        insertButton.innerHTML = `${insertButtonSvg} ${insertButtonName}`;
+        insertButton.classList.add(
+          'insert-button',
+          'p-1',
+          'pr-2',
+          'flex',
+          'items-center',
+          'rounded-lg',
+        );
+        // 右侧content 新开tab按钮
+        const newTabButton = document.createElement('button');
+        const newTabButtonName = chatgptConfig.webview.newTabButtonName;
+        const newTabButtonTitle = chatgptConfig.webview.newTabButtonTitle;
+        newTabButton.title = newTabButtonTitle;
+        newTabButton.innerHTML = `${newTabButtonSvg} ${newTabButtonName}`;
+
+        newTabButton.classList.add(
+          'new-tab-button',
+          'p-1',
+          'pr-2',
+          'flex',
+          'items-center',
+          'rounded-lg',
+        );
+
+        buttonWrapper.append(copyButton, insertButton, newTabButton);
+        // previousSibling 方法是用于获取一个节点的前一个同级节点，返回它的前一个同级元素节点（距离当前节点最近的上一个元素节点），如果不存在则返回 null。
+        if (preCode.parentNode.previousSibling) {
+          preCode.parentNode.parentNode.insertBefore(
+            buttonWrapper,
+            preCode.parentNode.previousSibling,
+          );
+        } else {
+          preCode.parentNode.parentNode.prepend(buttonWrapper);
         }
-        // 回答完毕
-        if (messageOption.done) {
-          const preCodeList = answerListElement.lastChild.querySelectorAll('pre > code');
-          preCodeList.forEach((preCode) => {
-            preCode.classList.add(
-              'input-background',
-              'p-4',
-              'pb-2',
-              'block',
-              'whitespace-pre',
-              'overflow-x-scroll',
-            );
-            preCode.parentElement.classList.add('pre-code-element', 'relative');
+      });
 
-            const buttonWrapper = document.createElement('no-export');
-            buttonWrapper.classList.add(
-              'code-actions-wrapper',
-              'flex',
-              'gap-3',
-              'pr-2',
-              'pt-1',
-              'pb-1',
-              'flex-wrap',
-              'items-center',
-              'justify-end',
-              'rounded-t-lg',
-              'input-background',
-            );
-            // 复制按钮
-            const copyButton = document.createElement('button');
-            const copyButtonName = chatgptConfig.webview.copyButtonName;
-            const copyButtonTitle = chatgptConfig.webview.copyButtonTitle;
-            copyButton.title = copyButtonTitle;
-            copyButton.innerHTML = `${copyButtonSvg} ${copyButtonName}`;
-            copyButton.classList.add(
-              'copy-button',
-              'p-1',
-              'pr-2',
-              'flex',
-              'items-center',
-              'rounded-lg',
-            );
-            //  插入按钮
-            const insertButton = document.createElement('button');
-            const insertButtonName = chatgptConfig.webview.insertButtonName;
-            const insertButtonTitle = chatgptConfig.webview.insertButtonTitle;
-            insertButton.title = insertButtonTitle;
-            insertButton.innerHTML = `${insertButtonSvg} ${insertButtonName}`;
-            insertButton.classList.add(
-              'insert-button',
-              'p-1',
-              'pr-2',
-              'flex',
-              'items-center',
-              'rounded-lg',
-            );
-            // 右侧content 新开tab按钮
-            const newTabButton = document.createElement('button');
-            const newTabButtonName = chatgptConfig.webview.newTabButtonName;
-            const newTabButtonTitle = chatgptConfig.webview.newTabButtonTitle;
-            newTabButton.title = newTabButtonTitle;
-            newTabButton.innerHTML = `${newTabButtonSvg} ${newTabButtonName}`;
+      existingMessageElement = document.getElementById(messageOption.id);
+      if (existingMessageElement) {
+        // 拿掉光标
+        existingMessageElement.classList.remove('result-streaming');
+      }
+    }
+    // 如果用户开启了自动滚动 或者 回答完毕 的时候 将页面滚动到底部
+    if (messageOption.autoScroll && (messageOption.done || markedResponse.endsWith('\n'))) {
+      answerListElement.lastChild?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'end',
+        inline: 'nearest',
+      });
+    }
+  };
 
-            newTabButton.classList.add(
-              'new-tab-button',
-              'p-1',
-              'pr-2',
-              'flex',
-              'items-center',
-              'rounded-lg',
-            );
-
-            buttonWrapper.append(copyButton, insertButton, newTabButton);
-            // previousSibling 方法是用于获取一个节点的前一个同级节点，返回它的前一个同级元素节点（距离当前节点最近的上一个元素节点），如果不存在则返回 null。
-            if (preCode.parentNode.previousSibling) {
-              preCode.parentNode.parentNode.insertBefore(
-                buttonWrapper,
-                preCode.parentNode.previousSibling,
-              );
-            } else {
-              preCode.parentNode.parentNode.prepend(buttonWrapper);
-            }
-          });
-
-          existingMessageElement = document.getElementById(messageOption.id);
-          if (existingMessageElement) {
-            // 拿掉光标
-            existingMessageElement.classList.remove('result-streaming');
-          }
-        }
-        // 如果用户开启了自动滚动 或者 回答完毕 的时候 将页面滚动到底部
-        if (messageOption.autoScroll && (messageOption.done || markedResponse.endsWith('\n'))) {
-          answerListElement.lastChild?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'end',
-            inline: 'nearest',
-          });
-        }
-
-        break;
-      // 添加错误消息
-      case 'add-error':
-        if (!answerListElement.innerHTML) {
-          return;
-        }
-        const messageValue =
-          messageOption.value ||
-          'An error occurred. If this issue persists please clear your session token with `ChatGPT: Reset session` command and/or restart your Visual Studio Code. If you still experience issues, it may be due to outage on https://openai.com services.';
-
-        answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 error-element-ext">
+  const handleAddError = (messageOption) => {
+    if (!answerListElement.innerHTML) {
+      return;
+    }
+    const messageValue = messageOption.value;
+    answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 error-element-ext">
                         <h2 class="mb-5 flex">${aiSvg}ChatGPT</h2>
                         <div class="text-red-400">${marked.parse(messageValue)}</div>
                     </div>`;
-
-        if (messageOption.autoScroll) {
-          answerListElement.lastChild?.scrollIntoView({
-            behavior: 'smooth',
-            block: 'end',
-            inline: 'nearest',
-          });
-        }
-        break;
-      // 清空会话
-      case 'clear-conversation':
-        clearConversation();
-        break;
-      // 导出会话
-      case 'export-conversation':
-        exportConversation();
-        break;
-      // case 'login-successful':
-      //   // 登陆成功隐藏登录按钮
-      //   loginButtonElement?.classList?.add('hidden');
-      //   if (messageOption.showConversations) {
-      //     // 显示会话列表按钮
-      //     showConversationsButton2?.classList?.remove('hidden');
-      //   }
-      //   break;
-      // case 'show-conversations':
-      //   answerListElement.classList.add('hidden');
-      //   introductionElement?.classList?.add('hidden');
-      //   conversationElement.classList.remove('hidden');
-      //   const conversationList = messageOption.conversations.items.map((conversation) => {
-      //     const chatDate = new Date(conversation.create_time).toLocaleString();
-      //     return `<button id="show-conversation-button" data-id="${
-      //       conversation.id
-      //     }" data-title="${conversation.title.replace(
-      //       /"/g,
-      //       '',
-      //     )}" data-time="${chatDate}" class="flex py-3 px-3 items-center gap-3 relative rounded-lg input-background cursor-pointer break-all group">${textSvg}<div class="flex flex-col items-start gap-2 truncate"><span class="text-left font-bold">${
-      //       conversation.title
-      //     }</span><div class="text-xs text-left">${chatDate}</div></div></button>`;
-      //   });
-      //   conversationElement.innerHTML = `<div class="flex flex-col gap-4 text-sm relative overflow-y-auto p-8">
-      //               <div class="flex justify-center gap-4">
-      //                   <button id="refresh-conversations-button" title="Reload conversations" class="p-1 pr-2 flex items-center rounded-lg">${refreshButtonSvg}&nbsp;Reload</button>
-      //                   <button id="close-conversations-button" title="Close conversations panel" class="p-1 pr-2 flex items-center rounded-lg">${closeButtonSvg}&nbsp;Close</button>
-      //               </div>
-      //               <div class="flex flex-col gap-4">${conversationList.join('')}</div>
-      //           </div>`;
-      //   break;
-      // 接受vscode 配置
-      case 'set-chatgpt-config':
-        chatgptConfig = messageOption.value;
-        break;
-      default:
-        break;
-    }
-  });
-
-  // 向 webview 发送消息
-  const addFreeTextQuestion = () => {
-    if (questionInputElement.value?.length > 0) {
-      vscode.postMessage({
-        type: 'add-question',
-        value: questionInputElement.value,
+    if (messageOption.autoScroll) {
+      answerListElement.lastChild?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'end',
+        inline: 'nearest',
       });
-      questionInputElement.value = '';
-      setTimeout(() => {
-        questionInputElement.rows = 1;
-      }, 0);
     }
   };
+
   // 清空聊天记录
-  const clearConversation = () => {
+  const handleClearConversation = () => {
     answerListElement.innerHTML = '';
     introductionElement?.classList?.remove('hidden');
-    vscode.postMessage({
+    postMessageToVscode({
       type: 'clear-conversation',
     });
   };
 
   // 导出聊天记录
-  const exportConversation = () => {
+  const handleExportConversation = () => {
     const turndownService = new TurndownService({ codeBlockStyle: 'fenced' });
     turndownService.remove('no-export');
     const markdownContent = turndownService.turndown(answerListElement);
-    vscode.postMessage({
+    postMessageToVscode({
       type: 'open-newtab',
       value: markdownContent,
       language: 'markdown',
     });
   };
-
   // 监听输入框的回车事件
   questionInputElement.addEventListener('keydown', function (event) {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
-      // const composing = questionInputElement.composing;
       if (questionInputElement.composing) {
-        // 在这里你可以处理输入法被激活时的行为，比如不执行发送、添加提示等等。
         return;
       }
-      // 如果此时输入法 为 中文输入法  则不发送消息
-      addFreeTextQuestion();
+      // 如果此时输入法 为 中文输入法 则不发送消息
+      handleSendQuestion();
     }
   });
 
@@ -378,96 +351,45 @@
     }
     // 点击设置按钮
     if (e.target?.id === 'update-settings-button') {
-      vscode.postMessage({
+      postMessageToVscode({
         type: 'open-settings',
       });
       return;
     }
     // 点击更新apikey按钮
     if (e.target?.id === 'update-key-button') {
-      vscode.postMessage({
+      postMessageToVscode({
         type: 'update-key',
       });
       return;
     }
     // 点击设置提示按钮
     if (e.target?.id === 'settings-prompt-button') {
-      vscode.postMessage({
+      postMessageToVscode({
         type: 'open-prompt-settings',
       });
       return;
     }
-    // 点击登录按钮
-    // if (targetButton?.id === 'login-button') {
-    //   vscode.postMessage({
-    //     type: 'login',
-    //   });
-    //   return;
-    // }
     // 点击提交问题按钮
     if (targetButton?.id === 'submit-question-button') {
-      addFreeTextQuestion();
+      handleSendQuestion();
       return;
     }
     // 点击清除对话按钮
     if (targetButton?.id === 'clear-conversation-button') {
-      clearConversation();
+      handleClearConversation();
       return;
     }
     // 点击导出对话按钮
     if (targetButton?.id === 'export-conversation-button') {
-      exportConversation();
+      handleExportConversation();
       return;
     }
-    // 点击显示对话按钮
-    // if (
-    //   targetButton?.id === 'show-conversations-button' ||
-    //   targetButton?.id === 'show-conversations-button2'
-    // ) {
-    //   vscode.postMessage({ type: 'show-conversations' });
-    //   return;
-    // }
-    // 点击单个显示对话按钮
-    // if (targetButton?.id === 'show-conversation-button') {
-    //   vscode.postMessage({
-    //     type: 'show-conversation',
-    //     value: targetButton.getAttribute('data-id'),
-    //   });
-
-    //   answerListElement.innerHTML = `<div class="flex flex-col p-6 pt-2">
-    //             <h2 class="text-lg">${targetButton.getAttribute('data-title')}</h2>
-    //             <span class="text-xs">Started on: ${targetButton.getAttribute('data-time')}</span>
-    //         </div>`;
-
-    //   answerListElement.classList.remove('hidden');
-    //   introductionElement.classList.add('hidden');
-    //   conversationElement.classList.add('hidden');
-    //   return;
-    // }
-
-    // if (targetButton?.id === 'refresh-conversations-button') {
-    //   vscode.postMessage({ type: 'show-conversations' });
-    //   return;
-    // }
-
-    // if (targetButton?.id === 'close-conversations-button') {
-    //   answerListElement.classList.add('hidden');
-    //   conversationElement.classList.add('hidden');
-    //   introductionElement.classList.add('hidden');
-    //   if (answerListElement.innerHTML?.length > 0) {
-    //     answerListElement.classList.remove('hidden');
-    //   } else {
-    //     introductionElement.classList.remove('hidden');
-    //   }
-    //   return;
-    // }
-
     // 点击停止回答按钮
     if (targetButton?.id === 'stop-generating-button') {
-      vscode.postMessage({
+      postMessageToVscode({
         type: 'stop-generating',
       });
-
       return;
     }
     // 点击编辑按钮
@@ -490,7 +412,7 @@
       resendElement.classList.remove('hidden');
       questionElement.lastElementChild?.setAttribute('contenteditable', false);
       if (questionElement.lastElementChild.textContent?.length > 0) {
-        vscode.postMessage({
+        postMessageToVscode({
           type: 'add-question',
           value: questionElement.lastElementChild.textContent,
         });
@@ -525,12 +447,11 @@
             targetButton.title = copyButtonTitle;
           }, 1500);
         });
-
       return;
     }
     // 点击插入按钮
     if (targetButton?.classList?.contains('insert-button')) {
-      vscode.postMessage({
+      postMessageToVscode({
         type: 'insert-code',
         value: targetButton.parentElement?.nextElementSibling?.lastChild?.textContent,
       });
@@ -539,12 +460,11 @@
     }
     // 点击新标签按钮
     if (targetButton?.classList?.contains('new-tab-button')) {
-      vscode.postMessage({
+      postMessageToVscode({
         type: 'open-newtab',
         value: targetButton.parentElement?.nextElementSibling?.lastChild?.textContent,
       });
-
       return;
     }
   });
-})();
+};
