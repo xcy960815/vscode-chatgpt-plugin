@@ -4,7 +4,7 @@
   "displayName": "vscode-chatgpt-plugin",
   "icon": "images/ai-logo.jpg",
   "description": "vscode-chatgpt-plugin",
-  "version": "0.0.6",
+  "version": "0.0.7",
   "license": "MIT",
   "repository": {
     "url": "https://github.com/xcy960815/vscode-chatgpt-plugin"
@@ -220,6 +220,12 @@
           "markdownDescription": "%chatgpt.gpt.top_p.markdownDescription%",
           "order": 7
         },
+        "chatgpt.gpt.withContent": {
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "%chatgpt.gpt.withContent%",
+          "order": 8
+        },
         "chatgpt.gpt.systemMessage": {
           "type": "string",
           "default": "%chatgpt.gpt.systemMessage%",
@@ -343,6 +349,36 @@
           "type": "string",
           "default": "%chatgpt.pageMessage.askAnything.inputBox.prompt%",
           "order": 28
+        },
+        "chatgpt.pageMessage.customCommand1.inputBox.title": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.customCommand1.inputBox.title%",
+          "order": 29
+        },
+        "chatgpt.pageMessage.customCommand1.inputBox.prompt": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.customCommand1.inputBox.prompt%",
+          "order": 30
+        },
+        "chatgpt.pageMessage.customCommand1.inputBox.placeholder": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.customCommand1.inputBox.placeholder%",
+          "order": 31
+        },
+        "chatgpt.pageMessage.customCommand2.inputBox.title": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.customCommand2.inputBox.title%",
+          "order": 32
+        },
+        "chatgpt.pageMessage.customCommand2.inputBox.prompt": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.customCommand2.inputBox.prompt%",
+          "order": 33
+        },
+        "chatgpt.pageMessage.customCommand2.inputBox.placeholder": {
+          "type": "string",
+          "default": "%chatgpt.pageMessage.customCommand2.inputBox.placeholder%",
+          "order": 34
         },
         "chatgpt.pageMessage.adhocCommand.inputBox.title": {
           "type": "string",

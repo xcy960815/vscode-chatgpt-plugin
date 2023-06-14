@@ -70,6 +70,7 @@ export declare namespace openai {
     /** @defaultValue `1000` **/
     maxResponseTokens?: number;
     messageStore?: Keyv;
+    withContent?: boolean;
   }
 
   // 公共返回usage
