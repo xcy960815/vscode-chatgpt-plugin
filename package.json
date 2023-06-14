@@ -4,7 +4,7 @@
   "displayName": "vscode-chatgpt-plugin",
   "icon": "images/ai-logo.jpg",
   "description": "vscode-chatgpt-plugin",
-  "version": "0.0.7",
+  "version": "0.0.8",
   "license": "MIT",
   "repository": {
     "url": "https://github.com/xcy960815/vscode-chatgpt-plugin"

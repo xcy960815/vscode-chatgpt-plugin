@@ -166,11 +166,6 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             '@ext:xcy960815.vscode-chatgpt-plugin promptPrefix',
           );
           break;
-        // case 'show-conversations':
-        //   // 显示对话
-        //   break;
-        // case 'show-conversation':
-        //   break;
         case 'stop-generating':
           // 停止生成代码
           this.stopGenerating();
