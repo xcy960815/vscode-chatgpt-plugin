@@ -30,14 +30,12 @@ export async function activate(context: vscode.ExtensionContext) {
   // 注册 freeText 命令
   const freeTextCommand = vscode.commands.registerCommand('vscode-chatgpt.freeText', async () => {
     const inputBoxPrompt =
-      vscode.workspace
-        .getConfiguration('chatgpt')
-        .get<string>('pageMessage.askAnything.inputBox.prompt') || '';
-    const value = await vscode.window.showInputBox({
+      chatGptViewProvider.language['chatgpt.pageMessage.askAnything.inputBox.prompt'];
+    const question = await vscode.window.showInputBox({
       prompt: inputBoxPrompt,
     });
-    if (value) {
-      chatGptViewProvider?.sendApiRequest(value, { command: 'freeText' });
+    if (question) {
+      chatGptViewProvider?.sendApiRequest(question, { command: 'freeText' });
     }
   });
 
@@ -103,15 +101,12 @@ export async function activate(context: vscode.ExtensionContext) {
         .getConfiguration('chatgpt')
         .get<string>(`promptPrefix.customPrompt1`);
       if (!customPrompt1) {
-        const title = vscode.workspace
-          .getConfiguration('chatgpt')
-          .get<string>('pageMessage.customCommand1.inputBox.title');
-        const prompt = vscode.workspace
-          .getConfiguration('chatgpt')
-          .get<string>('pageMessage.customCommand1.inputBox.prompt');
-        const placeHolder = vscode.workspace
-          .getConfiguration('chatgpt')
-          .get<string>('pageMessage.customCommand1.inputBox.placeholder');
+        const title =
+          chatGptViewProvider.language['chatgpt.pageMessage.customCommand1.inputBox.title'];
+        const prompt =
+          chatGptViewProvider.language['chatgpt.pageMessage.customCommand1.inputBox.prompt'];
+        const placeHolder =
+          chatGptViewProvider.language['chatgpt.pageMessage.customCommand1.inputBox.placeholder'];
         customPrompt1 = await vscode.window.showInputBox({
           title,
           prompt,
@@ -154,15 +149,15 @@ export async function activate(context: vscode.ExtensionContext) {
         .getConfiguration('chatgpt')
         .get<string>(`promptPrefix.customPrompt2`);
       if (!customPrompt2) {
-        const title = vscode.workspace
-          .getConfiguration('chatgpt')
-          .get<string>('pageMessage.customCommand2.inputBox.title');
-        const prompt = vscode.workspace
-          .getConfiguration('chatgpt')
-          .get<string>('pageMessage.customCommand2.inputBox.prompt');
-        const placeHolder = vscode.workspace
-          .getConfiguration('chatgpt')
-          .get<string>('pageMessage.customCommand2.inputBox.placeholder');
+        const title =
+          chatGptViewProvider.language['chatgpt.pageMessage.customCommand2.inputBox.title'];
+
+        const prompt =
+          chatGptViewProvider.language['chatgpt.pageMessage.customCommand2.inputBox.prompt'];
+
+        const placeHolder =
+          chatGptViewProvider.language['chatgpt.pageMessage.customCommand2.inputBox.placeholder'];
+
         customPrompt2 = await vscode.window.showInputBox({
           title,
           prompt,
@@ -202,15 +197,13 @@ export async function activate(context: vscode.ExtensionContext) {
     }
 
     // 从配置文件中获取用户输入的临时指令的标题、提示、占位符
-    const title = vscode.workspace
-      .getConfiguration('chatgpt')
-      .get<string>('pageMessage.adhocCommand.inputBox.title');
-    const prompt = vscode.workspace
-      .getConfiguration('chatgpt')
-      .get<string>('pageMessage.adhocCommand.inputBox.prompt');
-    const placeHolder = vscode.workspace
-      .getConfiguration('chatgpt')
-      .get<string>('pageMessage.adhocCommand.inputBox.placeHolder');
+    const title = chatGptViewProvider.language['chatgpt.pageMessage.adhocCommand.inputBox.title'];
+
+    const prompt = chatGptViewProvider.language['chatgpt.pageMessage.adhocCommand.inputBox.prompt'];
+
+    const placeHolder =
+      chatGptViewProvider.language['chatgpt.pageMessage.adhocCommand.inputBox.placeholder'];
+
     // 创建一个输入框，让用户输入临时指令
     let adhocPrompt = await vscode.window.showInputBox({
       title,

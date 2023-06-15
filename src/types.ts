@@ -14,7 +14,6 @@ const WebviewMessageOptionssTypeEnums = {
   AddAnswer: 'add-answer',
   AddError: 'add-error',
   ClearConversation: 'clear-conversation',
-  SetChatgptConfig: 'set-chatgpt-config',
   ExportConversation: 'export-conversation',
 } as const;
 
@@ -41,7 +40,6 @@ const OnDidReceiveMessageOptionsTypeEnums = {
   ShowConversations: 'show-conversations',
   ShowConversation: 'show-conversation',
   StopGenerating: 'stop-generating',
-  GetChatgptConfig: 'get-chatgpt-config',
 } as const;
 
 export interface OnDidReceiveMessageOptions {
