@@ -4,7 +4,7 @@
   "displayName": "vscode-chatgpt-plugin",
   "icon": "images/ai-logo.jpg",
   "description": "vscode-chatgpt-plugin",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "license": "MIT",
   "repository": {
     "url": "https://github.com/xcy960815/vscode-chatgpt-plugin"
@@ -20,7 +20,12 @@
     "Linters"
   ],
   "keywords": [
-    "chatgpt"
+    "chatgpt",
+    "vscode-chatgpt-plugin",
+    "vscode-chatgpt",
+    "chatgpt-plugin",
+    "chatgpt-vscode",
+    "chatgpt-vscode-plugin"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -229,413 +234,121 @@
         "chatgpt.gpt.systemMessage": {
           "type": "string",
           "default": "%chatgpt.gpt.systemMessage%",
-          "order": 8
+          "order": 9
         },
         "chatgpt.response.subscribeToResponse": {
           "type": "boolean",
           "default": false,
           "description": "%chatgpt.response.subscribeToResponse.description%",
-          "order": 9
+          "order": 10
         },
         "chatgpt.response.autoScroll": {
           "type": "boolean",
           "default": true,
           "description": "%chatgpt.response.autoScroll.description%",
-          "order": 10
+          "order": 11
         },
         "chatgpt.promptPrefix.addTests": {
           "type": "string",
           "default": "%chatgpt.promptPrefix.addTests.default%",
           "description": "%chatgpt.promptPrefix.addTests.description%",
-          "order": 11
+          "order": 12
         },
         "chatgpt.promptPrefix.addTests-enabled": {
           "type": "boolean",
           "default": true,
           "description": "%chatgpt.promptPrefix.addTests-enabled.description%",
-          "order": 12
+          "order": 13
         },
         "chatgpt.promptPrefix.findBugs": {
           "type": "string",
           "default": "%chatgpt.promptPrefix.findBugs.default%",
           "description": "%chatgpt.promptPrefix.findBugs.description%",
-          "order": 13
+          "order": 14
         },
         "chatgpt.promptPrefix.findBugs-enabled": {
           "type": "boolean",
           "default": true,
           "description": "%chatgpt.promptPrefix.findBugs-enabled.description%",
-          "order": 14
+          "order": 15
         },
         "chatgpt.promptPrefix.optimize": {
           "type": "string",
           "default": "%chatgpt.promptPrefix.optimize.default%",
           "description": "%chatgpt.promptPrefix.optimize.description%",
-          "order": 15
+          "order": 16
         },
         "chatgpt.promptPrefix.optimize-enabled": {
           "type": "boolean",
           "default": true,
           "description": "%chatgpt.promptPrefix.optimize-enabled.description%",
-          "order": 16
+          "order": 17
         },
         "chatgpt.promptPrefix.explain": {
           "type": "string",
           "default": "%chatgpt.promptPrefix.explain.default%",
           "description": "%chatgpt.promptPrefix.explain.description%",
-          "order": 17
+          "order": 18
         },
         "chatgpt.promptPrefix.explain-enabled": {
           "type": "boolean",
           "default": true,
           "description": "%chatgpt.promptPrefix.explain-enabled.description%",
-          "order": 18
+          "order": 19
         },
         "chatgpt.promptPrefix.addComments": {
           "type": "string",
           "default": "%chatgpt.promptPrefix.addComments.default%",
           "description": "%chatgpt.promptPrefix.addComments.description%",
-          "order": 19
+          "order": 20
         },
         "chatgpt.promptPrefix.addComments-enabled": {
           "type": "boolean",
           "default": true,
           "description": "%chatgpt.promptPrefix.addComments-enabled.description%",
-          "order": 20
+          "order": 21
         },
         "chatgpt.promptPrefix.completeCode": {
           "type": "string",
           "default": "%chatgpt.promptPrefix.completeCode.default%",
           "description": "%chatgpt.promptPrefix.completeCode.description%",
-          "order": 21
+          "order": 22
         },
         "chatgpt.promptPrefix.completeCode-enabled": {
           "type": "boolean",
           "default": true,
           "description": "%chatgpt.promptPrefix.completeCode-enabled.description%",
-          "order": 22
+          "order": 23
         },
         "chatgpt.promptPrefix.customPrompt1": {
           "type": "string",
           "default": "",
           "description": "%chatgpt.promptPrefix.customPrompt1.description%",
-          "order": 23
+          "order": 24
         },
         "chatgpt.promptPrefix.customPrompt1-enabled": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "%chatgpt.promptPrefix.customPrompt1-enabled.markdownDescription%",
-          "order": 24
+          "order": 25
         },
         "chatgpt.promptPrefix.customPrompt2": {
           "type": "string",
           "default": "",
           "description": "%chatgpt.promptPrefix.customPrompt2.description%",
-          "order": 25
+          "order": 26
         },
         "chatgpt.promptPrefix.customPrompt2-enabled": {
           "type": "boolean",
           "default": false,
           "markdownDescription": "%chatgpt.promptPrefix.customPrompt2-enabled.markdownDescription%",
-          "order": 26
+          "order": 27
         },
         "chatgpt.promptPrefix.adhoc-enabled": {
           "type": "boolean",
           "default": true,
           "description": "%chatgpt.promptPrefix.adhoc-enabled.description%",
-          "order": 27
-        },
-        "chatgpt.pageMessage.askAnything.inputBox.prompt": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.askAnything.inputBox.prompt%",
           "order": 28
-        },
-        "chatgpt.pageMessage.customCommand1.inputBox.title": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.customCommand1.inputBox.title%",
-          "order": 29
-        },
-        "chatgpt.pageMessage.customCommand1.inputBox.prompt": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.customCommand1.inputBox.prompt%",
-          "order": 30
-        },
-        "chatgpt.pageMessage.customCommand1.inputBox.placeholder": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.customCommand1.inputBox.placeholder%",
-          "order": 31
-        },
-        "chatgpt.pageMessage.customCommand2.inputBox.title": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.customCommand2.inputBox.title%",
-          "order": 32
-        },
-        "chatgpt.pageMessage.customCommand2.inputBox.prompt": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.customCommand2.inputBox.prompt%",
-          "order": 33
-        },
-        "chatgpt.pageMessage.customCommand2.inputBox.placeholder": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.customCommand2.inputBox.placeholder%",
-          "order": 34
-        },
-        "chatgpt.pageMessage.adhocCommand.inputBox.title": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.adhocCommand.inputBox.title%",
-          "order": 29
-        },
-        "chatgpt.pageMessage.adhocCommand.inputBox.prompt": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.adhocCommand.inputBox.prompt%",
-          "order": 30
-        },
-        "chatgpt.pageMessage.adhocCommand.inputBox.placeholder": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.adhocCommand.inputBox.placeholder%",
-          "order": 31
-        },
-        "chatgpt.pageMessage.noApiKey.message": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.noApiKey.message%",
-          "order": 32
-        },
-        "chatgpt.pageMessage.noApiKey.choose1": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.noApiKey.choose1%",
-          "order": 33
-        },
-        "chatgpt.pageMessage.noApiKey.choose2": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.noApiKey.choose2%",
-          "order": 34
-        },
-        "chatgpt.pageMessage.noApiKey.inputBox.title": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.noApiKey.inputBox.title%",
-          "order": 35
-        },
-        "chatgpt.pageMessage.noApiKey.inputBox.prompt": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.noApiKey.inputBox.prompt%",
-          "order": 36
-        },
-        "chatgpt.pageMessage.noApiKey.inputBox.placeholder": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.noApiKey.inputBox.placeholder%",
-          "order": 37
-        },
-        "chatgpt.pageMessage.inprogress.message": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.inprogress.message%",
-          "order": 38
-        },
-        "chatgpt.pageMessage.dontComplete.message": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.dontComplete.message%",
-          "order": 39
-        },
-        "chatgpt.pageMessage.dontComplete.choose": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.dontComplete.choose%",
-          "order": 40
-        },
-        "chatgpt.pageMessage.dontComplete.prompt": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.dontComplete.prompt%",
-          "order": 41
-        },
-        "chatgpt.pageMessage.subscribeToResponse.message": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.subscribeToResponse.message%",
-          "order": 42
-        },
-        "chatgpt.pageMessage.subscribeToResponse.choose": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.subscribeToResponse.choose%",
-          "order": 43
-        },
-        "chatgpt.pageMessage.maxToken.error.message": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.maxToken.error.message%",
-          "order": 44
-        },
-        "chatgpt.pageMessage.maxToken.error.choose": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.maxToken.error.choose%",
-          "order": 45
-        },
-        "chatgpt.pageMessage.400.error.message": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.400.error.message%"
-        },
-        "chatgpt.pageMessage.401.error.message": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.401.error.message%"
-        },
-        "chatgpt.pageMessage.403.error.message": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.403.error.message%"
-        },
-        "chatgpt.pageMessage.404.error.message": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.404.error.message%"
-        },
-        "chatgpt.pageMessage.429.error.message": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.429.error.message%"
-        },
-        "chatgpt.pageMessage.500.error.message": {
-          "type": "string",
-          "default": "%chatgpt.pageMessage.500.error.message%"
-        },
-        "chatgpt.webview.features": {
-          "type": "string",
-          "default": "%chatgpt.webview.features.default%"
-        },
-        "chatgpt.webview.feature1": {
-          "type": "string",
-          "default": "%chatgpt.webview.feature1.default%"
-        },
-        "chatgpt.webview.feature2": {
-          "type": "string",
-          "default": "%chatgpt.webview.feature2.default%"
-        },
-        "chatgpt.webview.feature3": {
-          "type": "string",
-          "default": "%chatgpt.webview.feature3.default%"
-        },
-        "chatgpt.webview.feature4": {
-          "type": "string",
-          "default": "%chatgpt.webview.feature4.default%"
-        },
-        "chatgpt.webview.loginButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.loginButtonName.default%"
-        },
-        "chatgpt.webview.loginButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.loginButtonTitle.default%"
-        },
-        "chatgpt.webview.updateSettingsButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.updateSettingsButtonName.default%"
-        },
-        "chatgpt.webview.updateSettingsButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.updateSettingsButtonTitle.default%"
-        },
-        "chatgpt.webview.updateApiKeyButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.updateApiKeyButtonName.default%"
-        },
-        "chatgpt.webview.updateApiKeyButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.updateApiKeyButtonTitle.default%"
-        },
-        "chatgpt.webview.updatePromptsButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.updatePromptsButtonName.default%"
-        },
-        "chatgpt.webview.updatePromptsButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.updatePromptsButtonTitle.default%"
-        },
-        "chatgpt.webview.questionInputPlaceholder": {
-          "type": "string",
-          "default": "%chatgpt.webview.questionInputPlaceholder.default%"
-        },
-        "chatgpt.webview.clearConversationButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.clearConversationButtonName.default%"
-        },
-        "chatgpt.webview.clearConversationButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.clearConversationButtonTitle.default%"
-        },
-        "chatgpt.webview.showConversationsButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.showConversationsButtonName.default%"
-        },
-        "chatgpt.webview.showConversationsButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.showConversationsButtonTitle.default%"
-        },
-        "chatgpt.webview.exportConversationButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.exportConversationButtonName.default%"
-        },
-        "chatgpt.webview.exportConversationButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.exportConversationButtonTitle.default%"
-        },
-        "chatgpt.webview.moreActionsButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.moreActionsButtonName.default%"
-        },
-        "chatgpt.webview.moreActionsButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.moreActionsButtonTitle.default%"
-        },
-        "chatgpt.webview.submitQuestionButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.submitQuestionButtonName.default%"
-        },
-        "chatgpt.webview.submitQuestionButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.submitQuestionButtonTitle.default%"
-        },
-        "chatgpt.webview.copyButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.copyButtonName.default%"
-        },
-        "chatgpt.webview.copyButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.copyButtonTitle.default%"
-        },
-        "chatgpt.webview.copiedButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.copiedButtonName.default%"
-        },
-        "chatgpt.webview.copiedButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.copiedButtonTitle.default%"
-        },
-        "chatgpt.webview.insertButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.insertButtonName.default%"
-        },
-        "chatgpt.webview.insertButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.insertButtonTitle.default%"
-        },
-        "chatgpt.webview.newTabButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.newTabButtonName.default%"
-        },
-        "chatgpt.webview.newTabButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.newTabButtonTitle.default%"
-        },
-        "chatgpt.webview.editButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.editButtonTitle.default%"
-        },
-        "chatgpt.webview.sendButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.sendButtonName.default%"
-        },
-        "chatgpt.webview.sendButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.sendButtonTitle.default%"
-        },
-        "chatgpt.webview.cancelButtonName": {
-          "type": "string",
-          "default": "%chatgpt.webview.cancelButtonName.default%"
-        },
-        "chatgpt.webview.cancelButtonTitle": {
-          "type": "string",
-          "default": "%chatgpt.webview.cancelButtonTitle.default%"
         }
       }
     }
@@ -671,6 +384,7 @@
     "vcm-cli": "^1.0.5"
   },
   "dependencies": {
+    "cheerio": "^1.0.0-rc.12",
     "delay": "^5.0.0",
     "eventsource-parser": "^0.1.0",
     "gpt-tokenizer": "^2.1.1",
