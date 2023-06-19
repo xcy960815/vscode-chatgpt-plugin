@@ -110,7 +110,7 @@
   "chatgpt.webview.moreActionsButtonName": "more actions",
   "chatgpt.webview.moreActionsButtonTitle": "more actions",
   "chatgpt.webview.submitQuestionButtonName": "submit question",
-  "chartgpt.webview.questionInput.placeholder": "Ask a question...",
+  "chatgpt.webview.questionInput.placeholder": "Ask a question...",
   "chatgpt.webview.clearConversationButton": "Clear conversation",
   "chatgpt.webview.showConversationsButton": "Show conversations",
   "chatgpt.webview.exportConversationButton": "Export conversation to markdown",
@@ -126,5 +126,6 @@
   "chatgpt.webview.sendButtonName": "Send",
   "chatgpt.webview.sendButtonTitle": "Send your question to ChatGPT",
   "chatgpt.webview.cancelButtonName": "Cancel",
-  "chatgpt.webview.cancelButtonTitle": "Cancel"
+  "chatgpt.webview.cancelButtonTitle": "Cancel",
+  "chatgpt.webview.stopGeneratingButtonName": "Stop generating"
 }

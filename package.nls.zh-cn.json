@@ -124,5 +124,6 @@
   "chatgpt.webview.sendButtonName": "发送",
   "chatgpt.webview.sendButtonTitle": "将您的问题发送到ChatGPT",
   "chatgpt.webview.cancelButtonName": "取消",
-  "chatgpt.webview.cancelButtonTitle": "取消"
+  "chatgpt.webview.cancelButtonTitle": "取消",
+  "chatgpt.webview.stopGeneratingButtonName": "停止生成"
 }
