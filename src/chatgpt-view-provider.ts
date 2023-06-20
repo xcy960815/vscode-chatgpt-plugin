@@ -223,7 +223,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   private stopGenerating(): void {
     this.abortController?.abort?.();
-    this.inProgress = false;
+    this.setInProgressStatus(false);
     this.sendMessageToWebview({ type: 'show-in-progress', inProgress: this.inProgress });
     this.sendMessageToWebview({
       type: 'add-answer',
@@ -356,7 +356,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     });
     return newApiKey || '';
   }
-
+  /**
+   * @desc 构建消息
+   * @param question {string}
+   * @param code {string}
+   * @param language {string}
+   * @returns {string}
+   */
   private buildQuestion(question: string, code?: string, language?: string): string {
     if (!!code) {
       // question = `${question}${language ? ` (The following code is in ${language} programming language)` : ''}: ${code}`;
@@ -364,9 +370,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     }
     return question; //+ '\r\n';
   }
+  /**
+   * @desc 展示webview
+   * @returns {Promise<void>}
+   */
   private async showWebview(): Promise<void> {
     if (this.webView === undefined) {
-      // 触发resolveWebviewView事件
+      // 通过执行命令打开webview
       await vscode.commands.executeCommand('vscode-chatgpt-plugin.view.focus');
       await delay(250);
       if (this.WebviewMessageOptions !== null) {
@@ -377,6 +387,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       await this.webView?.show?.(true);
     }
   }
+  /**
+   * @desc 更新 inProgress 状态
+   * @param status {boolean}
+   * @returns {void}
+   */
   private setInProgressStatus(status: boolean): void {
     this.inProgress = status;
   }
@@ -388,7 +403,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       this.response = option.previousAnswer + this.response;
     }
   }
+  /**
+   * @desc 检查是否回答完毕
+   * @param option {SendApiRequestOption}
+   * @returns {Promise<boolean>}
+   */
   private async checkForContinuation(option: SendApiRequestOption): Promise<void> {
+    // 当 max_tokens 不够时，会返回一个提示，需要继续执行
     const hasContinuation = this.response.split('```').length % 2 === 0;
     if (hasContinuation) {
       // 如果需要继续执行，请处理逻辑
@@ -409,8 +430,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       }
     }
   }
-
-  private async subscribeToResponsePrompt(): Promise<void> {
+  /**
+   * @desc 订阅响应对话
+   * @returns {Promise<void>}
+   */
+  private async subscribeResponseDialog(): Promise<void> {
     // 如果打开了订阅对话的配置
     if (this.subscribeToResponse) {
       // 给用户通知
@@ -428,37 +452,41 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         });
     }
   }
-
+  /**
+   * @desc 获取错误信息
+   * @param {any} error
+   * @returns  {string}
+   */
   private getErrorMessageFromErrorType(error: any): string {
     switch (error.statusCode) {
       case 400:
         const errorMessage400 = this.language['chatgpt.pageMessage.400.error.message'] || '';
-        return errorMessage400.replace('${model}', this.model);
+        return errorMessage400.replace('{model}', this.model);
       case 401:
         const errorMessage401 = this.language['chatgpt.pageMessage.401.error.message'] || '';
-
         return errorMessage401;
       case 403:
         const errorMessage403 = this.language['chatgpt.pageMessage.403.error.message'] || '';
-
         return errorMessage403;
       case 404:
         const errorMessage404 = this.language['chatgpt.pageMessage.404.error.message'] || '';
-
-        return errorMessage404.replace('${model}', this.model);
+        return errorMessage404.replace('{model}', this.model);
       case 429:
         const errorMessage429 = this.language['chatgpt.pageMessage.429.error.message'] || '';
-
         return errorMessage429;
       case 500:
         const errorMessage500 = this.language['chatgpt.pageMessage.500.error.message'] || '';
-
         return errorMessage500;
+      default:
+        return '';
     }
-    return '';
   }
-
-  private async handleErrorDialog(prompt: string, option: SendApiRequestOption) {
+  /**
+   * @description 处理错误对话框
+   * @param {string} prompt
+   * @param {SendApiRequestOption} option
+   */
+  private async handleErrorDialog(prompt: string, option: SendApiRequestOption): Promise<void> {
     // 从配置中获取错误信息
     const errorMessage = this.language['chatgpt.pageMessage.maxToken.error.message'] || '';
     // 从配置中获取错误选择
@@ -471,7 +499,13 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       }
     });
   }
-
+  /**
+   * @desc 处理错误响应
+   * @param {any} error
+   * @param {string} prompt
+   * @param {SendApiRequestOption} option
+   * @returns {void}
+   */
   private handleErrorResponse(error: any, prompt: string, option: SendApiRequestOption): void {
     const statusCode = error?.response?.status;
     const statusText = error?.response?.statusText;
@@ -509,6 +543,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.response = '';
+
     const question = this.buildQuestion(prompt, option.code, option.language);
     await this.showWebview();
     this.setInProgressStatus(true);
@@ -577,12 +612,12 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         id: this.currentConversationId,
         autoScroll: this.autoScroll,
       });
-      await this.subscribeToResponsePrompt();
+      await this.subscribeResponseDialog();
     } catch (error: any) {
       this.handleErrorResponse(error, prompt, option);
       return;
     } finally {
-      this.inProgress = false;
+      this.setInProgressStatus(false);
       this.sendMessageToWebview({ type: 'show-in-progress', inProgress: this.inProgress });
     }
   }

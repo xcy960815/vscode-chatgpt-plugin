@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/naming-convention */
+import Gpt3Tokenizer from 'gpt3-tokenizer';
 import isomorphicFetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
 import pTimeout, { ClearablePromise } from 'p-timeout';
@@ -6,7 +7,6 @@ import QuickLRU from 'quick-lru';
 import { v4 as uuidv4 } from 'uuid';
 import { Fetch, FetchSSEOptions, openai } from './types';
 import { fetchSSE } from './utils';
-
 const MODEL = 'gpt-3.5-turbo';
 
 export class GptModelAPI {
@@ -20,22 +20,23 @@ export class GptModelAPI {
     Omit<openai.GptModelAPI.CompletionRequestParams, 'messages' | 'n' | 'stream'>
   >;
   private _systemMessage: string;
-  // private _maxModelTokens: number;
-  // private _maxResponseTokens: number;
+  private _maxModelTokens: number;
+  private _maxResponseTokens: number;
   public _getMessageById: openai.GptModelAPI.GetMessageById;
   private _upsertMessage: openai.GptModelAPI.UpsertMessage;
   private _messageStore: Keyv<openai.GptModelAPI.ApiResponse>;
+  _gpt3Tokenizer: Gpt3Tokenizer;
   constructor(options: openai.GptModelAPI.GptModelApiOptions) {
     const {
       apiKey,
       apiBaseUrl,
       organization,
-      debug = false,
+      debug,
       messageStore,
       CompletionRequestParams,
       systemMessage,
-      // maxModelTokens = 4000,
-      // maxResponseTokens = 1000,
+      maxModelTokens,
+      maxResponseTokens,
       getMessageById,
       upsertMessage,
       fetch,
@@ -55,10 +56,11 @@ export class GptModelAPI {
       ...CompletionRequestParams,
     };
     this._systemMessage = systemMessage || '';
-    // this._maxModelTokens = maxModelTokens;
-    // this._maxResponseTokens = maxResponseTokens;
+    this._maxModelTokens = maxModelTokens || 4000;
+    this._maxResponseTokens = maxResponseTokens || 1000;
     this._getMessageById = getMessageById || this._defaultGetMessageById;
     this._upsertMessage = upsertMessage || this._defaultUpsertMessage;
+    this._gpt3Tokenizer = new Gpt3Tokenizer({ type: 'gpt3' });
     if (messageStore) {
       this._messageStore = messageStore;
     } else {
@@ -129,6 +131,7 @@ export class GptModelAPI {
         ...CompletionRequestParams,
         messages,
         stream,
+        // max_tokens: 50
       };
 
       const fetchSSEOptions: FetchSSEOptions = {
@@ -208,6 +211,14 @@ export class GptModelAPI {
     }
   }
   /**
+   * @desc 获取token数量
+   * @param {string} text
+   * @returns {Promise<number>}
+   */
+  private async _getTokenCount(text: string): Promise<number> {
+    return this._gpt3Tokenizer.encode(text).bpe.length;
+  }
+  /**
    * @desc 构建消息
    * @param {string} text
    * @param {SendMessageOptions} options
@@ -232,6 +243,7 @@ export class GptModelAPI {
     ];
 
     while (true && this._withContent) {
+      // TODO this._maxModelTokens 、 this._maxResponseTokens 配合计算当前消息可以输入的最大长度
       if (!parentMessageId) {
         break;
       }

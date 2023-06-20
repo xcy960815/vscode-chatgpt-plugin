@@ -28,7 +28,7 @@ export class TextModleAPI {
   private _upsertMessage: openai.TextModelAPI.UpsertMessage;
   private _messageStore: Keyv<openai.TextModelAPI.ApiResponse>;
   private _organization: string;
-  private gpt3Tokenizer: Gpt3Tokenizer;
+  private _gpt3Tokenizer: Gpt3Tokenizer;
   constructor(options: openai.TextModelAPI.TextModelApiOptions) {
     const {
       apiKey,
@@ -46,7 +46,7 @@ export class TextModleAPI {
       fetch,
       withContent,
     } = options;
-    this.gpt3Tokenizer = new Gpt3Tokenizer({ type: 'gpt3' });
+    this._gpt3Tokenizer = new Gpt3Tokenizer({ type: 'gpt3' });
     this._apiKey = apiKey;
     this._apiBaseUrl = apiBaseUrl || 'https://api.openai.com';
     this._organization = organization || '';
@@ -260,7 +260,7 @@ export class TextModleAPI {
    * @returns {Promise<number>}
    */
   private async _getTokenCount(text: string): Promise<number> {
-    return this.gpt3Tokenizer.encode(text).bpe.length;
+    return this._gpt3Tokenizer.encode(text).bpe.length;
   }
   /**
    * @desc 获取消息
