@@ -49,7 +49,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     return vscode.workspace.getConfiguration('chatgpt');
   }
   /**
-   * @desc chatgpt模型是否是 "gpt-3.5-turbo","gpt-3.5-turbo-0301","gpt-4"
+   * @desc chatgpt模型是否是 "gpt-3.5-turbo","gpt-3.5-turbo-0613","gpt-4"
    * @returns {boolean}
    */
   private get isGptModel(): boolean {
