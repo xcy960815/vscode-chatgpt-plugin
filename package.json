@@ -4,7 +4,7 @@
   "displayName": "vscode-chatgpt-plugin",
   "icon": "images/ai-logo.jpg",
   "description": "vscode-chatgpt-plugin",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "repository": {
     "url": "https://github.com/xcy960815/vscode-chatgpt-plugin"
@@ -186,8 +186,13 @@
           "type": "string",
           "enum": [
             "gpt-4",
+            "gpt-4-0613",
+            "gpt-4-32k",
+            "gpt-4-32k-0613",
             "gpt-3.5-turbo",
-            "gpt-3.5-turbo-0301",
+            "gpt-3.5-turbo-16k",
+            "gpt-3.5-turbo-0613",
+            "gpt-3.5-turbo-16k-0613",
             "text-davinci-003",
             "text-davinci-002"
           ],
@@ -196,15 +201,25 @@
           "order": 4,
           "enumItemLabels": [
             "%chatgpt.gpt.model.gpt4Label%",
+            "%chatgpt.gpt.model.gpt40613Label%",
+            "%chatgpt.gpt.model.gpt432kLabel%",
+            "%chatgpt.gpt.model.gpt432k0613Label%",
             "%chatgpt.gpt.model.gpt35turboLabel%",
-            "%chatgpt.gpt.model.gpt35turbo0301Label%",
+            "%chatgpt.gpt.model.gpt35turbo16kLabel%",
+            "%chatgpt.gpt.model.gpt35turbo0613Label%",
+            "%chatgpt.gpt.model.gpt35turbo16k0613Label%",
             "%chatgpt.gpt.model.textdavinci003Label%",
             "%chatgpt.gpt.model.textdavinci002Label%"
           ],
           "markdownEnumDescriptions": [
-            "%chatgpt.gpt.model.gpt4markdownEnumDescriptions%",
-            "%chatgpt.gpt.model.gpt35turbomarkdownEnumDescriptions%",
-            "%chatgpt.gpt.model.gpt35turbo0301markdownEnumDescriptions%"
+            "%chatgpt.gpt.model.gpt4MarkdownEnumDescription%",
+            "%chatgpt.gpt.model.gpt40613MarkdownEnumDescription%",
+            "%chatgpt.gpt.model.gpt432kMarkdownEnumDescription%",
+            "%chatgpt.gpt.model.gpt432k0613MarkdownEnumDescription%",
+            "%chatgpt.gpt.model.gpt35turboMarkdownEnumDescription%",
+            "%chatgpt.gpt.model.gpt35turbo16kMarkdownEnumDescription%",
+            "%chatgpt.gpt.model.gpt35turbo0613MarkdownEnumDescription%",
+            "%chatgpt.gpt.model.gpt35turbo16k0613MarkdownEnumDescription%"
           ]
         },
         "chatgpt.gpt.maxTokens": {

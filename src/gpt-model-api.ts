@@ -131,7 +131,6 @@ export class GptModelAPI {
         ...CompletionRequestParams,
         messages,
         stream,
-        // max_tokens: 50
       };
 
       const fetchSSEOptions: FetchSSEOptions = {
