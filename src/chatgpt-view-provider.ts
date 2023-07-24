@@ -122,12 +122,15 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private get apiBaseUrl(): string {
     return this.chatGptConfig.get<string>('gpt.apiBaseUrl')?.trim() || '';
   }
-
+  /**
+   * @desc gpt apiKey 参数
+   * @returns {string}
+   */
   private get apiKey(): string {
     const globalState = this.context.globalState;
     const apiKey =
-      this.chatGptConfig.get<string>('gpt.apiKey') ||
       globalState.get<string>('chatgpt-gpt-apiKey') ||
+      this.chatGptConfig.get<string>('gpt.apiKey') ||
       '';
     return apiKey;
   }
@@ -176,13 +179,10 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
           break;
         case 'update-key':
           // 更新apikey
-          const apiKey = await this.showNoApiKeyInput(this.apiKey);
-          if (apiKey) {
-            // const globalState = this.context.globalState;
-            // globalState.update('chatgpt-gpt-apiKey', apiKey);
-          }
+          this.showUpdateApiKeyInput();
           break;
         case 'open-prompt-settings':
+          // 打开话术前缀设置
           vscode.commands.executeCommand(
             'workbench.action.openSettings',
             '@ext:xcy960815.vscode-chatgpt-plugin promptPrefix',
@@ -311,11 +311,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   private async promptApiKey(): Promise<boolean> {
     const noApiKeyMessage = this.language['chatgpt.pageMessage.noApiKey.message'];
-
     const noApiKeyChoose1 = this.language['chatgpt.pageMessage.noApiKey.choose1'];
-
     const noApiKeyChoose2 = this.language['chatgpt.pageMessage.noApiKey.choose2'];
-
     const choice = await vscode.window.showErrorMessage(
       noApiKeyMessage,
       noApiKeyChoose1,
@@ -340,7 +337,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       return false;
     }
   }
-
+  /**
+   * @desc 展示输入apiKey输入框
+   * @param apikey {string}
+   * @returns {Promise<string>}
+   */
   private async showNoApiKeyInput(apikey?: string): Promise<string> {
     const noApiKeyInputTitle = this.language['chatgpt.pageMessage.noApiKey.inputBox.title'];
     const noApiKeyInputPrompt = this.language['chatgpt.pageMessage.noApiKey.inputBox.prompt'];
@@ -355,6 +356,40 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       placeHolder: noApiKeyInputPlaceHolder,
     });
     return newApiKey || '';
+  }
+  /**
+   * @desc 展示更新apiKey输入框
+   * @returns {Promise<void>}
+   */
+  private async showUpdateApiKeyInput(): Promise<void> {
+    const updateApiKeyInputTitle = this.language['chatgpt.pageMessage.updateApiKey.inputBox.title'];
+    const updateApiKeyInputPrompt =
+      this.language['chatgpt.pageMessage.updateApiKey.inputBox.prompt'];
+    const updateApiKeyInputPlaceHolder =
+      this.language['chatgpt.pageMessage.updateApiKey.inputBox.placeHolder'];
+    const globalStateHasKey = this.context.globalState.get<string>('chatgpt-gpt-apiKey');
+    const configHasKey = this.chatGptConfig.get<string>('gpt.apiKey');
+    const newApiKey = await vscode.window.showInputBox({
+      title: updateApiKeyInputTitle,
+      prompt: updateApiKeyInputPrompt,
+      ignoreFocusOut: true,
+      value: this.apiKey,
+      placeHolder: updateApiKeyInputPlaceHolder,
+    });
+    if (newApiKey?.trim()) {
+      if (!!globalStateHasKey) {
+        // 全局状态
+        const globalState = this.context.globalState;
+        // 存储在全局状态中
+        globalState.update('chatgpt-gpt-apiKey', newApiKey?.trim());
+      }
+      if (!!configHasKey) {
+        // 更新配置
+        await vscode.workspace
+          .getConfiguration('chatgpt')
+          .update('gpt.apiKey', newApiKey?.trim(), vscode.ConfigurationTarget.Global);
+      }
+    }
   }
   /**
    * @desc 构建消息
