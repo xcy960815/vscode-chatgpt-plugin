@@ -543,10 +543,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    */
   private handleErrorResponse(error: any, prompt: string, option: SendApiRequestOption): void {
     const statusCode = error?.response?.status;
-    const statusText = error?.response?.statusText;
-    if (statusCode || statusText) {
-      this.handleErrorDialog(prompt, option);
-    } else {
+    if ([400, 401, 403, 404, 429, 500].includes(statusCode)) {
       const message = this.getErrorMessageFromErrorType(error);
       const apiErrorMessage =
         error?.response?.data?.error?.message || error?.tostring?.() || error?.message;
@@ -558,6 +555,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         value: errorMessage,
         autoScroll: this.autoScroll,
       });
+    } else {
+      //  上下文超长
+      this.handleErrorDialog(prompt, option);
     }
   }
 
