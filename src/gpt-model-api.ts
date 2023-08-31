@@ -69,6 +69,10 @@ export class GptModelAPI {
       });
     }
   }
+  /**
+   * @desc 获取请求头
+   * @returns {HeadersInit}
+   */
   private get headers(): HeadersInit {
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -117,7 +121,7 @@ export class GptModelAPI {
     // 获取用户和gpt历史对话记录
     const { messages } = await this._buildMessages(text, options);
     // 给用户返回的数据
-    const ApiResponse: openai.GptModelAPI.ApiResponse = {
+    const apiResponse: openai.GptModelAPI.ApiResponse = {
       role: 'assistant',
       messageId: '',
       parentMessageId: messageId,
@@ -142,27 +146,26 @@ export class GptModelAPI {
       if (stream) {
         fetchSSEOptions.onMessage = (data: string) => {
           if (data === '[DONE]') {
-            ApiResponse.text = ApiResponse.text.trim();
-            resolve(ApiResponse);
+            apiResponse.text = apiResponse.text.trim();
+            resolve(apiResponse);
             return;
           }
           try {
             const response: openai.GptModelAPI.CompletionResponse = JSON.parse(data);
-
             if (response.id) {
-              ApiResponse.messageId = response.id;
+              apiResponse.messageId = response.id;
             }
             if (response?.choices?.length) {
               const delta = response.choices[0].delta;
-              ApiResponse.delta = delta.content;
+              apiResponse.delta = delta.content;
               if (delta?.content) {
-                ApiResponse.text += delta.content;
+                apiResponse.text += delta.content;
               }
-              ApiResponse.detail = response;
+              apiResponse.detail = response;
               if (delta?.role) {
-                ApiResponse.role = delta.role;
+                apiResponse.role = delta.role;
               }
-              onProgress?.(ApiResponse);
+              onProgress?.(apiResponse);
             }
           } catch (error) {
             console.error('OpenAI stream SEE event unexpected error', error);
@@ -175,15 +178,15 @@ export class GptModelAPI {
           const data = await fetchSSE(url, fetchSSEOptions, this._fetch);
           const response: openai.GptModelAPI.CompletionResponse = await data?.json();
           if (response?.id) {
-            ApiResponse.messageId = response.id;
+            apiResponse.messageId = response.id;
           }
           if (response?.choices?.length) {
             const message = response.choices[0].message;
-            ApiResponse.text = message?.content || '';
-            ApiResponse.role = message?.role || 'assistant';
+            apiResponse.text = message?.content || '';
+            apiResponse.role = message?.role || 'assistant';
           }
-          ApiResponse.detail = response;
-          resolve(ApiResponse);
+          apiResponse.detail = response;
+          resolve(apiResponse);
         } catch (error) {
           console.error('OpenAI stream SEE event unexpected error', error);
           return reject(error);
@@ -196,7 +199,7 @@ export class GptModelAPI {
       });
     });
 
-    // 如果设置了超时时间，那么就使用 AbortController
+    /* 如果设置了超时时间，那么就使用 AbortController */
     if (timeoutMs) {
       (responseP as ClearablePromise<openai.GptModelAPI.ApiResponse>).clear = () => {
         abortController?.abort();

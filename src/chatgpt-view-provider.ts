@@ -28,8 +28,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.loadLanguage();
     this.initConfig();
   }
+  /**
+   * @desc 获取当前语言
+   * @returns {void}
+   */
   private loadLanguage(): void {
-    // 获取当前语言
     const language = vscode.env.language;
     if (language === 'zh-cn') {
       const languageFilePath = path.join(
@@ -649,7 +652,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       });
       await this.subscribeResponseDialog();
     } catch (error: any) {
-      this.handleErrorResponse(error, prompt, option);
+      console.log('error', error);
+
+      // this.handleErrorResponse(error, prompt, option);
       return;
     } finally {
       this.setInProgressStatus(false);

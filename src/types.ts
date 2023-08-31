@@ -84,7 +84,7 @@ export declare namespace openai {
     object: string;
     created: number;
     model: string;
-    // 当用户设置stream=true时，不会返回 usage 字段
+    // 当用户设置stream:true时，不会返回 usage 字段
     usage?: CompletionResponseUsage;
   }
   // 公共参数
