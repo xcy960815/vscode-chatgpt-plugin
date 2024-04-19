@@ -1,26 +1,32 @@
-/* eslint-disable @typescript-eslint/naming-convention */
-import fetch from 'isomorphic-fetch';
-import Keyv from 'keyv';
-import * as vscode from 'vscode';
-export type Fetch = typeof fetch;
-
-export interface FetchSSEOptions extends RequestInit {
+declare interface FetchSSEOptions extends RequestInit {
   onMessage?: (message: string) => void;
 }
 
-const WebviewMessageOptionssTypeEnums = {
-  ShowInProgress: 'show-in-progress',
-  AddQuestion: 'add-question',
-  AddAnswer: 'add-answer',
-  AddError: 'add-error',
-  ClearConversation: 'clear-conversation',
-  ExportConversation: 'export-conversation',
-} as const;
+/**
+ * @desc vscode 向 webview 发送的操作事件枚举
+ */
+declare const WebviewMessageOptionssTypeEnums: {
+  ShowInProgress: 'show-in-progress';
+  AddQuestion: 'add-question';
+  AddAnswer: 'add-answer';
+  AddError: 'add-error';
+  ClearConversation: 'clear-conversation';
+  ExportConversation: 'export-conversation';
+};
 
-export interface WebviewMessageOptions {
-  type: (typeof WebviewMessageOptionssTypeEnums)[keyof typeof WebviewMessageOptionssTypeEnums];
+/**
+ * @desc vscode 向 webview 发送的操作事件类型
+ */
+type WebviewMessageOptionType =
+  (typeof WebviewMessageOptionssTypeEnums)[keyof typeof WebviewMessageOptionssTypeEnums];
+
+/**
+ * @desc vscode 向 webview 发送的操作事件选项
+ */
+declare interface WebviewMessageOptions {
+  type: WebviewMessageOptionType;
   code?: string;
-  value?: string | vscode.WorkspaceConfiguration;
+  value?: string | import('vscode').WorkspaceConfiguration;
   showConversations?: boolean;
   inProgress?: boolean;
   done?: boolean;
@@ -29,34 +35,52 @@ export interface WebviewMessageOptions {
   autoScroll?: boolean;
 }
 
-const OnDidReceiveMessageOptionsTypeEnums = {
-  AddQuestion: 'add-question',
-  InsertCode: 'insert-code',
-  OpenNewTab: 'open-newtab',
-  ClearConversation: 'clear-conversation',
-  UpdateKey: 'update-key',
-  OpenSettings: 'open-settings',
-  OpenPromptSettings: 'open-prompt-settings',
-  ShowConversations: 'show-conversations',
-  ShowConversation: 'show-conversation',
-  StopGenerating: 'stop-generating',
-} as const;
+/**
+ * @desc webview 向 vscode 发送事件枚举
+ */
+declare const OnDidReceiveMessageOptionsTypeEnums: {
+  AddQuestion: 'add-question';
+  InsertCode: 'insert-code';
+  OpenNewTab: 'open-newtab';
+  ClearConversation: 'clear-conversation';
+  UpdateKey: 'update-key';
+  OpenSettings: 'open-settings';
+  OpenPromptSettings: 'open-prompt-settings';
+  ShowConversations: 'show-conversations';
+  ShowConversation: 'show-conversation';
+  StopGenerating: 'stop-generating';
+};
 
-export interface OnDidReceiveMessageOptions {
-  type: (typeof OnDidReceiveMessageOptionsTypeEnums)[keyof typeof OnDidReceiveMessageOptionsTypeEnums];
+/**
+ * @desc webview 向 vscode 发送事件类型
+ */
+type OnDidReceiveMessageOptionsType =
+  (typeof OnDidReceiveMessageOptionsTypeEnums)[keyof typeof OnDidReceiveMessageOptionsTypeEnums];
+
+/**
+ * @desc webview 向 vscode 发送事件选项
+ */
+declare interface OnDidReceiveMessageOptions {
+  type: OnDidReceiveMessageOptionsType;
   value?: string;
   language?: string;
 }
 
-export interface SendApiRequestOption {
+declare interface SendApiRequestOption {
   command: string;
   code?: string;
   previousAnswer?: string;
   language?: string;
 }
 
-export declare namespace openai {
-  // 公共参数
+declare type Fetch = typeof import('isomorphic-fetch');
+
+declare type Keyv = import('keyv');
+
+declare namespace openai {
+  /**
+   * @desc 公共参数
+   */
   interface ModelApiOptions {
     apiKey: string;
     apiBaseUrl?: string;
@@ -71,23 +95,29 @@ export declare namespace openai {
     withContent?: boolean;
   }
 
-  // 公共返回usage
+  /**
+   * @desc 公共返回usage
+   */
   interface CompletionResponseUsage {
     completion_tokens: number;
     prompt_tokens: number;
     total_tokens: number;
   }
 
-  // 公共返回
+  /**
+   * @desc 公共返回
+   */
   interface CompletionResponse {
     id: string;
     object: string;
     created: number;
     model: string;
-    // 当用户设置stream:true时，不会返回 usage 字段
+    /** 当用户设置stream:true时，不会返回 usage 字段 */
     usage?: CompletionResponseUsage;
   }
-  // 公共参数
+  /**
+   * @desc 公共参数
+   */
   interface CompletionRequestParams {
     model: string;
     max_tokens?: number;
@@ -107,12 +137,18 @@ export declare namespace openai {
     finish_reason?: string | null;
   }
 
+  /**
+   * @desc 公共用户消息
+   */
   interface UserMessage {
     messageId: string;
     text: string;
     parentMessageId?: string;
   }
 
+  /**
+   * @desc 公共发送消息选项
+   */
   interface SendMessageOptions {
     parentMessageId?: string;
     messageId?: string;
@@ -134,6 +170,9 @@ export declare namespace openai {
     readonly Assistant: 'assistant';
   };
 
+  /**
+   * @desc gpt 模型模块
+   */
   module GptModelAPI {
     type CompletionRoleEnum =
       (typeof openai.CompletionRoleEnum)[keyof typeof openai.CompletionRoleEnum];
@@ -144,7 +183,9 @@ export declare namespace openai {
       name?: string;
     }
 
-    // 请求参数
+    /**
+     * @desc 请求参数
+     */
     interface CompletionRequestParams extends openai.CompletionRequestParams {
       messages: Array<CompletionRequestMessage>;
     }
@@ -193,8 +234,14 @@ export declare namespace openai {
       upsertMessage?: UpsertMessage;
     }
 
+    /**
+     * @desc 通过id获取消息
+     */
     export type GetMessageById = (id: string) => Promise<ApiResponse | undefined>;
 
+    /**
+     * @desc 更新消息
+     */
     export type UpsertMessage = (message: ApiResponse) => Promise<boolean>;
   }
 
@@ -204,18 +251,28 @@ export declare namespace openai {
       'System'
     >[keyof typeof openai.CompletionRoleEnum];
 
+    /**
+     * @desc 发送的消息选项
+     */
     interface SendMessageOptions extends openai.SendMessageOptions {
       systemPromptPrefix?: string;
       onProgress?: (partialResponse: ApiResponse) => void;
       CompletionRequestParams?: Partial<Omit<CompletionRequestParams, 'messages' | 'n' | 'stream'>>;
     }
 
+    /**
+     * 请求参数
+     */
     interface CompletionRequestParams extends openai.CompletionRequestParams {
       prompt: string;
       suffix?: string;
       echo?: boolean;
       best_of?: number;
     }
+
+    /**
+     * @desc 请求返回
+     */
     interface CompletionResponse extends openai.CompletionResponse {
       choices: Array<CompletionResponseChoice>;
     }
@@ -249,8 +306,14 @@ export declare namespace openai {
       upsertMessage?: UpsertMessage;
     }
 
+    /**
+     * @desc 通过id 获取消息
+     */
     type GetMessageById = (id: string) => Promise<ApiResponse | undefined>;
 
+    /**
+     * @desc 更新插入消息
+     */
     type UpsertMessage = (message: ApiResponse) => Promise<boolean>;
   }
 }

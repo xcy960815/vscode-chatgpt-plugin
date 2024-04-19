@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import delay from 'delay';
 import fetch from 'isomorphic-fetch';
 import * as fs from 'node:fs';
@@ -6,7 +5,8 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { GptModelAPI } from './gpt-model-api';
 import { TextModleAPI } from './text-model-api';
-import { OnDidReceiveMessageOptions, SendApiRequestOption, WebviewMessageOptions } from './types';
+// import { OnDidReceiveMessageOptions, SendApiRequestOption, WebviewMessageOptions } from './types';
+
 export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private webView?: vscode.WebviewView;
   private textModel?: TextModleAPI;

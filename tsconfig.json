@@ -3,11 +3,11 @@
     "module": "commonjs",
     "target": "ES2020",
     "lib": ["ES2020"],
-    "typeRoots": ["node_modules/@types", "./types"],
+    "typeRoots": ["node_modules/@types", "./types/index.d.ts"],
     "sourceMap": true,
     "rootDir": "./src",
     "strict": true,
     "esModuleInterop": true
   },
-  "include": ["./src/**/*"]
+  "include": ["./src/**/*", "./types/index.d.ts"]
 }

@@ -1,11 +1,9 @@
-/* eslint-disable @typescript-eslint/naming-convention */
 import Gpt3Tokenizer from 'gpt3-tokenizer';
 import isomorphicFetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
 import pTimeout, { ClearablePromise } from 'p-timeout';
 import QuickLRU from 'quick-lru';
 import { v4 as uuidv4 } from 'uuid';
-import { Fetch, FetchSSEOptions, openai } from './types';
 import { fetchSSE } from './utils';
 const MODEL = 'gpt-3.5-turbo';
 
