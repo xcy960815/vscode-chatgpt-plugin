@@ -59,6 +59,7 @@
   "chatgpt.gpt.model.gpt35turbo16kMarkdownEnumDescription": "与标准 gpt-3.5-turbo 模型具有相同的功能，但上下文是其 4 倍。",
   "chatgpt.gpt.model.gpt35turbo0613MarkdownEnumDescription": "2023 年 6 月 13 日的 gpt-3.5-turbo 快照，包含函数调用数据。 与 gpt-3.5-turbo 不同，该模型不会收到更新，并将在新版本发布 3 个月后弃用",
   "chatgpt.gpt.model.gpt35turbo16k0613MarkdownEnumDescription": "2023 年 6 月 13 日的 gpt-3.5-turbo-16k 快照。与 gpt-3.5-turbo-16k 不同，该模型不会收到更新，并将在新版本发布 3 个月后弃用。 16,384 个上下文。",
+  "chatgpt.gpt.customModel.markdownDescription": "用于 Prompt 的 其他 OpenAI 语言模型。[文档](https://platform.openai.com/docs/models/models)。\n\n**如果出现 400 Bad Request，请检查您的apikey是否允许使用此语言模型。**",
   "chatgpt.gpt.maxTokens.markdownDescription": "生成结果的最大令牌数。\n\n您的 Prompt 令牌数加上 max_tokens 的数量不能超过语言模型的上下文长度。大多数模型的上下文长度为 2048 个令牌（最新的模型除外，其支持 4096 个令牌）。[文档](https://platform.openai.com/docs/api-reference/completions/create#completions/create-max_tokens) \n\n**仅适用于 OpenAI API Key 方式使用此设置。**",
   "chatgpt.gpt.temperature.markdownDescription": "模型的语言温度采样。较高的值意味着模型将更具有创造性以及个性化，尝试使用 0.9 让语气更加活泼。使用 0 的结果可以更加准确，适用于需要明确定义答案的应用(使用 rgmax 采样)。\n\n建议修改此设置或top_p但不是两个都修改。[文档](https://platform.openai.com/docs/api-reference/completions/create#completions/create-temperature)\n\n **仅适用于 OpenAI API Key 方式使用此设置。**",
   "chatgpt.gpt.top_p.markdownDescription": "与温度采样相反的选择，称为 nucleus 采样，模型考虑 top_p 概率质量的 token 的结果。因此，0.1 表示只考虑组成前 10% 概率质量的 token。\n\n建议修改此项或温度，但不要同时修改两项。[文档](https://platform.openai.com/docs/api-reference/completions/create#completions/create-top_p) \n\n**仅适用于 OpenAI API Key 方式使用此设置。**",

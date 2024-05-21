@@ -22,22 +22,46 @@ export async function* streamAsyncIterable(
   }
 }
 
+async function readableStreamToPassThrough(
+  readableStream: ReadableStream<Uint8Array>,
+): Promise<PassThrough> {
+  const passThrough = new PassThrough();
+
+  const reader = readableStream.getReader();
+
+  async function pump() {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        passThrough.end();
+        break;
+      }
+      passThrough.write(value);
+    }
+  }
+
+  pump().catch((err) => passThrough.destroy(err));
+
+  return passThrough;
+}
+
 /**
  * @desc 获取 URL 并将响应作为 ReadableStream 返回
  * @param {String} url
  * @param  {FetchSSEOptions} options
  * @param {Fetch} fetch
  */
-export async function fetchSSE(
+export async function fetchSSE<R = any>(
   url: string,
   options: FetchSSEOptions,
   fetch: Fetch,
-): Promise<Response | void> {
+): Promise<openai.GptResponse<R> | void> {
   const { onMessage, ...fetchOptions } = options;
-  const response = await fetch(url, fetchOptions);
+  const response = (await fetch(url, fetchOptions)) as openai.GptResponse<R>;
   if (!response.ok) {
     // 错误原因
-    const reason = (await response.text()) || response.statusText;
+    const text = await response.text();
+    const reason = text || response.statusText;
     const chatgptError = new ChatgptError(reason, { response });
     chatgptError.statusCode = response.status;
     chatgptError.statusText = response.statusText;
@@ -53,10 +77,12 @@ export async function fetchSSE(
       onMessage?.(event.data);
     }
   });
+
   const body = response.body;
   const getReader = body?.getReader;
-  // 兼容不同版本的 node 环境
+
   if (!getReader) {
+    // node环境走这里
     const body = response.body as unknown as PassThrough;
     if (!body?.on || !body?.read) {
       throw new ChatgptError('unsupported "fetch" implementation');
@@ -68,6 +94,7 @@ export async function fetchSSE(
       }
     });
   } else {
+    // 浏览器环境走这里
     for await (const chunk of streamAsyncIterable(body)) {
       const chunkString = new TextDecoder().decode(chunk);
       parser.feed(chunkString);

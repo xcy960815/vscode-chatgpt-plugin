@@ -1,7 +1,7 @@
 import Gpt3Tokenizer from 'gpt3-tokenizer';
 import isomorphicFetch from 'isomorphic-fetch';
 import Keyv from 'keyv';
-import pTimeout, { ClearablePromise } from 'p-timeout';
+import pTimeout from 'p-timeout';
 import QuickLRU from 'quick-lru';
 import { v4 as uuidv4 } from 'uuid';
 import { fetchSSE } from './utils';
@@ -170,11 +170,17 @@ export class GptModelAPI {
             return reject(error);
           }
         };
+        // 发送数据请求
         fetchSSE(url, fetchSSEOptions, this._fetch).catch(reject);
       } else {
         try {
-          const data = await fetchSSE(url, fetchSSEOptions, this._fetch);
-          const response: openai.GptModelAPI.CompletionResponse = await data?.json();
+          // 发送数据请求
+          const data = await fetchSSE<openai.GptModelAPI.CompletionResponse>(
+            url,
+            fetchSSEOptions,
+            this._fetch,
+          );
+          const response = await data?.json();
           if (response?.id) {
             apiResponse.messageId = response.id;
           }
@@ -199,11 +205,9 @@ export class GptModelAPI {
 
     /* 如果设置了超时时间，那么就使用 AbortController */
     if (timeoutMs) {
-      (responseP as ClearablePromise<openai.GptModelAPI.ApiResponse>).clear = () => {
-        abortController?.abort();
-      };
       return pTimeout(responseP, {
         milliseconds: timeoutMs,
+        signal: abortController?.signal,
         message: 'OpenAI timed out waiting for response',
       });
     } else {

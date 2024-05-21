@@ -170,6 +170,10 @@ declare namespace openai {
     readonly Assistant: 'assistant';
   };
 
+  interface GptResponse<T = any> extends Response {
+    json(): Promise<T>;
+  }
+
   /**
    * @desc gpt 模型模块
    */
@@ -207,6 +211,7 @@ declare namespace openai {
       message?: CompletionResponseMessage;
       delta: CompletionResponseDelta;
     }
+
     interface CompletionResponse extends openai.CompletionResponse {
       choices: Array<CompletionResponseChoice>;
       detail?: CompletionResponseDetail;

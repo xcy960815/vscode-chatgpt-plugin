@@ -84,7 +84,11 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
    * @returns {string}
    */
   private get model(): string {
-    return this.chatGptConfig.get<string>('gpt.model') || '';
+    return (
+      this.chatGptConfig.get<string>('gpt.customModel') ||
+      this.chatGptConfig.get<string>('gpt.model') ||
+      ''
+    );
   }
   /**
    * @desc gpt organization 参数
