@@ -25,8 +25,17 @@ window.onload = function () {
     chatButtonWrapper: document.getElementById('chat-button-wrapper'),
     questionInputButtons: document.getElementById('question-input-buttons'),
     modelName: document.getElementById('model-name'),
-    stopGeneratingButton: document.getElementById('stop-generating-button')
+    stopGeneratingButton: document.getElementById('stop-generating-button'),
+    historyPanel: document.getElementById('history-panel'),
+    historyList: document.getElementById('history-list'),
+    historyCount: document.getElementById('history-count'),
+    attachedFiles: document.getElementById('attached-files'),
+    tokenBar: document.getElementById('token-bar'),
+    tokenBarLabel: document.getElementById('token-bar-label'),
   };
+
+  // 附加文件状态
+  let attachedFile = null; // { filename, language, content }
 
   // 接收来自 vscode 的消息
   window.addEventListener('message', (event) => {
@@ -50,11 +59,20 @@ window.onload = function () {
       case 'export-conversation':
         handleExportConversation();
         break;
+      case 'load-history':
+        handleLoadHistory(messageOption);
+        break;
+      case 'load-conversation':
+        handleLoadConversation(messageOption);
+        break;
       case 'set-chatgpt-config':
         chatgpt = messageOption.value;
         if (chatgpt.model) {
           dom.modelName.textContent = chatgpt.model;
         }
+        break;
+      case 'current-file-data':
+        handleCurrentFileData(messageOption);
         break;
     }
   });
@@ -85,12 +103,25 @@ window.onload = function () {
   const handleSendQuestion = () => {
     const text = dom.questionInput.value.trim();
     if (text.length > 0) {
-      postMessageToVscode({
+      dom.historyPanel.classList.add('hidden');
+      currentHistoryId = '';
+
+      const message = {
         type: 'add-question',
         value: text,
-      });
+      };
+
+      // 如果有附加文件，将内容作为独立字段发送（用户气泡只显示原始问题）
+      if (attachedFile) {
+        message.attachedContent = attachedFile.content;
+        message.attachedLanguage = attachedFile.language;
+      }
+
+      postMessageToVscode(message);
       dom.questionInput.value = '';
       dom.questionInput.parentNode.dataset.replicatedValue = '';
+      // 发送后清除附加文件
+      removeAttachedFile();
     }
   };
 
@@ -253,6 +284,8 @@ window.onload = function () {
     dom.answerList.innerHTML = '';
     dom.answerList.classList.add('hidden');
     dom.introduction?.classList?.remove('hidden');
+    dom.historyPanel.classList.add('hidden');
+    currentHistoryId = '';
     postMessageToVscode({ type: 'clear-conversation' });
   };
 
@@ -267,9 +300,163 @@ window.onload = function () {
     });
   };
 
+  // --- 历史对话管理 ---
+  let currentHistoryId = '';
+
+  const handleLoadHistory = (messageOption) => {
+    const history = messageOption.history || [];
+    dom.historyCount.textContent = history.length > 0 ? `(${history.length})` : '';
+
+    if (history.length === 0) {
+      dom.historyList.innerHTML = `<div class="history-empty">${dom.historyList.dataset.emptyText || 'No history'}</div>`;
+    } else {
+      dom.historyList.innerHTML = history.map(item => {
+        const date = new Date(item.createdAt);
+        const timeStr = `${date.getMonth() + 1}/${date.getDate()} ${date.getHours().toString().padStart(2, '0')}:${date.getMinutes().toString().padStart(2, '0')}`;
+        const activeClass = item.id === currentHistoryId ? ' active' : '';
+        return `
+          <div class="history-item${activeClass}" data-conversation-id="${item.id}">
+            <span class="history-item-title">${escapeHtml(item.title)}</span>
+            <span class="history-item-time">${timeStr}</span>
+            <button data-action="delete-history" data-id="${item.id}" class="history-item-delete" title="Delete">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+        `;
+      }).join('');
+    }
+  };
+
+  const handleLoadConversation = (messageOption) => {
+    const messages = messageOption.messages || [];
+    currentHistoryId = messageOption.conversationId || '';
+
+    // 清空当前显示
+    dom.answerList.innerHTML = '';
+    dom.answerList.classList.remove('hidden');
+    dom.introduction?.classList?.add('hidden');
+    dom.historyPanel.classList.add('hidden');
+
+    // 渲染历史消息
+    messages.forEach(msg => {
+      if (msg.role === 'user') {
+        const msgContainer = document.createElement('div');
+        msgContainer.className = 'msg-container msg-user question-element';
+        msgContainer.innerHTML = `
+          <div class="msg-header">
+            ${getTemplate('tpl-user-icon')}
+            You
+          </div>
+          <div class="msg-content question-content">${escapeHtml(msg.content)}</div>
+        `;
+        dom.answerList.appendChild(msgContainer);
+      } else if (msg.role === 'assistant') {
+        const msgContainer = document.createElement('div');
+        msgContainer.className = 'msg-container msg-ai answer-element';
+        const markedResponse = marked.parse(msg.content);
+        msgContainer.innerHTML = `
+          <div class="msg-header">
+            ${getTemplate('tpl-ai-icon')}
+            ChatGPT
+          </div>
+          <div class="msg-content">${markedResponse}</div>
+        `;
+        dom.answerList.appendChild(msgContainer);
+        processCodeBlocks(msgContainer);
+      }
+    });
+  };
+
+  const toggleHistoryPanel = () => {
+    const isVisible = !dom.historyPanel.classList.contains('hidden');
+    if (isVisible) {
+      dom.historyPanel.classList.add('hidden');
+    } else {
+      dom.historyPanel.classList.remove('hidden');
+      // 请求最新的历史列表
+      postMessageToVscode({ type: 'load-history' });
+    }
+  };
+
+  // --- 附加文件处理 ---
+  const handleCurrentFileData = (messageOption) => {
+    const { filename, language, content, truncated } = messageOption;
+    if (!filename) {
+      return;
+    }
+    attachedFile = { filename, language, content };
+    showAttachedChip(filename, language, truncated);
+  };
+
+  const showAttachedChip = (filename, language, truncated) => {
+    dom.attachedFiles.innerHTML = '';
+    dom.attachedFiles.classList.remove('hidden');
+
+    const chip = document.createElement('span');
+    chip.className = 'file-chip';
+    const truncBadge = truncated
+      ? '<span class="file-chip-truncated" title="File was truncated (too large)">⚠ truncated</span>'
+      : '';
+    chip.innerHTML = `
+      <span class="file-chip-icon">📎</span>
+      <span class="file-chip-name" title="${escapeHtml(filename)}">${escapeHtml(filename)}</span>
+      <span class="file-chip-lang">(${escapeHtml(language)})</span>
+      ${truncBadge}
+      <button data-action="remove-attached-file" class="file-chip-remove" title="Remove">&times;</button>
+    `;
+    dom.attachedFiles.appendChild(chip);
+  };
+
+  const removeAttachedFile = () => {
+    attachedFile = null;
+    dom.attachedFiles.innerHTML = '';
+    dom.attachedFiles.classList.add('hidden');
+  };
+
+  // --- Token 估算进度条 ---
+  const MAX_CONTEXT_TOKENS = 128000; // 粗略按 GPT-4o 上下文估算
+  const updateTokenBar = () => {
+    const text = dom.questionInput.value;
+    let totalChars = text.length;
+
+    // 估算历史对话 Token（DOM 中所有消息内容的文本长度）
+    const historyMsgs = dom.answerList.querySelectorAll('.msg-content');
+    historyMsgs.forEach((el) => {
+      totalChars += (el.textContent || '').length;
+    });
+
+    // 如果有附加文件，也要算进去
+    if (attachedFile) {
+      totalChars += attachedFile.content.length + attachedFile.language.length + 10;
+    }
+
+    const estimatedTokens = Math.ceil(totalChars / 4);
+    const pct = Math.min((estimatedTokens / MAX_CONTEXT_TOKENS) * 100, 100);
+
+    dom.tokenBar.style.width = pct > 0 ? `${Math.max(pct, 0.5)}%` : '0%';
+    dom.tokenBar.classList.remove('token-bar-warning');
+    if (pct >= 80) {
+      dom.tokenBar.classList.add('token-bar-warning');
+    }
+
+    if (estimatedTokens > 0) {
+      dom.tokenBarLabel.textContent = `~${estimatedTokens.toLocaleString()} tokens`;
+      dom.tokenBarLabel.classList.remove('hidden');
+    } else {
+      dom.tokenBarLabel.classList.add('hidden');
+    }
+  };
+
   // --- 事件分发处理 ---
   const ACTION_HANDLERS = {
     'send-question': () => handleSendQuestion(),
+    'attach-current-file': () => {
+      postMessageToVscode({ type: 'get-current-file' });
+    },
+    'remove-attached-file': () => {
+      removeAttachedFile();
+      updateTokenBar();
+    },
     'toggle-more': () => {
       dom.chatButtonWrapper?.classList.toggle('hidden');
     },
@@ -279,6 +466,13 @@ window.onload = function () {
     'clear-conversation': () => handleClearConversation(),
     'export-conversation': () => handleExportConversation(),
     'stop-generating': () => postMessageToVscode({ type: 'stop-generating' }),
+    'toggle-history': () => toggleHistoryPanel(),
+    'delete-history': (target) => {
+      const id = target.getAttribute('data-id');
+      if (id) {
+        postMessageToVscode({ type: 'delete-conversation', value: id });
+      }
+    },
     
     // 消息内操作
     'edit-question': (target) => {
@@ -355,6 +549,15 @@ window.onload = function () {
       }
     }
 
+    // 点击历史项加载对话
+    const historyItem = e.target.closest('.history-item');
+    if (historyItem && !e.target.closest('[data-action="delete-history"]')) {
+      const id = historyItem.getAttribute('data-conversation-id');
+      if (id) {
+        postMessageToVscode({ type: 'load-conversation', value: id });
+      }
+    }
+
     // 点击其他区域关闭更多菜单
     if (!e.target.closest('#chat-button-wrapper') && !e.target.closest('[data-action="toggle-more"]')) {
       dom.chatButtonWrapper?.classList.add('hidden');
@@ -367,5 +570,10 @@ window.onload = function () {
       event.preventDefault();
       handleSendQuestion();
     }
+  });
+
+  // Token 进度条实时更新
+  dom.questionInput.addEventListener('input', () => {
+    updateTokenBar();
   });
 };

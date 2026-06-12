@@ -8,6 +8,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- **Context awareness (roadmap 3.1)** — the extension now understands your editing context.
+  - "Attach current file" button (📎) next to the input box — one-click to include the active editor's full file content in the prompt, displayed as a removable chip above the textarea.
+  - Right-click commands (Explain, Optimize, Find Bugs, etc.) now automatically embed the file language and filename into the prompt for better AI responses.
+  - Token usage progress bar — a thin bar below the input box estimates token count (chars / 4) and turns orange when exceeding 80% of the model context window.
+- `get-current-file` / `current-file-data` message types for frontend-backend file attachment communication.
+- `handleGetCurrentFile()` method in `ChatgptViewProvider` to read the active editor's file info.
+- `buildQuestion()` now wraps code in fenced code blocks and prepends `[language, file]` context metadata.
+- i18n key: `attachFileButtonTitle` (EN + ZH-CN).
+- **Conversation history persistence** — conversations are now saved to `globalState` and survive window close/reopen.
+  - `conversation-store.ts` — new module managing history CRUD (save/load/delete/clear, max 20 conversations).
+  - History panel in the webview with click-to-restore and delete buttons.
+  - Auto-generated titles from the first user message (first 30 chars).
+  - "History" button in the more-actions menu to toggle the panel.
+  - `load-history`, `load-conversation`, `delete-conversation` message types for frontend-backend communication.
+- `OpenAIService.getConversationMessages()` — expose user/assistant messages for persistence.
+- `OpenAIService.loadConversation()` — restore API context from saved messages.
+- i18n keys: `historyTitle`, `historyEmpty`, `historyButtonName`, `historyButtonTitle` (EN + ZH-CN).
+- History panel CSS with hover highlights, active state, and delete buttons.
+
+### Changed
+
+- `sendApiRequest` now creates a single conversation ID per session (not per question) and saves to history after each response.
+- `clearSession` now also wipes all persisted conversation history.
+- `clear-conversation` resets `currentConversationId` so the next question starts a fresh conversation.
+- `resolveWebviewView` sends history list to the frontend on panel open.
 - Support for `reasoningEffort` config (`low` / `medium` / `high`) for o-series reasoning models.
 - New models to the enum: `gpt-4o-2024-11-20`, `o3`, `o3-mini`, `o4-mini`.
 - Husky v9 + lint-staged for pre-commit ESLint and Prettier checks.
@@ -16,9 +41,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 - `.prettierignore` to exclude build artifacts from formatting.
 - New npm scripts: `lint`, `lint:fix`, `format`, `format:check`.
 - Bilingual README: English (`README.md`) and Chinese (`README.zh-CN.md`).
-
-### Changed
-
 - Migrated `maxTokens` default from `1024` → `4096` (package.json and config.ts aligned).
 - Migrated `temperature` default from `1` → `0.2` (package.json and config.ts aligned).
 - Upgraded Husky from v1 to v9, using `.husky/` directory instead of package.json config.

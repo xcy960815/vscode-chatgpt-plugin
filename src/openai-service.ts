@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import { configManager } from './config';
+import { ChatMessage } from './conversation-store';
 
 export interface SendMessageOptions {
   systemMessage?: string;
@@ -21,6 +22,24 @@ export class OpenAIService {
 
   public clearSession() {
     this.messages = [];
+  }
+
+  /** 获取当前对话中的 user/assistant 消息（不含 system） */
+  public getConversationMessages(): ChatMessage[] {
+    return this.messages
+      .filter((m) => m.role === 'user' || m.role === 'assistant')
+      .map((m) => ({ role: m.role as 'user' | 'assistant', content: m.content as string }));
+  }
+
+  /** 从历史记录中恢复对话上下文 */
+  public loadConversation(chatMessages: ChatMessage[], systemMessage?: string) {
+    this.messages = [];
+    if (systemMessage) {
+      this.messages.push({ role: 'system', content: systemMessage });
+    }
+    for (const msg of chatMessages) {
+      this.messages.push({ role: msg.role, content: msg.content });
+    }
   }
 
   public async sendMessage(prompt: string, options: SendMessageOptions): Promise<string> {

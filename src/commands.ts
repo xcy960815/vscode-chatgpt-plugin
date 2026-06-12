@@ -1,3 +1,4 @@
+import * as path from 'node:path';
 import * as vscode from 'vscode';
 import ChatgptViewProvider from './chatgpt-view-provider';
 import { configManager } from './config';
@@ -86,6 +87,7 @@ export function registerCommands(
         command: 'customPrompt1',
         code: selectedCode,
         language: activeTextEditor.document.languageId,
+        fileName: path.basename(activeTextEditor.document.fileName),
       });
     },
   );
@@ -125,6 +127,7 @@ export function registerCommands(
         command: 'customPrompt2',
         code: selectedCode,
         language: activeTextEditor.document.languageId,
+        fileName: path.basename(activeTextEditor.document.fileName),
       });
     },
   );
@@ -160,6 +163,8 @@ export function registerCommands(
     chatGptViewProvider?.sendApiRequest(adhocPrompt, {
       command: 'adhoc',
       code: selectedCode,
+      language: editor.document.languageId,
+      fileName: path.basename(editor.document.fileName),
     });
   });
 
@@ -177,6 +182,7 @@ export function registerCommands(
               command,
               code: selectedCode,
               language: activeTextEditor.document.languageId,
+              fileName: path.basename(activeTextEditor.document.fileName),
             });
           }
         }

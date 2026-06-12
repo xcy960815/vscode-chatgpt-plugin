@@ -44,6 +44,20 @@
         </div>
       </div>
 
+      <!-- 历史对话面板 -->
+      <div id="history-panel" class="history-panel hidden">
+        <div class="history-header">
+          <span class="history-title">{{chatgpt.webview.historyTitle}}</span>
+          <span class="history-count" id="history-count"></span>
+          <button data-action="toggle-history" class="history-close-btn" title="Close">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+          </button>
+        </div>
+        <div id="history-list" class="history-list" data-empty-text="{{chatgpt.webview.historyEmpty}}">
+          <div class="history-empty">{{chatgpt.webview.historyEmpty}}</div>
+        </div>
+      </div>
+
       <!--对话消息列表 -->
       <div class="chat-list hidden" id="answer-list"></div>
 
@@ -67,6 +81,9 @@
 
       <!-- 底部输入区 -->
       <div class="input-area">
+        <!-- 已附加文件 chip 容器 -->
+        <div id="attached-files" class="attached-files hidden"></div>
+
         <div class="textarea-wrapper">
           <textarea
             id="question-input"
@@ -77,11 +94,22 @@
           ></textarea>
         </div>
 
+        <!-- Token 估算进度条 -->
+        <div class="token-bar-container">
+          <div id="token-bar" class="token-bar" style="width: 0%"></div>
+          <span id="token-bar-label" class="token-bar-label hidden"></span>
+        </div>
+
         <div class="input-actions" id="question-input-buttons">
           <div class="model-info">
              <span id="model-name">ChatGPT</span>
           </div>
           <div class="action-buttons">
+            <button data-action="attach-current-file" title="{{chatgpt.webview.attachFileButtonTitle}}" class="icon-button">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M18.375 12.739l-7.693 7.693a4.5 4.5 0 01-6.364-6.364l10.94-10.94A3 3 0 1119.5 7.372L8.552 18.32m.009-.01l-.01.01m5.699-9.941l-7.81 7.81a1.5 1.5 0 002.112 2.13" />
+              </svg>
+            </button>
             <button data-action="toggle-more" title="{{chatgpt.webview.moreActionsButtonTitle}}" class="icon-button">
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 12.75a.75.75 0 110-1.5.75.75 0 010 1.5zM12 18.75a.75.75 0 110-1.5.75.75 0 010 1.5z" />
@@ -97,6 +125,10 @@
 
         <!-- 更多操作菜单 -->
         <div id="chat-button-wrapper" class="more-menu hidden">
+          <button data-action="toggle-history" title="{{chatgpt.webview.historyButtonTitle}}">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            {{chatgpt.webview.historyButtonName}}
+          </button>
           <button data-action="clear-conversation" title="{{chatgpt.webview.clearConversationButtonTitle}}">
             <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
             {{chatgpt.webview.clearConversationButtonName}}

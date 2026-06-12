@@ -8,6 +8,9 @@ declare const WebviewMessageOptionssTypeEnums: {
   AddError: 'add-error';
   ClearConversation: 'clear-conversation';
   ExportConversation: 'export-conversation';
+  LoadHistory: 'load-history';
+  LoadConversation: 'load-conversation';
+  CurrentFileData: 'current-file-data';
 };
 
 /**
@@ -15,6 +18,23 @@ declare const WebviewMessageOptionssTypeEnums: {
  */
 type WebviewMessageOptionType =
   (typeof WebviewMessageOptionssTypeEnums)[keyof typeof WebviewMessageOptionssTypeEnums];
+
+/**
+ * @desc 对话历史项（传递给前端）
+ */
+declare interface HistoryItem {
+  id: string;
+  title: string;
+  createdAt: number;
+}
+
+/**
+ * @desc 对话消息（传递给前端渲染）
+ */
+declare interface HistoryMessage {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 /**
  * @desc vscode 向 webview 发送的操作事件选项
@@ -29,6 +49,13 @@ declare interface WebviewMessageOptions {
   showStopButton?: boolean;
   id?: string;
   autoScroll?: boolean;
+  history?: HistoryItem[];
+  messages?: HistoryMessage[];
+  conversationId?: string;
+  filename?: string;
+  language?: string;
+  content?: string;
+  truncated?: boolean;
 }
 
 /**
@@ -45,6 +72,10 @@ declare const OnDidReceiveMessageOptionsTypeEnums: {
   ShowConversations: 'show-conversations';
   ShowConversation: 'show-conversation';
   StopGenerating: 'stop-generating';
+  LoadHistory: 'load-history';
+  LoadConversation: 'load-conversation';
+  DeleteConversation: 'delete-conversation';
+  GetCurrentFile: 'get-current-file';
 };
 
 /**
@@ -60,6 +91,8 @@ declare interface OnDidReceiveMessageOptions {
   type: OnDidReceiveMessageOptionsType;
   value?: string;
   language?: string;
+  attachedContent?: string;
+  attachedLanguage?: string;
 }
 
 declare interface SendApiRequestOption {
@@ -67,4 +100,5 @@ declare interface SendApiRequestOption {
   code?: string;
   previousAnswer?: string;
   language?: string;
+  fileName?: string;
 }

@@ -140,5 +140,10 @@
   "chatgpt.webview.sendButtonTitle": "Send your question to ChatGPT",
   "chatgpt.webview.cancelButtonName": "Cancel",
   "chatgpt.webview.cancelButtonTitle": "Cancel",
-  "chatgpt.webview.stopGeneratingButtonName": "Stop generating"
+  "chatgpt.webview.stopGeneratingButtonName": "Stop generating",
+  "chatgpt.webview.historyTitle": "Conversation History",
+  "chatgpt.webview.historyEmpty": "No conversation history yet",
+  "chatgpt.webview.historyButtonName": "History",
+  "chatgpt.webview.historyButtonTitle": "View conversation history",
+  "chatgpt.webview.attachFileButtonTitle": "Attach current file to context"
 }
