@@ -1,71 +1,66 @@
-# 变更日志
+# Changelog
 
-“vscode-chatgpt-plugin”扩展的所有显着变化都将记录在此文件中。
+All notable changes to the "vscode-chatgpt-plugin" extension will be documented in this file.
 
-<br/>
+The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Conventional Commits](https://www.conventionalcommits.org/).
+
+## [Unreleased]
+
+### Added
+
+- Support for `reasoningEffort` config (`low` / `medium` / `high`) for o-series reasoning models.
+- New models to the enum: `gpt-4o-2024-11-20`, `o3`, `o3-mini`, `o4-mini`.
+- Husky v9 + lint-staged for pre-commit ESLint and Prettier checks.
+- commitlint for Conventional Commits enforcement on commit messages.
+- `.editorconfig` for consistent editor settings across contributors.
+- `.prettierignore` to exclude build artifacts from formatting.
+- New npm scripts: `lint`, `lint:fix`, `format`, `format:check`.
+- Bilingual README: English (`README.md`) and Chinese (`README.zh-CN.md`).
+
+### Changed
+
+- Migrated `maxTokens` default from `1024` → `4096` (package.json and config.ts aligned).
+- Migrated `temperature` default from `1` → `0.2` (package.json and config.ts aligned).
+- Upgraded Husky from v1 to v9, using `.husky/` directory instead of package.json config.
+- Replaced `pretty-quick` with `lint-staged` for more granular pre-commit checks.
+- Replaced `vcm-cli` with `commitlint` + `@commitlint/config-conventional`.
+- Upgraded Volta Node version from `16.20.0` to `20.18.0` (required by new toolchain).
+- Formatted all source files with Prettier.
+
+### Removed
+
+- `top_p` config — redundant when used alongside `temperature`; removed from package.json, config.ts, extension.ts, and NLS files.
+- `withContent` config — no longer used after the OpenAI SDK migration; removed from package.json, config.ts, and extension.ts.
+- Conflicting `.prettierrc.js` (kept `.prettierrc` as single source of truth).
+- Boilerplate `vsc-extension-quickstart.md`.
 
 ### Fixed
 
-- 修复了当 token 超长时，右下角提示框无选项的问题。
+- o-series reasoning models no longer receive `temperature` parameter (API would reject it); `reasoning_effort` is sent instead.
 
-<br/>
+---
 
-### Feat
+## [0.1.4] — Previous Releases
 
-- 优化 text 模型构建 prompt 的逻辑。
-- 去除点击登录无用操作。
-- 下线 text-curie-001, text-babbage-001, text-ada-001 较为古老的模型，增加 text-davinci-002 模型。
-- 优化 REDME.md 文档样式。
+### Added
 
-<br/>
+- Custom model name input field in settings.
+- Reordered config items to surface frequently used settings.
+- "Update API Key" button for managing keys stored in global state.
+- Support for `gpt-4-0613`, `gpt-4-32k`, `gpt-4-32k-0613` models.
+- Support for `gpt-3.5-turbo-16k`, `gpt-3.5-turbo-0613`, `gpt-3.5-turbo-16k-0613` models.
+- Internationalization support (English and Chinese).
 
-### Feat
+### Fixed
 
-- 整合声明，把重复的声明进行抽离，统一继承。
+- Error messages for HTTP 400/401/403/404/429/500 were being swallowed by overly long context error dialogs.
+- Input box height not restoring after losing focus.
+- "Update settings" and "Update prompts" button titles displaying incorrectly.
 
-<br/>
+### Changed
 
-### Feat
-
-- 拆分代码，增加可读性，方便后续维护。
-- 接口报错消息支持中文。
-
-<br/>
-
-### Feat
-
-- 拆分代码，增加可读性，方便后续维护。
-- 自定义指令 1,自定义指令 2 没在配置里面进行初始化配置的时候，给用户弹配置框
-- 样式调整
-
-### Feat
-
-- 移除之前因为做国际化在设置中的一些无用配置项。
-
-### Feat
-
-- 更新设置、更新提示按钮 title 显示错误 bug
-- 移除老版本的 webview.js 文件
-- 修复页面下方输入框失去焦点高度不回弹的问题
-
-### Feat
-
-- 修复代码、优化代码，并没做实质性的功能性更新
-
-### Feat
-
-- 更新了 gpt4 的模型，增加了 gpt-4-0613、gpt-4-32k、gpt-4-32k-0613 等模型
-- 更新了 gpt3 的模型，增加了 gpt-3.5-turbo-16k 、gpt-3.5-turbo-0613、gpt-3.5-turbo-16k-0613 等模型
-
-### Feat
-
-- 新加了更新 apikey 按钮，由于本插件在全局状态和插件配置页面均可以配置 api 秘钥，但是全局状态下的秘钥用户没法更新，顾包漏出这个功能，更新逻辑：当全局状态和该插件同时存在秘钥的时候，优先更新全局状态的秘钥，否则在哪里配置的秘钥更新哪里的秘钥
-
-### Fix
-
-- 修复了当接口状态码是 400,401,403,404,429,500 的时候被长下文超长的错误提示拦截的问题
-
-### Feat
-
-- 调整该插件配置项 Model 和 Organization 的顺序，将用户更关心的配置项前置
-- 配置页面支持 Ai 模型自定义输入
+- Removed legacy webview.js file.
+- Removed unused i18n config entries from settings.
+- Refactored code structure for better readability and maintainability.
+- Consolidated duplicated type declarations with unified inheritance.
+- Optimized prompt construction logic for text models.

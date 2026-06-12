@@ -6,13 +6,6 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Launch Chrome",
-      "request": "launch",
-      "type": "chrome",
-      "url": "http://localhost:8080",
-      "webRoot": "${workspaceFolder}"
-    },
-    {
       "name": "Run Extension",
       "type": "extensionHost",
       "request": "launch",

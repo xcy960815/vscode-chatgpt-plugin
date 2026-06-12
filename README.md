@@ -1,64 +1,169 @@
-<h2 align="center">vscode-chatgpt-plugin</h2>
-<br/>
+<h1 align="center">
+  <img src="./images/ai-logo.jpg" alt="VS Code ChatGPT Plugin" width="80" />
+  <br />
+  ChatGPT Plugin for VS Code
+</h1>
 
-#### 产品介绍：
+<p align="center">
+  Chat with GPT, generate code, and get AI-powered suggestions — all inside your editor.
+</p>
 
-- vscode-chatgpt-plugin 这是一个基于 OpenAI 的强大语言模型 GPT 架构的聊天助手插件。通过 ChatGPT 插件，您可以在 Visual Studio Code 编辑器中进行自然语言交互，获得智能回答、建议和帮助，提高开发效率。
+<p align="center">
+  <a href="https://marketplace.visualstudio.com/items?itemName=xcy960815.vscode-chatgpt-plugin">
+    <img src="https://img.shields.io/visual-studio-marketplace/v/xcy960815.vscode-chatgpt-plugin?label=VS%20Code%20Marketplace&color=blue" alt="VS Code Marketplace" />
+  </a>
+  <a href="https://github.com/xcy960815/vscode-chatgpt-plugin/blob/main/LICENSE.md">
+    <img src="https://img.shields.io/github/license/xcy960815/vscode-chatgpt-plugin" alt="License" />
+  </a>
+  <a href="https://conventionalcommits.org">
+    <img src="https://img.shields.io/badge/Conventional%20Commits-1.0.0-yellow.svg" alt="Conventional Commits" />
+  </a>
+</p>
 
-<br/>
+<p align="center">
+  <a href="./README.md">English</a> | <a href="./README.zh-CN.md">中文</a>
+</p>
 
-#### 功能介绍：
+---
 
-- 自然语言交互：提供 gpt4、gpt3.5-turbo 等主流语言模型进行实时自然语言对话。
-- 右键选中代码，提供添加测试、查找错误、优化代码、解释代码、添加注释、补全代码、临时提示等功能。gpt 回答的答案会在左侧的输出面板中显示。
-- 国际化（目前只支持中文和英文）
+## Features
 
-#### 前提条件在开始使用 VSCode ChatGPT 插件之前，请确保满足以下要求：
+- **Conversational AI** — Chat with GPT models directly in a sidebar panel, with streaming responses and markdown rendering.
+- **Code Actions** — Select code, right-click to add tests, find bugs, optimize, explain, add comments, or complete code.
+- **Modern UI** — Pure CSS design that follows VS Code theming, with dark/light mode support, message bubbles, and smooth animations.
+- **Smart Defaults** — Tuned for developers: `temperature: 0.2` for deterministic output, `maxTokens: 4096` for long responses.
+- **Reasoning Model Support** — Native support for OpenAI o-series reasoning models (`o1`, `o3`, `o3-mini`, `o4-mini`) with configurable `reasoningEffort`.
+- **Internationalization** — Built-in support for English and 中文.
 
-<br/>
+## Supported Models
 
-- 安装 Visual Studio Code（版本 1.60 或更高）。
-- 拥有 OpenAI 的 ChatGPT API 密钥。请参考 OpenAI 文档获取 API 密钥。安装打开 Visual Studio Code。
+| Category  | Models                                       |
+| --------- | -------------------------------------------- |
+| GPT-4o    | `gpt-4o`, `gpt-4o-mini`, `gpt-4o-2024-11-20` |
+| Reasoning | `o4-mini`, `o3`, `o3-mini`, `o1`, `o1-mini`  |
+| Legacy    | `gpt-4-turbo`, `gpt-4`, `gpt-3.5-turbo`      |
 
-* 请确保您的网络可以访问 https://api.openai.com
+You can also enter any custom model name via the `chatgpt.gpt.customModel` setting.
 
-- 在扩展面板中搜索 "vscode-chatgpt-plugin"。点击 "安装" 按钮，并等待安装完成。
-- 配置安装 ChatGPT 插件后，您需要配置 API 密钥以连接到 ChatGPT 服务。
+## Prerequisites
 
-#### 请按照以下步骤进行 apikey 配置：
+- **VS Code** `>= 1.73.0`
+- An **OpenAI API key** — [get one here](https://platform.openai.com/account/api-keys)
+- Network access to `https://api.openai.com` (or a custom API base URL)
 
-<center><img src="./imgs/setting.jpg" width="500" /></center>
+## Installation
 
-- 直接点击登录，系统会检测您是否已经配置了 openai 的 api 密钥，如果没有配置，系统会自动弹窗，让您选择存储 apikey 的位置，推荐存储到会话中，不推荐配置到配置中。系统会自动将您的 api 密钥保存到本地。
+1. Open VS Code and go to the Extensions panel (`Ctrl+Shift+X` / `Cmd+Shift+X`).
+2. Search for **vscode-chatgpt-plugin**.
+3. Click **Install**.
 
-- 打开 chat-gpt-plugin 插件 在页面下方有更新设置、或者点击更多更新设置按钮 搜索关键字 api，输入自己从 openai 官方申请到的 apikey，至此您已经完成了配置。
+## Configuration
 
-<br/>
+Open Settings and search for `chatgpt` to find all options:
 
-#### 示例以下是 ChatGPT 的一些对话示例：
+| Setting | Default | Description |
+| --- | --- | --- |
+| `chatgpt.gpt.apiKey` | — | OpenAI API key (stored securely in global state) |
+| `chatgpt.gpt.model` | `gpt-4o-mini` | Model to use for completions |
+| `chatgpt.gpt.customModel` | — | Override with any custom model name |
+| `chatgpt.gpt.reasoningEffort` | `medium` | Reasoning effort for o-series models: `low` / `medium` / `high` |
+| `chatgpt.gpt.maxTokens` | `4096` | Max tokens in the response |
+| `chatgpt.gpt.temperature` | `0.2` | Sampling temperature (ignored for o-series models) |
+| `chatgpt.gpt.apiBaseUrl` | `https://api.openai.com` | Custom API base URL |
+| `chatgpt.gpt.organization` | — | OpenAI Organization ID |
+| `chatgpt.gpt.systemMessage` | _(built-in)_ | Custom system prompt |
+| `chatgpt.response.autoScroll` | `true` | Auto-scroll to latest message |
+| `chatgpt.response.subscribeToResponse` | `false` | Notification when AI responds |
 
-<br/>
+## Usage
 
-- 用户： 你好，ChatGPT！如何创建一个函数？
+### Free-form Chat
 
-- ChatGPT： 您好！要创建一个函数，请使用 def 关键字，后跟函数名和参数列表。例如：def my_function(arg1, arg2):。
+Type anything in the input box at the bottom of the chat panel and press **Enter** to start a conversation.
 
-- 用户： 谢谢！你能帮我解决一个编译错误吗？
+<p align="center">
+  <img src="./imgs/any-question.jpg" alt="Chat interface" width="500" />
+</p>
 
-- ChatGPT： 当然可以！请提供错误消息和相关代码的详细信息，我将尽力帮助您找到解决方案。
+### Code Actions
 
-#### 使用方法
+Select code in the editor, right-click, and choose an action from the context menu:
 
-<center><img src="./imgs/any-question.jpg" width="500"></center>
+- **Add Tests** — Generate unit tests for selected code
+- **Find Bugs** — Identify potential issues
+- **Optimize** — Suggest performance and readability improvements
+- **Explain** — Get a plain-language explanation
+- **Add Comments** — Insert meaningful comments
+- **Complete Code** — Auto-complete the selected snippet
+- **Ad-hoc Prompt** — Send selected code with your own custom prompt
 
-- 在输入框输入任意内容，点击回车，即可开始对话。
+<p align="center">
+  <img src="./imgs/right-menu.png" alt="Context menu" width="500" />
+</p>
 
-<center><img src="./imgs/right-menu.png" width="500"></center>
+### API Key Setup
 
-- 右键选中代码，点击右键，选择您需要的功能，即可获得 gpt 的回答。
+On first launch, click the **Login** button in the chat panel. If no API key is detected, a dialog will prompt you to enter one. The key is stored in VS Code's global state by default — it never touches your `settings.json`.
 
-#### 其他
+<p align="center">
+  <img src="./imgs/setting.jpg" alt="Settings" width="500" />
+</p>
 
-- 还有一些其他的小功能，可以到 config 中进行配置，比如是否开启自动滚动页面、关于 gpt 的配置等等。
+## Development
 
-您如果喜欢该插件，可以给我一个 [star](https://github.com/xcy960815/vscode-chatgpt-plugin)，如果您有任何问题，可以在 github 上提 issue，我会尽快回复您。
+### Prerequisites
+
+- **Node.js** `>= 20` (managed via [Volta](https://volta.sh))
+- **npm** (comes with Node.js)
+
+### Setup
+
+```bash
+git clone https://github.com/xcy960815/vscode-chatgpt-plugin.git
+cd vscode-chatgpt-plugin
+npm install
+```
+
+### Scripts
+
+| Command                | Description                                        |
+| ---------------------- | -------------------------------------------------- |
+| `npm run build`        | Build the extension with esbuild (with sourcemaps) |
+| `npm run watch`        | Build in watch mode for development                |
+| `npm run lint`         | Run ESLint on source files                         |
+| `npm run lint:fix`     | Auto-fix ESLint issues                             |
+| `npm run format`       | Format source code with Prettier                   |
+| `npm run format:check` | Check formatting without modifying files           |
+| `npm run test`         | Run ESLint + TypeScript type checking              |
+
+### Git Hooks
+
+This project uses [Husky](https://typicode.github.io/husky/) with [lint-staged](https://github.com/okonet/lint-staged) and [commitlint](https://commitlint.js.org/):
+
+- **pre-commit** — Runs ESLint auto-fix and Prettier formatting on staged files.
+- **commit-msg** — Validates commit messages against [Conventional Commits](https://www.conventionalcommits.org/) (e.g. `feat:`, `fix:`, `docs:`, `chore:`).
+
+### Project Structure
+
+```
+src/
+├── extension.ts              # Entry point — activation, config listeners
+├── chatgpt-view-provider.ts  # WebView panel logic
+├── commands.ts               # Command registration
+├── config.ts                 # Centralized config manager
+├── i18n.ts                   # Internationalization utilities
+├── openai-service.ts         # OpenAI SDK wrapper
+└── test/                     # Test suite
+```
+
+## Roadmap
+
+See [docs/roadmap.md](./docs/roadmap.md) for the full development roadmap and current progress.
+
+## Contributing
+
+Contributions are welcome! Please follow [Conventional Commits](https://www.conventionalcommits.org/) for your commit messages.
+
+## License
+
+This project is licensed under the [MIT License](./LICENSE.md).

@@ -1,5 +1,7 @@
 window.onload = function () {
   const vscode = acquireVsCodeApi();
+  let chatgpt = {};
+
   marked.setOptions({
     renderer: new marked.Renderer(),
     highlight: function (code, _lang) {
@@ -13,48 +15,46 @@ window.onload = function () {
     smartypants: false,
     xhtml: false,
   });
-  // 拿到所有的 需要操作的 dom
-  const questionInputElement = document.getElementById('question-input');
-  const answerListElement = document.getElementById('answer-list');
-  const stopAskingButtonElement = document.getElementById('stop-generating-button');
-  const inProgressElement = document.getElementById('in-progress');
-  const questionInputButtons = document.getElementById('question-input-buttons');
-  const introductionElement = document.getElementById('introduction');
-  const conversationElement = document.getElementById('conversation-list');
-  const chatButtonWrapperElement = document.getElementById('chat-button-wrapper');
 
-  // 接收来自 webview 的消息
+  // DOM 元素引用
+  const dom = {
+    questionInput: document.getElementById('question-input'),
+    answerList: document.getElementById('answer-list'),
+    inProgress: document.getElementById('in-progress'),
+    introduction: document.getElementById('introduction'),
+    chatButtonWrapper: document.getElementById('chat-button-wrapper'),
+    questionInputButtons: document.getElementById('question-input-buttons'),
+    modelName: document.getElementById('model-name'),
+    stopGeneratingButton: document.getElementById('stop-generating-button')
+  };
+
+  // 接收来自 vscode 的消息
   window.addEventListener('message', (event) => {
     const messageOption = event.data;
     switch (messageOption.type) {
       case 'show-in-progress':
         handleShowInProgress(messageOption);
         break;
-      // 添加用户消息
       case 'add-question':
         handleAddQuestion(messageOption);
         break;
-      // 添加 gpt 回答
       case 'add-answer':
         handleAddAnswer(messageOption);
         break;
-      // 添加错误消息
       case 'add-error':
         handleAddError(messageOption);
         break;
-      // 清空会话
       case 'clear-conversation':
         handleClearConversation();
         break;
-      // 导出会话
       case 'export-conversation':
         handleExportConversation();
         break;
-      // 接受vscode 配置
       case 'set-chatgpt-config':
         chatgpt = messageOption.value;
-        break;
-      default:
+        if (chatgpt.model) {
+          dom.modelName.textContent = chatgpt.model;
+        }
         break;
     }
   });
@@ -62,423 +62,310 @@ window.onload = function () {
   const postMessageToVscode = (messageOption) => {
     vscode.postMessage(messageOption);
   };
+
+  // HTML 转义
+  const escapeHtml = (unsafe) => {
+    if (!unsafe) return '';
+    return unsafe
+      .toString()
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  };
+
+  // 模板渲染函数
+  const getTemplate = (id) => {
+    const template = document.getElementById(id);
+    return template ? template.innerHTML : '';
+  };
+
   // 发送问题
   const handleSendQuestion = () => {
-    if (questionInputElement.value?.length > 0) {
+    const text = dom.questionInput.value.trim();
+    if (text.length > 0) {
       postMessageToVscode({
         type: 'add-question',
-        value: questionInputElement.value,
+        value: text,
       });
-      questionInputElement.value = '';
-      setTimeout(() => {
-        // 不生效 ？？？
-        questionInputElement.rows = 1;
-      }, 100);
+      dom.questionInput.value = '';
+      dom.questionInput.parentNode.dataset.replicatedValue = '';
     }
   };
-  // 添加进行中的提示
+
+  // UI 状态切换：生成中
   const handleShowInProgress = (messageOption) => {
     if (messageOption.showStopButton) {
-      // 让停止按钮显示
-      stopAskingButtonElement.classList.remove('hidden');
+      dom.stopGeneratingButton.classList.remove('hidden');
     } else {
-      // 让停止按钮隐藏
-      stopAskingButtonElement.classList.add('hidden');
+      dom.stopGeneratingButton.classList.add('hidden');
     }
+
     if (messageOption.inProgress) {
-      // 让正在进行中的提示显示
-      inProgressElement.classList.remove('hidden');
-      // 让输入框不可用
-      questionInputElement.setAttribute('disabled', true);
-      // 让输入框的按钮隐藏
-      questionInputButtons.classList.add('hidden');
+      dom.inProgress.classList.remove('hidden');
+      dom.questionInput.setAttribute('disabled', 'true');
+      dom.questionInputButtons.classList.add('hidden');
     } else {
-      // 让正在进行中的提示隐藏
-      inProgressElement.classList.add('hidden');
-      // 让输入框可用
-      questionInputElement.removeAttribute('disabled');
-      // 让输入框的按钮显示
-      questionInputButtons.classList.remove('hidden');
+      dom.inProgress.classList.add('hidden');
+      dom.questionInput.removeAttribute('disabled');
+      dom.questionInputButtons.classList.remove('hidden');
+      dom.questionInput.focus();
     }
   };
-  // 添加用户消息
+
+  // 添加用户提问
   const handleAddQuestion = (messageOption) => {
-    answerListElement.classList.remove('hidden');
-    // 整体介绍隐藏
-    introductionElement?.classList?.add('hidden');
-    // 让对话列表隐藏
-    conversationElement.classList.add('hidden');
-    const escapeHtml = (unsafe) => {
-      return unsafe
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-    };
-    answerListElement.innerHTML += `<div class="p-4 self-end mt-2 question-element relative input-background">
-                        <h3 class="mb-5 mt-0 flex items-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-2 w-4 h-4">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z" />
-                          </svg>
-                          You
-                        </h3>
-                        <no-export class="mb-2 flex items-center">
-                            <!-- 重新编辑按钮 -->
-                            <button title="{{chatgpt.webview.editButtonTitle}}" id="edit-button" class="p-1.5 flex items-center rounded-lg absolute right-6 top-6">
-                              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-3 h-3">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
-                              </svg>
-                            </button>
-                            <div class="hidden send-cancel-container flex gap-2">
-                                <button title="{{chatgpt.webview.sendButtonTitle}}" id="send-button" class="send-button p-1 pr-2 flex items-center rounded-md">
-                                <!-- 发送按钮 -->  
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-1">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                  </svg>
-                                  {{chatgpt.webview.sendButtonName}}
-                                </button>
-                                <button title="{{chatgpt.webview.cancelButtonTitle}}" id="cancel-button" class="cancel-button p-1 pr-2 flex items-center rounded-md">
-                                <!-- 取消按钮 -->   
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-3 h-3 mr-1">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                                  </svg>
-                                  {{chatgpt.webview.cancelButtonName}}
-                                </button>
-                            </div>
-                        </no-export>
-                        <div class="overflow-y-auto pt-1 pb-1 pl-3 pr-3 rounded-md">${escapeHtml(
-                          messageOption.value,
-                        )}</div>
-        </div>`;
-    if (messageOption.autoScroll) {
-      answerListElement.lastChild?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'end',
-        inline: 'nearest',
-      });
-    }
+    dom.answerList.classList.remove('hidden');
+    dom.introduction?.classList?.add('hidden');
+
+    const msgContainer = document.createElement('div');
+    msgContainer.className = 'msg-container msg-user question-element';
+    msgContainer.innerHTML = `
+      <div class="msg-header">
+        ${getTemplate('tpl-user-icon')}
+        You
+      </div>
+      <no-export class="edit-actions">
+        <button data-action="edit-question" class="edit-btn" title="Edit">
+          ${getTemplate('tpl-edit-icon')}
+        </button>
+        <div class="send-cancel-container hidden flex gap-2">
+          <button data-action="send-edited" class="edit-btn" title="Send">
+            ${getTemplate('tpl-send-icon')} Send
+          </button>
+          <button data-action="cancel-edit" class="edit-btn" title="Cancel">
+            Cancel
+          </button>
+        </div>
+      </no-export>
+      <div class="msg-content question-content">${escapeHtml(messageOption.value)}</div>
+    `;
+
+    dom.answerList.appendChild(msgContainer);
+    scrollToBottom(messageOption.autoScroll);
   };
-  // 添加错误消息
+
+  // 添加 AI 回答
   const handleAddAnswer = (messageOption) => {
-    // 如果存在现有消息
-    let existingMessageElement = messageOption.id && document.getElementById(messageOption.id);
-    const updatedValue =
-      messageOption.value.split('```').length % 2 === 1
+    let existingMessageElement = messageOption.id ? document.getElementById(messageOption.id) : null;
+    
+    // 自动补全代码块闭合标签，防止解析错误
+    const updatedValue = messageOption.value.split('```').length % 2 === 1
         ? messageOption.value
         : messageOption.value + '\n\n```\n\n';
 
     const markedResponse = marked.parse(updatedValue);
+
     if (existingMessageElement) {
-      // 更新现有消息
       existingMessageElement.innerHTML = markedResponse;
     } else {
-      // 第一次回答
-      answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 answer-element">
-          <h3 class="mb-5 flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 41 41" fill="none" stroke-width="1.5" class="w-5 mr-2 w-4 h-4">
-              <path d="M37.5324 16.8707C37.9808 15.5241 38.1363 14.0974 37.9886 12.6859C37.8409 11.2744 37.3934 9.91076 36.676 8.68622C35.6126 6.83404 33.9882 5.3676 32.0373 4.4985C30.0864 3.62941 27.9098 3.40259 25.8215 3.85078C24.8796 2.7893 23.7219 1.94125 22.4257 1.36341C21.1295 0.785575 19.7249 0.491269 18.3058 0.500197C16.1708 0.495044 14.0893 1.16803 12.3614 2.42214C10.6335 3.67624 9.34853 5.44666 8.6917 7.47815C7.30085 7.76286 5.98686 8.3414 4.8377 9.17505C3.68854 10.0087 2.73073 11.0782 2.02839 12.312C0.956464 14.1591 0.498905 16.2988 0.721698 18.4228C0.944492 20.5467 1.83612 22.5449 3.268 24.1293C2.81966 25.4759 2.66413 26.9026 2.81182 28.3141C2.95951 29.7256 3.40701 31.0892 4.12437 32.3138C5.18791 34.1659 6.8123 35.6322 8.76321 36.5013C10.7141 37.3704 12.8907 37.5973 14.9789 37.1492C15.9208 38.2107 17.0786 39.0587 18.3747 39.6366C19.6709 40.2144 21.0755 40.5087 22.4946 40.4998C24.6307 40.5054 26.7133 39.8321 28.4418 38.5772C30.1704 37.3223 31.4556 35.5506 32.1119 33.5179C33.5027 33.2332 34.8167 32.6547 35.9659 31.821C37.115 30.9874 38.0728 29.9178 38.7752 28.684C39.8458 26.8371 40.3023 24.6979 40.0789 22.5748C39.8556 20.4517 38.9639 18.4544 37.5324 16.8707ZM22.4978 37.8849C20.7443 37.8874 19.0459 37.2733 17.6994 36.1501C17.7601 36.117 17.8666 36.0586 17.936 36.0161L25.9004 31.4156C26.1003 31.3019 26.2663 31.137 26.3813 30.9378C26.4964 30.7386 26.5563 30.5124 26.5549 30.2825V19.0542L29.9213 20.998C29.9389 21.0068 29.9541 21.0198 29.9656 21.0359C29.977 21.052 29.9842 21.0707 29.9867 21.0902V30.3889C29.9842 32.375 29.1946 34.2791 27.7909 35.6841C26.3872 37.0892 24.4838 37.8806 22.4978 37.8849ZM6.39227 31.0064C5.51397 29.4888 5.19742 27.7107 5.49804 25.9832C5.55718 26.0187 5.66048 26.0818 5.73461 26.1244L13.699 30.7248C13.8975 30.8408 14.1233 30.902 14.3532 30.902C14.583 30.902 14.8088 30.8408 15.0073 30.7248L24.731 25.1103V28.9979C24.7321 29.0177 24.7283 29.0376 24.7199 29.0556C24.7115 29.0736 24.6988 29.0893 24.6829 29.1012L16.6317 33.7497C14.9096 34.7416 12.8643 35.0097 10.9447 34.4954C9.02506 33.9811 7.38785 32.7263 6.39227 31.0064ZM4.29707 13.6194C5.17156 12.0998 6.55279 10.9364 8.19885 10.3327C8.19885 10.4013 8.19491 10.5228 8.19491 10.6071V19.808C8.19351 20.0378 8.25334 20.2638 8.36823 20.4629C8.48312 20.6619 8.64893 20.8267 8.84863 20.9404L18.5723 26.5542L15.206 28.4979C15.1894 28.5089 15.1703 28.5155 15.1505 28.5173C15.1307 28.5191 15.1107 28.516 15.0924 28.5082L7.04046 23.8557C5.32135 22.8601 4.06716 21.2235 3.55289 19.3046C3.03862 17.3858 3.30624 15.3413 4.29707 13.6194ZM31.955 20.0556L22.2312 14.4411L25.5976 12.4981C25.6142 12.4872 25.6333 12.4805 25.6531 12.4787C25.6729 12.4769 25.6928 12.4801 25.7111 12.4879L33.7631 17.1364C34.9967 17.849 36.0017 18.8982 36.6606 20.1613C37.3194 21.4244 37.6047 22.849 37.4832 24.2684C37.3617 25.6878 36.8382 27.0432 35.9743 28.1759C35.1103 29.3086 33.9415 30.1717 32.6047 30.6641C32.6047 30.5947 32.6047 30.4733 32.6047 30.3889V21.188C32.6066 20.9586 32.5474 20.7328 32.4332 20.5338C32.319 20.3348 32.154 20.1698 31.955 20.0556ZM35.3055 15.0128C35.2464 14.9765 35.1431 14.9142 35.069 14.8717L27.1045 10.2712C26.906 10.1554 26.6803 10.0943 26.4504 10.0943C26.2206 10.0943 25.9948 10.1554 25.7963 10.2712L16.0726 15.8858V11.9982C16.0715 11.9783 16.0753 11.9585 16.0837 11.9405C16.0921 11.9225 16.1048 11.9068 16.1207 11.8949L24.1719 7.25025C25.4053 6.53903 26.8158 6.19376 28.2383 6.25482C29.6608 6.31589 31.0364 6.78077 32.2044 7.59508C33.3723 8.40939 34.2842 9.53945 34.8334 10.8531C35.3826 12.1667 35.5464 13.6095 35.3055 15.0128ZM14.2424 21.9419L10.8752 19.9981C10.8576 19.9893 10.8423 19.9763 10.8309 19.9602C10.8195 19.9441 10.8122 19.9254 10.8098 19.9058V10.6071C10.8107 9.18295 11.2173 7.78848 11.9819 6.58696C12.7466 5.38544 13.8377 4.42659 15.1275 3.82264C16.4173 3.21869 17.8524 2.99464 19.2649 3.1767C20.6775 3.35876 22.0089 3.93941 23.1034 4.85067C23.0427 4.88379 22.937 4.94215 22.8668 4.98473L14.9024 9.58517C14.7025 9.69878 14.5366 9.86356 14.4215 10.0626C14.3065 10.2616 14.2466 10.4877 14.2479 10.7175L14.2424 21.9419ZM16.071 17.9991L20.4018 15.4978L24.7325 17.9975V22.9985L20.4018 25.4983L16.071 22.9985V17.9991Z" fill="currentColor"></path>
-            </svg>
-            ChatGPT
-          </h3>
-          <div class="result-streaming" id="${messageOption.id}">${markedResponse}</div>
-      </div>`;
+      const msgContainer = document.createElement('div');
+      msgContainer.className = 'msg-container msg-ai answer-element';
+      msgContainer.innerHTML = `
+        <div class="msg-header">
+          ${getTemplate('tpl-ai-icon')}
+          ChatGPT
+        </div>
+        <div class="msg-content result-streaming" id="${messageOption.id || ''}">${markedResponse}</div>
+      `;
+      dom.answerList.appendChild(msgContainer);
     }
-    // 回答完毕
+
     if (messageOption.done) {
-      const preCodeList = answerListElement.lastChild.querySelectorAll('pre > code');
-      preCodeList.forEach((preCode) => {
-        preCode.classList.add(
-          'input-background',
-          'p-4',
-          'pb-2',
-          'block',
-          'whitespace-pre',
-          'overflow-x-scroll',
-        );
-        preCode.parentElement.classList.add('pre-code-element', 'relative');
-        const buttonWrapper = document.createElement('no-export');
-        buttonWrapper.classList.add(
-          'code-actions-wrapper',
-          'flex',
-          'gap-3',
-          'pr-2',
-          'pt-1',
-          'pb-1',
-          'flex-wrap',
-          'items-center',
-          'justify-end',
-          'rounded-t-lg',
-          'input-background',
-        );
-        // 复制按钮
-        const copyButton = document.createElement('button');
-
-        copyButton.title = `{{chatgpt.webview.copyButtonTitle}}`;
-        copyButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1 w-3 h-3">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
-        </svg>
-         {{chatgpt.webview.copyButtonName}}`;
-        copyButton.id = 'copy-button';
-        copyButton.classList.add('p-1', 'pr-2', 'flex', 'items-center', 'rounded-lg');
-        //  插入按钮
-        const insertButton = document.createElement('button');
-        insertButton.title = `{{chatgpt.webview.insertButtonTitle}}`;
-        insertButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-2 w-3 h-3">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 4.5l7.5 7.5-7.5 7.5m-6-15l7.5 7.5-7.5 7.5" />
-        </svg>
-        {{chatgpt.webview.insertButtonName}}`;
-        insertButton.id = 'insert-button';
-        insertButton.classList.add('p-1', 'pr-2', 'flex', 'items-center', 'rounded-lg');
-        // 右侧content 新开tab按钮
-        const newTabButton = document.createElement('button');
-        newTabButton.title = `{{chatgpt.webview.newTabButtonTitle}}`;
-        newTabButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1 w-3 h-3">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-          </svg>
-          {{chatgpt.webview.newTabButtonName}}`;
-        newTabButton.id = 'new-tab-button';
-        newTabButton.classList.add('p-1', 'pr-2', 'flex', 'items-center', 'rounded-lg');
-        buttonWrapper.append(copyButton, insertButton, newTabButton);
-        // previousSibling 方法是用于获取一个节点的前一个同级节点，返回它的前一个同级元素节点（距离当前节点最近的上一个元素节点），如果不存在则返回 null。
-        if (preCode.parentNode.previousSibling) {
-          preCode.parentNode.parentNode.insertBefore(
-            buttonWrapper,
-            preCode.parentNode.previousSibling,
-          );
-        } else {
-          preCode.parentNode.parentNode.prepend(buttonWrapper);
+      const currentAnswer = dom.answerList.lastElementChild;
+      if (currentAnswer) {
+        const streamingContent = currentAnswer.querySelector('.result-streaming');
+        if (streamingContent) {
+          streamingContent.classList.remove('result-streaming');
         }
-      });
-
-      existingMessageElement = document.getElementById(messageOption.id);
-      if (existingMessageElement) {
-        // 拿掉光标
-        existingMessageElement.classList.remove('result-streaming');
+        processCodeBlocks(currentAnswer);
       }
     }
-    // 如果用户开启了自动滚动 或者 回答完毕 的时候 将页面滚动到底部
-    if (messageOption.autoScroll && (messageOption.done || markedResponse.endsWith('\n'))) {
-      answerListElement.lastChild?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'end',
-        inline: 'nearest',
-      });
-    }
-  };
-  // 添加错误消息
-  const handleAddError = (messageOption) => {
-    if (!answerListElement.innerHTML) {
-      return;
-    }
-    const messageValue = messageOption.value;
-    answerListElement.innerHTML += `<div class="p-4 self-end mt-4 pb-8 error-element-ext">
-                        <h2 class="mb-5 flex items-center">
-                          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 41 41" fill="none" stroke-width="1.5" class="w-5 mr-2 w-4 h-4">
-                            <path d="M37.5324 16.8707C37.9808 15.5241 38.1363 14.0974 37.9886 12.6859C37.8409 11.2744 37.3934 9.91076 36.676 8.68622C35.6126 6.83404 33.9882 5.3676 32.0373 4.4985C30.0864 3.62941 27.9098 3.40259 25.8215 3.85078C24.8796 2.7893 23.7219 1.94125 22.4257 1.36341C21.1295 0.785575 19.7249 0.491269 18.3058 0.500197C16.1708 0.495044 14.0893 1.16803 12.3614 2.42214C10.6335 3.67624 9.34853 5.44666 8.6917 7.47815C7.30085 7.76286 5.98686 8.3414 4.8377 9.17505C3.68854 10.0087 2.73073 11.0782 2.02839 12.312C0.956464 14.1591 0.498905 16.2988 0.721698 18.4228C0.944492 20.5467 1.83612 22.5449 3.268 24.1293C2.81966 25.4759 2.66413 26.9026 2.81182 28.3141C2.95951 29.7256 3.40701 31.0892 4.12437 32.3138C5.18791 34.1659 6.8123 35.6322 8.76321 36.5013C10.7141 37.3704 12.8907 37.5973 14.9789 37.1492C15.9208 38.2107 17.0786 39.0587 18.3747 39.6366C19.6709 40.2144 21.0755 40.5087 22.4946 40.4998C24.6307 40.5054 26.7133 39.8321 28.4418 38.5772C30.1704 37.3223 31.4556 35.5506 32.1119 33.5179C33.5027 33.2332 34.8167 32.6547 35.9659 31.821C37.115 30.9874 38.0728 29.9178 38.7752 28.684C39.8458 26.8371 40.3023 24.6979 40.0789 22.5748C39.8556 20.4517 38.9639 18.4544 37.5324 16.8707ZM22.4978 37.8849C20.7443 37.8874 19.0459 37.2733 17.6994 36.1501C17.7601 36.117 17.8666 36.0586 17.936 36.0161L25.9004 31.4156C26.1003 31.3019 26.2663 31.137 26.3813 30.9378C26.4964 30.7386 26.5563 30.5124 26.5549 30.2825V19.0542L29.9213 20.998C29.9389 21.0068 29.9541 21.0198 29.9656 21.0359C29.977 21.052 29.9842 21.0707 29.9867 21.0902V30.3889C29.9842 32.375 29.1946 34.2791 27.7909 35.6841C26.3872 37.0892 24.4838 37.8806 22.4978 37.8849ZM6.39227 31.0064C5.51397 29.4888 5.19742 27.7107 5.49804 25.9832C5.55718 26.0187 5.66048 26.0818 5.73461 26.1244L13.699 30.7248C13.8975 30.8408 14.1233 30.902 14.3532 30.902C14.583 30.902 14.8088 30.8408 15.0073 30.7248L24.731 25.1103V28.9979C24.7321 29.0177 24.7283 29.0376 24.7199 29.0556C24.7115 29.0736 24.6988 29.0893 24.6829 29.1012L16.6317 33.7497C14.9096 34.7416 12.8643 35.0097 10.9447 34.4954C9.02506 33.9811 7.38785 32.7263 6.39227 31.0064ZM4.29707 13.6194C5.17156 12.0998 6.55279 10.9364 8.19885 10.3327C8.19885 10.4013 8.19491 10.5228 8.19491 10.6071V19.808C8.19351 20.0378 8.25334 20.2638 8.36823 20.4629C8.48312 20.6619 8.64893 20.8267 8.84863 20.9404L18.5723 26.5542L15.206 28.4979C15.1894 28.5089 15.1703 28.5155 15.1505 28.5173C15.1307 28.5191 15.1107 28.516 15.0924 28.5082L7.04046 23.8557C5.32135 22.8601 4.06716 21.2235 3.55289 19.3046C3.03862 17.3858 3.30624 15.3413 4.29707 13.6194ZM31.955 20.0556L22.2312 14.4411L25.5976 12.4981C25.6142 12.4872 25.6333 12.4805 25.6531 12.4787C25.6729 12.4769 25.6928 12.4801 25.7111 12.4879L33.7631 17.1364C34.9967 17.849 36.0017 18.8982 36.6606 20.1613C37.3194 21.4244 37.6047 22.849 37.4832 24.2684C37.3617 25.6878 36.8382 27.0432 35.9743 28.1759C35.1103 29.3086 33.9415 30.1717 32.6047 30.6641C32.6047 30.5947 32.6047 30.4733 32.6047 30.3889V21.188C32.6066 20.9586 32.5474 20.7328 32.4332 20.5338C32.319 20.3348 32.154 20.1698 31.955 20.0556ZM35.3055 15.0128C35.2464 14.9765 35.1431 14.9142 35.069 14.8717L27.1045 10.2712C26.906 10.1554 26.6803 10.0943 26.4504 10.0943C26.2206 10.0943 25.9948 10.1554 25.7963 10.2712L16.0726 15.8858V11.9982C16.0715 11.9783 16.0753 11.9585 16.0837 11.9405C16.0921 11.9225 16.1048 11.9068 16.1207 11.8949L24.1719 7.25025C25.4053 6.53903 26.8158 6.19376 28.2383 6.25482C29.6608 6.31589 31.0364 6.78077 32.2044 7.59508C33.3723 8.40939 34.2842 9.53945 34.8334 10.8531C35.3826 12.1667 35.5464 13.6095 35.3055 15.0128ZM14.2424 21.9419L10.8752 19.9981C10.8576 19.9893 10.8423 19.9763 10.8309 19.9602C10.8195 19.9441 10.8122 19.9254 10.8098 19.9058V10.6071C10.8107 9.18295 11.2173 7.78848 11.9819 6.58696C12.7466 5.38544 13.8377 4.42659 15.1275 3.82264C16.4173 3.21869 17.8524 2.99464 19.2649 3.1767C20.6775 3.35876 22.0089 3.93941 23.1034 4.85067C23.0427 4.88379 22.937 4.94215 22.8668 4.98473L14.9024 9.58517C14.7025 9.69878 14.5366 9.86356 14.4215 10.0626C14.3065 10.2616 14.2466 10.4877 14.2479 10.7175L14.2424 21.9419ZM16.071 17.9991L20.4018 15.4978L24.7325 17.9975V22.9985L20.4018 25.4983L16.071 22.9985V17.9991Z" fill="currentColor"></path>
-                          </svg>
-                          ChatGPT
-                        </h2>
-                        <div class="text-red-400">${marked.parse(messageValue)}</div>
-                    </div>`;
-    if (messageOption.autoScroll) {
-      answerListElement.lastChild?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'end',
-        inline: 'nearest',
-      });
+
+    if (messageOption.done || markedResponse.endsWith('\n')) {
+      scrollToBottom(messageOption.autoScroll);
     }
   };
 
-  // 清空聊天记录
-  const handleClearConversation = () => {
-    answerListElement.innerHTML = '';
-    introductionElement?.classList?.remove('hidden');
-    postMessageToVscode({
-      type: 'clear-conversation',
+  // 添加错误消息
+  const handleAddError = (messageOption) => {
+    if (dom.introduction && !dom.introduction.classList.contains('hidden')) {
+      dom.introduction.classList.add('hidden');
+      dom.answerList.classList.remove('hidden');
+    }
+
+    const msgContainer = document.createElement('div');
+    msgContainer.className = 'msg-container msg-error error-element-ext';
+    msgContainer.innerHTML = `
+      <div class="msg-header">
+        ${getTemplate('tpl-error-icon')}
+        Error
+      </div>
+      <div class="msg-content">${marked.parse(messageOption.value)}</div>
+    `;
+
+    dom.answerList.appendChild(msgContainer);
+    scrollToBottom(messageOption.autoScroll);
+  };
+
+  // 处理代码块，添加操作按钮
+  const processCodeBlocks = (container) => {
+    const preElements = container.querySelectorAll('pre');
+    preElements.forEach((pre) => {
+      // 避免重复添加
+      if (pre.parentNode.classList.contains('code-wrapper')) return;
+
+      const codeElem = pre.querySelector('code');
+      const langMatch = codeElem ? codeElem.className.match(/language-(\w+)/) : null;
+      const lang = langMatch ? langMatch[1] : 'code';
+
+      const wrapper = document.createElement('div');
+      wrapper.className = 'code-wrapper';
+      pre.parentNode.insertBefore(wrapper, pre);
+      
+      const header = document.createElement('no-export');
+      header.className = 'code-header';
+      header.innerHTML = `
+        <span class="code-lang">${lang}</span>
+        <div class="code-actions">
+          <button data-action="copy-code" title="Copy code">${getTemplate('tpl-copy-icon')} Copy</button>
+          <button data-action="insert-code" title="Insert into editor">${getTemplate('tpl-insert-icon')} Insert</button>
+          <button data-action="new-tab-code" title="Open in new tab">${getTemplate('tpl-new-tab-icon')} New Tab</button>
+        </div>
+      `;
+      
+      wrapper.appendChild(header);
+      wrapper.appendChild(pre);
     });
   };
 
-  // 导出聊天记录
+  const scrollToBottom = (autoScroll) => {
+    if (autoScroll) {
+      dom.answerList.lastElementChild?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'end',
+      });
+    }
+  };
+
+  const handleClearConversation = () => {
+    dom.answerList.innerHTML = '';
+    dom.answerList.classList.add('hidden');
+    dom.introduction?.classList?.remove('hidden');
+    postMessageToVscode({ type: 'clear-conversation' });
+  };
+
   const handleExportConversation = () => {
     const turndownService = new TurndownService({ codeBlockStyle: 'fenced' });
     turndownService.remove('no-export');
-    const markdownContent = turndownService.turndown(answerListElement);
+    const markdownContent = turndownService.turndown(dom.answerList);
     postMessageToVscode({
       type: 'open-newtab',
       value: markdownContent,
       language: 'markdown',
     });
   };
-  // 点击复制按钮
-  const handleClickCopyButton = (targetElement) => {
-    navigator.clipboard
-      .writeText(targetElement.parentElement?.nextElementSibling?.lastChild?.textContent)
-      .then(() => {
-        targetElement.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1 w-3 h-3">
-          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-        </svg>
-        {{chatgpt.webview.copiedButtonName}}`;
-        targetElement.title = `{{chatgpt.webview.copiedButtonTitle}}`;
+
+  // --- 事件分发处理 ---
+  const ACTION_HANDLERS = {
+    'send-question': () => handleSendQuestion(),
+    'toggle-more': () => {
+      dom.chatButtonWrapper?.classList.toggle('hidden');
+    },
+    'open-settings': () => postMessageToVscode({ type: 'open-settings' }),
+    'open-prompt-settings': () => postMessageToVscode({ type: 'open-prompt-settings' }),
+    'update-key': () => postMessageToVscode({ type: 'update-key' }),
+    'clear-conversation': () => handleClearConversation(),
+    'export-conversation': () => handleExportConversation(),
+    'stop-generating': () => postMessageToVscode({ type: 'stop-generating' }),
+    
+    // 消息内操作
+    'edit-question': (target) => {
+      const container = target.closest('.question-element');
+      const content = container.querySelector('.question-content');
+      const editBtn = container.querySelector('[data-action="edit-question"]');
+      const actionGroup = container.querySelector('.send-cancel-container');
+      
+      content.setAttribute('contenteditable', 'true');
+      content.focus();
+      editBtn.classList.add('hidden');
+      actionGroup.classList.remove('hidden');
+      actionGroup.classList.add('flex');
+    },
+    'send-edited': (target) => {
+      const container = target.closest('.question-element');
+      const content = container.querySelector('.question-content');
+      const text = content.textContent.trim();
+      
+      if (text.length > 0) {
+        postMessageToVscode({ type: 'add-question', value: text });
+      }
+      
+      // 恢复状态
+      content.setAttribute('contenteditable', 'false');
+      container.querySelector('[data-action="edit-question"]').classList.remove('hidden');
+      container.querySelector('.send-cancel-container').classList.add('hidden');
+      container.querySelector('.send-cancel-container').classList.remove('flex');
+    },
+    'cancel-edit': (target) => {
+      const container = target.closest('.question-element');
+      const content = container.querySelector('.question-content');
+      
+      content.setAttribute('contenteditable', 'false');
+      container.querySelector('[data-action="edit-question"]').classList.remove('hidden');
+      container.querySelector('.send-cancel-container').classList.add('hidden');
+      container.querySelector('.send-cancel-container').classList.remove('flex');
+    },
+    
+    // 代码块操作
+    'copy-code': (target) => {
+      const codeBlock = target.closest('.code-wrapper').querySelector('pre code');
+      navigator.clipboard.writeText(codeBlock.textContent).then(() => {
+        const originalHtml = target.innerHTML;
+        target.innerHTML = `${getTemplate('tpl-copied-icon')} Copied`;
         setTimeout(() => {
-          // 恢复按钮
-          targetElement.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="mr-1 w-3 h-3">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M15.666 3.888A2.25 2.25 0 0013.5 2.25h-3c-1.03 0-1.9.693-2.166 1.638m7.332 0c.055.194.084.4.084.612v0a.75.75 0 01-.75.75H9a.75.75 0 01-.75-.75v0c0-.212.03-.418.084-.612m7.332 0c.646.049 1.288.11 1.927.184 1.1.128 1.907 1.077 1.907 2.185V19.5a2.25 2.25 0 01-2.25 2.25H6.75A2.25 2.25 0 014.5 19.5V6.257c0-1.108.806-2.057 1.907-2.185a48.208 48.208 0 011.927-.184" />
-          </svg>
-          {{chatgpt.webview.copyButtonName}}`;
-          targetElement.title = `{{chatgpt.webview.copyButtonTitle}}`;
+          target.innerHTML = originalHtml;
         }, 1500);
       });
-  };
-  // 点击插入按钮
-  const handleClcikInsertButton = (targetElement) => {
-    postMessageToVscode({
-      type: 'insert-code',
-      value: targetElement.parentElement?.nextElementSibling?.lastChild?.textContent,
-    });
-  };
-  // 点击新开tab按钮
-  const handleClickNewTabButton = (targetElement) => {
-    postMessageToVscode({
-      type: 'open-newtab',
-      value: targetElement.parentElement?.nextElementSibling?.lastChild?.textContent,
-    });
-  };
-  // 点击编辑按钮
-  const handleClickEditButton = (targetElement) => {
-    // 获取到当前的问题元素
-    const questionEelemet = targetElement.closest('.question-element');
-    // 获取到当前的问题元素的父元素
-    const targetButtonParent = targetElement.nextElementSibling;
-    targetButtonParent.classList.remove('hidden');
-    questionEelemet.lastElementChild?.setAttribute('contenteditable', true);
-    targetElement.classList.add('hidden');
-  };
-  // 点击重发按钮
-  const handleClickSendButton = (targetElement) => {
-    const questionElement = targetElement.closest('.question-element');
-    const sendAndCancelContainer = targetElement.closest('.send-cancel-container');
-    const resendElement = targetElement.parentElement.parentElement.firstElementChild;
-    sendAndCancelContainer.classList.add('hidden');
-    resendElement.classList.remove('hidden');
-    questionElement.lastElementChild?.setAttribute('contenteditable', false);
-    if (questionElement.lastElementChild.textContent?.length > 0) {
-      postMessageToVscode({
-        type: 'add-question',
-        value: questionElement.lastElementChild.textContent,
-      });
+    },
+    'insert-code': (target) => {
+      const codeBlock = target.closest('.code-wrapper').querySelector('pre code');
+      postMessageToVscode({ type: 'insert-code', value: codeBlock.textContent });
+    },
+    'new-tab-code': (target) => {
+      const codeBlock = target.closest('.code-wrapper').querySelector('pre code');
+      postMessageToVscode({ type: 'open-newtab', value: codeBlock.textContent });
     }
   };
-  // 点击取消按钮
-  const handleClickCancelButton = (targetElement) => {
-    const questionElement = targetElement.closest('.question-element');
-    const sendAndCancelContainer = targetElement.closest('.send-cancel-container');
-    const resendElement = targetElement.parentElement.parentElement.firstElementChild;
-    sendAndCancelContainer.classList.add('hidden');
-    resendElement.classList.remove('hidden');
-    questionElement.lastElementChild?.setAttribute('contenteditable', false);
-  };
 
-  // 监听输入框的回车事件
-  questionInputElement.addEventListener('keydown', function (event) {
-    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
-      event.preventDefault();
-      handleSendQuestion();
+  // 全局点击事件委托
+  document.addEventListener('click', (e) => {
+    // 处理 a 标签
+    if (e.target.tagName.toLowerCase() === 'a' && e.target.getAttribute('href') === '#') {
+      e.preventDefault();
+    }
+
+    const actionElement = e.target.closest('[data-action]');
+    if (actionElement) {
+      e.preventDefault();
+      const action = actionElement.getAttribute('data-action');
+      if (ACTION_HANDLERS[action]) {
+        ACTION_HANDLERS[action](actionElement);
+      }
+    }
+
+    // 点击其他区域关闭更多菜单
+    if (!e.target.closest('#chat-button-wrapper') && !e.target.closest('[data-action="toggle-more"]')) {
+      dom.chatButtonWrapper?.classList.add('hidden');
     }
   });
 
-  //  给整个webview添加点击事件
-  document.addEventListener('click', (e) => {
-    // 阻止默认事件
-    e.preventDefault();
-    const targetElement = e.target.closest('button');
-    // 点击更多按钮
-    if (targetElement?.id === 'more-button') {
-      chatButtonWrapperElement?.classList.toggle('hidden');
-      return;
-    } else {
-      chatButtonWrapperElement?.classList.add('hidden');
-    }
-
-    // 点击更新apikey按钮
-    if (targetElement?.id === 'update-key-button') {
-      postMessageToVscode({
-        type: 'update-key',
-      });
-      return;
-    }
-    // 点击设置按钮
-    if (
-      targetElement?.id === 'update-settings-button' ||
-      e.target.id === 'update-settings-button'
-    ) {
-      postMessageToVscode({
-        type: 'open-settings',
-      });
-      return;
-    }
-    // 点击设置提示按钮
-    if (
-      targetElement?.id === 'settings-prompt-button' ||
-      e.target.id === 'settings-prompt-button'
-    ) {
-      postMessageToVscode({
-        type: 'open-prompt-settings',
-      });
-      return;
-    }
-    // 点击提交问题按钮
-    if (targetElement?.id === 'submit-question-button') {
+  // 输入框事件
+  dom.questionInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
       handleSendQuestion();
-      return;
-    }
-    // 点击清除对话按钮
-    if (targetElement?.id === 'clear-conversation-button') {
-      handleClearConversation();
-      return;
-    }
-    // 点击导出对话按钮
-    if (targetElement?.id === 'export-conversation-button') {
-      handleExportConversation();
-      return;
-    }
-    // 点击停止回答按钮
-    if (targetElement?.id === 'stop-generating-button') {
-      postMessageToVscode({
-        type: 'stop-generating',
-      });
-      return;
-    }
-    // 点击编辑按钮
-    if (targetElement?.id === 'edit-button') {
-      handleClickEditButton(targetElement);
-      return;
-    }
-    // 点击重发按钮
-    if (targetElement?.id === 'send-button') {
-      handleClickSendButton(targetElement);
-      return;
-    }
-    // 点击取消按钮
-    if (targetElement?.id === 'cancel-button') {
-      handleClickCancelButton(targetElement);
-      return;
-    }
-
-    // 点击复制按钮
-    if (targetElement?.id === 'copy-button') {
-      handleClickCopyButton(targetElement);
-      return;
-    }
-    // 点击插入按钮
-    if (targetElement?.id === 'insert-button') {
-      handleClcikInsertButton(targetElement);
-      return;
-    }
-    // 点击新标签按钮
-    if (targetElement?.id === 'new-tab-button') {
-      handleClickNewTabButton(targetElement);
-      return;
     }
   });
 };
