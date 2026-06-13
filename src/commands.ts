@@ -168,6 +168,25 @@ export function registerCommands(
     });
   });
 
+  // 注册 Ask with Selection 命令
+  const askSelectionCommand = vscode.commands.registerCommand(
+    'vscode-chatgpt.askSelection',
+    async () => {
+      const editor = vscode.window.activeTextEditor;
+      if (!editor || editor.selection.isEmpty) {
+        return;
+      }
+      const selectedText = editor.document.getText(editor.selection);
+      const language = editor.document.languageId;
+      const fileName = path.basename(editor.document.fileName);
+
+      // 唤起 Webview 面板
+      await chatGptViewProvider.showWebview();
+      // 将选中代码作为附件 Chip 发送到前端
+      chatGptViewProvider.attachSelection(selectedText, language, fileName, true);
+    },
+  );
+
   // 注册菜单命令
   const registeredCommands = menuCommands
     .filter((command) => !['adhoc', 'customPrompt1', 'customPrompt2'].includes(command))
@@ -194,6 +213,7 @@ export function registerCommands(
     clearConversationCommand,
     exportConversationCommand,
     clearSessionCommand,
+    askSelectionCommand,
     adhocCommand,
     customPrompt1Command,
     customPrompt2Command,

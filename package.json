@@ -78,6 +78,11 @@
           "command": "vscode-chatgpt.customPrompt2",
           "group": "chatGpt@10",
           "when": "editorHasSelection && customPrompt2-enabled"
+        },
+        {
+          "command": "vscode-chatgpt.askSelection",
+          "group": "chatGpt@11",
+          "when": "editorHasSelection"
         }
       ]
     },
@@ -142,6 +147,11 @@
       {
         "command": "vscode-chatgpt.exportConversation",
         "title": "%vscode-chatgpt.exportConversation.title%"
+      },
+      {
+        "command": "vscode-chatgpt.askSelection",
+        "title": "%vscode-chatgpt.askSelection.title%",
+        "enablement": "editorHasSelection"
       }
     ],
     "viewsContainers": {

@@ -88,6 +88,9 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         case 'get-current-file':
           this.handleGetCurrentFile();
           break;
+        case 'apply-code':
+          this.handleApplyCode(data);
+          break;
         default:
           break;
       }
@@ -146,6 +149,63 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       language: document.languageId,
       content: truncated ? fullContent.slice(0, MAX_FILE_CHARS) : fullContent,
       truncated,
+    });
+  }
+
+  /** 将 AI 代码与当前编辑器内容做 Diff 对比 */
+  private handleApplyCode(data: OnDidReceiveMessageOptions): void {
+    const editor = vscode.window.activeTextEditor;
+    if (!editor) {
+      vscode.window.showWarningMessage('No active editor to apply code to.');
+      return;
+    }
+
+    const aiCode = data.value || '';
+    const document = editor.document;
+    const selection = editor.selection;
+    const hasSelection = !selection.isEmpty;
+
+    // 左侧：原始文档或选区
+    const leftUri = hasSelection
+      ? vscode.Uri.parse(`chatgpt-diff:Original%20Selection.${document.languageId}`)
+      : document.uri;
+
+    // 右侧：AI 生成的代码（虚拟文档）
+    const rightUri = vscode.Uri.parse(`chatgpt-diff:AI%20Code.${document.languageId}`);
+
+    // 注册一次性 ContentProvider，返回对应内容
+    const provider = vscode.workspace.registerTextDocumentContentProvider('chatgpt-diff', {
+      provideTextDocumentContent(uri: vscode.Uri): string {
+        if (uri.path.includes('Original')) {
+          return hasSelection ? document.getText(selection) : document.getText();
+        }
+        return aiCode;
+      },
+    });
+
+    const title = hasSelection
+      ? `Original Selection ↔ AI Code (${path.basename(document.fileName)})`
+      : `Current File ↔ AI Code (${path.basename(document.fileName)})`;
+
+    vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title);
+
+    // 30 秒后自动清理 provider（用户关闭 diff 编辑器后虚拟文档即销毁）
+    setTimeout(() => provider.dispose(), 30000);
+  }
+
+  /** 将选中代码作为附件发送到 Webview（Ask with Selection） */
+  public attachSelection(
+    content: string,
+    language: string,
+    fileName: string,
+    isSelection: boolean,
+  ): void {
+    this.sendMessageToWebview({
+      type: 'selection-data',
+      filename: fileName,
+      language,
+      content,
+      isSelection,
     });
   }
 
@@ -262,7 +322,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     return question;
   }
 
-  private async showWebview(): Promise<void> {
+  public async showWebview(): Promise<void> {
     if (this.webView === undefined) {
       await vscode.commands.executeCommand('vscode-chatgpt-plugin.view.focus');
       await delay(250);

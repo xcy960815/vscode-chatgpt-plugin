@@ -11,6 +11,7 @@ declare const WebviewMessageOptionssTypeEnums: {
   LoadHistory: 'load-history';
   LoadConversation: 'load-conversation';
   CurrentFileData: 'current-file-data';
+  SelectionData: 'selection-data';
 };
 
 /**
@@ -56,6 +57,7 @@ declare interface WebviewMessageOptions {
   language?: string;
   content?: string;
   truncated?: boolean;
+  isSelection?: boolean;
 }
 
 /**
@@ -76,6 +78,7 @@ declare const OnDidReceiveMessageOptionsTypeEnums: {
   LoadConversation: 'load-conversation';
   DeleteConversation: 'delete-conversation';
   GetCurrentFile: 'get-current-file';
+  ApplyCode: 'apply-code';
 };
 
 /**
@@ -93,6 +96,8 @@ declare interface OnDidReceiveMessageOptions {
   language?: string;
   attachedContent?: string;
   attachedLanguage?: string;
+  selectionStart?: number;
+  selectionEnd?: number;
 }
 
 declare interface SendApiRequestOption {

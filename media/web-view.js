@@ -74,6 +74,9 @@ window.onload = function () {
       case 'current-file-data':
         handleCurrentFileData(messageOption);
         break;
+      case 'selection-data':
+        handleSelectionData(messageOption);
+        break;
     }
   });
 
@@ -263,6 +266,7 @@ window.onload = function () {
           <button data-action="copy-code" title="Copy code">${getTemplate('tpl-copy-icon')} Copy</button>
           <button data-action="insert-code" title="Insert into editor">${getTemplate('tpl-insert-icon')} Insert</button>
           <button data-action="new-tab-code" title="Open in new tab">${getTemplate('tpl-new-tab-icon')} New Tab</button>
+          <button data-action="apply-code" title="Compare with current file">${getTemplate('tpl-apply-icon')} Apply</button>
         </div>
       `;
       
@@ -385,10 +389,17 @@ window.onload = function () {
       return;
     }
     attachedFile = { filename, language, content };
-    showAttachedChip(filename, language, truncated);
+    showAttachedChip(filename, language, truncated, false);
   };
 
-  const showAttachedChip = (filename, language, truncated) => {
+  const handleSelectionData = (messageOption) => {
+    const { filename, language, content, isSelection } = messageOption;
+    attachedFile = { filename, language, content };
+    showAttachedChip(filename, language, false, isSelection);
+    dom.questionInput.focus();
+  };
+
+  const showAttachedChip = (filename, language, truncated, isSelection) => {
     dom.attachedFiles.innerHTML = '';
     dom.attachedFiles.classList.remove('hidden');
 
@@ -397,10 +408,14 @@ window.onload = function () {
     const truncBadge = truncated
       ? '<span class="file-chip-truncated" title="File was truncated (too large)">⚠ truncated</span>'
       : '';
+    const selBadge = isSelection
+      ? '<span class="file-chip-selection" title="Selected code">Selected</span>'
+      : '';
     chip.innerHTML = `
       <span class="file-chip-icon">📎</span>
       <span class="file-chip-name" title="${escapeHtml(filename)}">${escapeHtml(filename)}</span>
       <span class="file-chip-lang">(${escapeHtml(language)})</span>
+      ${selBadge}
       ${truncBadge}
       <button data-action="remove-attached-file" class="file-chip-remove" title="Remove">&times;</button>
     `;
@@ -530,6 +545,10 @@ window.onload = function () {
     'new-tab-code': (target) => {
       const codeBlock = target.closest('.code-wrapper').querySelector('pre code');
       postMessageToVscode({ type: 'open-newtab', value: codeBlock.textContent });
+    },
+    'apply-code': (target) => {
+      const codeBlock = target.closest('.code-wrapper').querySelector('pre code');
+      postMessageToVscode({ type: 'apply-code', value: codeBlock.textContent });
     }
   };
 
