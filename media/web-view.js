@@ -417,29 +417,29 @@ window.onload = function () {
   const MAX_CONTEXT_TOKENS = 128000; // 粗略按 GPT-4o 上下文估算
   const updateTokenBar = () => {
     const text = dom.questionInput.value;
-    let totalChars = text.length;
+    // 用户当前输入 + 附加文件（用于决定是否显示标签）
+    const userChars = text.length + (attachedFile ? attachedFile.content.length + attachedFile.language.length + 10 : 0);
 
-    // 估算历史对话 Token（DOM 中所有消息内容的文本长度）
+    // 历史对话也占 context window
+    let historyChars = 0;
     const historyMsgs = dom.answerList.querySelectorAll('.msg-content');
     historyMsgs.forEach((el) => {
-      totalChars += (el.textContent || '').length;
+      historyChars += (el.textContent || '').length;
     });
 
-    // 如果有附加文件，也要算进去
-    if (attachedFile) {
-      totalChars += attachedFile.content.length + attachedFile.language.length + 10;
-    }
-
+    const totalChars = userChars + historyChars;
     const estimatedTokens = Math.ceil(totalChars / 4);
     const pct = Math.min((estimatedTokens / MAX_CONTEXT_TOKENS) * 100, 100);
 
+    // 进度条始终反映总 context 占用
     dom.tokenBar.style.width = pct > 0 ? `${Math.max(pct, 0.5)}%` : '0%';
     dom.tokenBar.classList.remove('token-bar-warning');
     if (pct >= 80) {
       dom.tokenBar.classList.add('token-bar-warning');
     }
 
-    if (estimatedTokens > 0) {
+    // 标签只在用户有实际输入或附加文件时显示
+    if (userChars > 0) {
       dom.tokenBarLabel.textContent = `~${estimatedTokens.toLocaleString()} tokens`;
       dom.tokenBarLabel.classList.remove('hidden');
     } else {

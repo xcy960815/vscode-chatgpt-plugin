@@ -12,7 +12,7 @@
   --color-input-fg: var(--vscode-input-foreground);
   --color-input-border: var(--vscode-input-border, var(--color-border));
   --color-btn-hover: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.1));
-  --font-size: var(--vscode-editor-font-size, 13px);
+  --font-size: 13px;
   --font-family: var(--vscode-font-family);
   --font-code: var(--vscode-editor-font-family);
 }
@@ -399,23 +399,31 @@ body {
   background-color: var(--color-bg);
 }
 
+/* 外层：flex 纵向布局，承载边框和圆角 */
 .textarea-wrapper {
-  display: grid;
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--color-input-border);
-  border-radius: 6px;
+  border-radius: 8px;
   background-color: var(--color-input-bg);
+  overflow: hidden;
 }
 
 .textarea-wrapper:focus-within {
   border-color: var(--vscode-focusBorder);
 }
 
-.textarea-wrapper::after {
+/* 内层：grid 魔法保留 textarea 自动伸缩高度 */
+.textarea-inner {
+  display: grid;
+}
+
+.textarea-inner::after {
   content: attr(data-replicated-value) ' ';
   white-space: pre-wrap;
   visibility: hidden;
   grid-area: 1 / 1 / 2 / 2;
-  padding: 8px 12px;
+  padding: 10px 12px 36px 12px;
   font: inherit;
   min-height: 20px;
   max-height: 200px;
@@ -429,7 +437,7 @@ textarea {
   background: transparent;
   color: var(--color-input-fg);
   font: inherit;
-  padding: 8px 12px;
+  padding: 10px 12px 36px 12px;
   max-height: 200px;
   outline: none;
 }
@@ -439,21 +447,40 @@ textarea:disabled {
   cursor: not-allowed;
 }
 
-.input-actions {
+/* 内嵌底部栏：token 进度条 + 模型名称 + 操作按钮 */
+.textarea-footer {
+  position: relative;
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  margin-top: 8px;
+  padding: 0 6px 4px 6px;
+  min-height: 28px;
+  margin-top: -30px;
+  z-index: 1;
+  pointer-events: none;
+}
+
+.textarea-footer > * {
+  pointer-events: auto;
+}
+
+.footer-row {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .model-info {
-  font-size: 0.8em;
-  opacity: 0.6;
+  font-size: 0.75em;
+  opacity: 0.5;
+  margin-right: 4px;
 }
 
 .action-buttons {
   display: flex;
-  gap: 8px;
+  gap: 2px;
 }
 
 .icon-button {
@@ -496,7 +523,7 @@ textarea:disabled {
 /* 更多菜单 */
 .more-menu {
   position: absolute;
-  bottom: 80px;
+  bottom: 60px;
   right: 16px;
   background-color: var(--vscode-dropdown-background, var(--color-bg));
   border: 1px solid var(--color-border);
@@ -737,14 +764,14 @@ textarea:disabled {
   flex-shrink: 0;
 }
 
-/* Token 估算进度条 */
+/* Token 进度条（内嵌在 textarea-footer 中） */
 .token-bar-container {
-  position: relative;
+  flex: 1;
   height: 2px;
-  margin-top: 2px;
   background-color: transparent;
   display: flex;
   align-items: center;
+  min-width: 0;
 }
 
 .token-bar {
@@ -761,8 +788,8 @@ textarea:disabled {
 
 .token-bar-label {
   position: absolute;
-  right: 0;
-  top: 4px;
+  left: 6px;
+  bottom: -14px;
   font-size: 0.7em;
   opacity: 0.5;
   white-space: nowrap;

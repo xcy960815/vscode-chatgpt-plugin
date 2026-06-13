@@ -29,6 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Changed
 
+- Textarea layout restructured: action buttons and token bar are now embedded inside the textarea wrapper (ChatGPT/Claude-style), using a flex-column wrapper with grid-based auto-height inner and negative-margin footer overlay.
 - `sendApiRequest` now creates a single conversation ID per session (not per question) and saves to history after each response.
 - `clearSession` now also wipes all persisted conversation history.
 - `clear-conversation` resets `currentConversationId` so the next question starts a fresh conversation.
@@ -58,6 +59,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Fixed
 
+- DOM overwrite bug: all `add-answer` messages used `currentConversationId` as DOM element ID, causing every answer in a conversation to overwrite the first answer bubble. Each request now generates a unique `currentMessageId`.
+- Frontend prompt concatenation leaked file content into the user bubble; `attachedContent` is now sent as a separate field and only concatenated on the backend.
+- Token progress bar did not include history messages in its estimate; now counts all `.msg-content` elements.
+- `clearSession()` did not send `clear-conversation` to the webview, leaving stale messages on screen.
+- Token bar showed "~1 tokens" on empty input due to history characters; label now only appears when the user has typed content.
 - o-series reasoning models no longer receive `temperature` parameter (API would reject it); `reasoning_effort` is sent instead.
 
 ---

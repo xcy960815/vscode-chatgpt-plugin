@@ -15,6 +15,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
   private inProgress: boolean = false;
   private abortController?: AbortController;
   private currentConversationId: string = '';
+  private currentMessageId: string = '';
   private response: string = '';
   private pendingWebviewMessage: WebviewMessageOptions | null = null;
   private conversationStore: ConversationStore;
@@ -118,7 +119,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       type: 'add-answer',
       value: this.response,
       done: true,
-      id: this.currentConversationId,
+      id: this.currentMessageId,
       autoScroll: configManager.autoScroll,
     });
   }
@@ -153,6 +154,8 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     this.openaiService?.clearSession();
     this.openaiService = undefined;
     this.conversationStore.clearAll();
+    // 同时清理前端聊天显示（旧消息不再残留）
+    this.sendMessageToWebview({ type: 'clear-conversation' }, true);
     this.sendMessageToWebview({ type: 'load-history', history: [] }, true);
   }
 
@@ -321,6 +324,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.questionCount++;
+    this.currentMessageId = this.getRandomId();
 
     if (!(await this.initConfig())) {
       return;
@@ -357,7 +361,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
             this.sendMessageToWebview({
               type: 'add-answer',
               value: this.response,
-              id: this.currentConversationId,
+              id: this.currentMessageId,
               autoScroll: configManager.autoScroll,
             });
           },
@@ -369,7 +373,7 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
         type: 'add-answer',
         value: this.response,
         done: true,
-        id: this.currentConversationId,
+        id: this.currentMessageId,
         autoScroll: configManager.autoScroll,
       });
       // 保存对话到历史
