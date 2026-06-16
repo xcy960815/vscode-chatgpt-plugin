@@ -12,6 +12,7 @@
   "vscode-chatgpt.customPrompt2.title": "ChatGPT: Custom prompt 2",
   "vscode-chatgpt.clearConversation.title": "ChatGPT: Clear conversation",
   "vscode-chatgpt.exportConversation.title": "ChatGPT: Export conversation",
+  "vscode-chatgpt.askSelection.title": "ChatGPT: Ask with selection",
   "vscode-chatgpt-plugin-view-container.name": "Conversation window",
   "chatgpt-config.title": "chatgpt-config",
   "chatgpt.promptPrefix.addTests.default": "Implement tests for the following code",

@@ -12,6 +12,7 @@
   "vscode-chatgpt.customPrompt2.title": "ChatGPT: 自定义提示 2",
   "vscode-chatgpt.clearConversation.title": "ChatGPT: 清除对话",
   "vscode-chatgpt.exportConversation.title": "ChatGPT: 导出对话",
+  "vscode-chatgpt.askSelection.title": "ChatGPT: 询问选中内容",
   "vscode-chatgpt-plugin-view-container.name": "对话窗口",
   "chatgpt-config.title": "chatgpt 配置",
   "chatgpt.promptPrefix.addTests.default": "为以下代码添加测试脚本：",

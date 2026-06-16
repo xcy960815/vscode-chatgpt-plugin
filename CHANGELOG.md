@@ -8,6 +8,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/), and this
 
 ### Added
 
+- **Code operations (roadmap 3.2)**
+  - "Apply" button on AI code blocks to intelligently merge AI code into the active editor using a native Diff view (`TextDocumentContentProvider`).
+  - "Ask ChatGPT" right-click context menu command to quickly attach the selected code as context and focus the chat input.
 - **Context awareness (roadmap 3.1)** — the extension now understands your editing context.
   - "Attach current file" button (📎) next to the input box — one-click to include the active editor's full file content in the prompt, displayed as a removable chip above the textarea.
   - Right-click commands (Explain, Optimize, Find Bugs, etc.) now automatically embed the file language and filename into the prompt for better AI responses.

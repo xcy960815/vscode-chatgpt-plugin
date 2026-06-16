@@ -764,6 +764,16 @@ textarea:disabled {
   flex-shrink: 0;
 }
 
+.file-chip-selection {
+  background-color: var(--vscode-badge-background, rgba(0, 120, 212, 0.2));
+  color: var(--vscode-badge-foreground, var(--color-fg));
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 0.8em;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 /* Token 进度条（内嵌在 textarea-footer 中） */
 .token-bar-container {
   flex: 1;

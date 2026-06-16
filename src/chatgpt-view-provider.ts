@@ -161,36 +161,109 @@ export default class ChatgptViewProvider implements vscode.WebviewViewProvider {
     }
 
     const aiCode = data.value || '';
+    if (!aiCode.trim()) {
+      vscode.window.showWarningMessage('AI code block is empty.');
+      return;
+    }
+
     const document = editor.document;
     const selection = editor.selection;
     const hasSelection = !selection.isEmpty;
 
-    // 左侧：原始文档或选区
-    const leftUri = hasSelection
-      ? vscode.Uri.parse(`chatgpt-diff:Original%20Selection.${document.languageId}`)
-      : document.uri;
+    // 生成唯一 scheme 避免多次点击时 provider 冲突
+    const scheme = `chatgpt-diff-${Date.now()}`;
+    const langExt = document.languageId;
 
-    // 右侧：AI 生成的代码（虚拟文档）
-    const rightUri = vscode.Uri.parse(`chatgpt-diff:AI%20Code.${document.languageId}`);
+    let leftUri: vscode.Uri;
+    let rightUri: vscode.Uri;
+    let title: string;
 
-    // 注册一次性 ContentProvider，返回对应内容
-    const provider = vscode.workspace.registerTextDocumentContentProvider('chatgpt-diff', {
+    if (hasSelection) {
+      // 选区模式：原始选区 vs AI 代码
+      const originalText = document.getText(selection);
+      leftUri = vscode.Uri.parse(`${scheme}:Original%20Selection.${langExt}`);
+      rightUri = vscode.Uri.parse(`${scheme}:AI%20Code.${langExt}`);
+      title = `Original Selection ↔ AI Code (${path.basename(document.fileName)})`;
+
+      this.registerDiffProvider(scheme, originalText, aiCode);
+    } else {
+      // 全文模式：将 AI 代码智能合并到全文，生成有意义的 diff
+      const fullText = document.getText();
+      const mergedText = this.mergeAiIntoDocument(fullText, aiCode);
+      leftUri = document.uri;
+      rightUri = vscode.Uri.parse(`${scheme}:AI%20Modified.${langExt}`);
+      title = `Current File ↔ AI Modified (${path.basename(document.fileName)})`;
+
+      this.registerDiffProvider(scheme, fullText, mergedText);
+    }
+
+    vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title);
+  }
+
+  /**
+   * 将 AI 代码智能合并到原始文档中。
+   * 策略：用 AI 代码的首尾非空行作为锚点，在原文中定位替换区域。
+   * 若无法定位，则直接用 AI 代码替换全文（保守降级）。
+   */
+  private mergeAiIntoDocument(fullText: string, aiCode: string): string {
+    const aiLines = aiCode.split('\n');
+    const docLines = fullText.split('\n');
+
+    // AI 代码显著比原文长 → 视为全文重写
+    if (aiLines.length > docLines.length * 1.5) {
+      return aiCode;
+    }
+
+    // 提取 AI 代码首尾非空行作为锚点
+    const firstNonEmpty = aiLines.find((l) => l.trim().length > 0);
+    const lastNonEmpty = [...aiLines].reverse().find((l) => l.trim().length > 0);
+
+    if (!firstNonEmpty || !lastNonEmpty) {
+      return aiCode;
+    }
+
+    const firstIdx = docLines.findIndex((l) => l.trim() === firstNonEmpty.trim());
+    const lastIdx = docLines.findIndex((l) => l.trim() === lastNonEmpty.trim());
+
+    // 锚点有效且顺序正确 → 执行合并替换
+    if (firstIdx !== -1 && lastIdx !== -1 && lastIdx >= firstIdx) {
+      const before = docLines.slice(0, firstIdx);
+      const after = docLines.slice(lastIdx + 1);
+      return [...before, ...aiLines, ...after].join('\n');
+    }
+
+    // 锚点无效 → 降级为全文替换
+    return aiCode;
+  }
+
+  /** 注册一次性 TextDocumentContentProvider，diff 关闭后自动销毁 */
+  private registerDiffProvider(scheme: string, originalContent: string, aiContent: string): void {
+    const provider = vscode.workspace.registerTextDocumentContentProvider(scheme, {
       provideTextDocumentContent(uri: vscode.Uri): string {
+        // 左侧（Original）或右侧（AI）通过 path 区分
         if (uri.path.includes('Original')) {
-          return hasSelection ? document.getText(selection) : document.getText();
+          return originalContent;
         }
-        return aiCode;
+        return aiContent;
       },
     });
 
-    const title = hasSelection
-      ? `Original Selection ↔ AI Code (${path.basename(document.fileName)})`
-      : `Current File ↔ AI Code (${path.basename(document.fileName)})`;
+    // 监听编辑器关闭事件，自动销毁 provider 释放资源
+    const disposable = vscode.window.onDidChangeVisibleTextEditors(() => {
+      const stillOpen = vscode.window.visibleTextEditors.some(
+        (e) => e.document.uri.scheme === scheme,
+      );
+      if (!stillOpen) {
+        provider.dispose();
+        disposable.dispose();
+      }
+    });
 
-    vscode.commands.executeCommand('vscode.diff', leftUri, rightUri, title);
-
-    // 30 秒后自动清理 provider（用户关闭 diff 编辑器后虚拟文档即销毁）
-    setTimeout(() => provider.dispose(), 30000);
+    // 兜底：5 分钟后强制销毁，防止极端情况下永不触发
+    setTimeout(() => {
+      provider.dispose();
+      disposable.dispose();
+    }, 5 * 60 * 1000);
   }
 
   /** 将选中代码作为附件发送到 Webview（Ask with Selection） */
